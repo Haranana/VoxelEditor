@@ -72,8 +72,9 @@ export class VoxelObject{
     highlightedVoxelColor: Vector4 = new Vector4(160, 130, 210, 255);
     highlightedVoxel: Vector3 | null = null;
 
-
-    selectedVoxelColor: Vector4 =  new Vector4(160, 130, 210, 160);
+    selectedVoxelsAlpha = 160;
+    selectedVoxelsDefaultColor: Vector4 = new Vector4(160, 130, 210, this.selectedVoxelsAlpha)
+    selectedVoxelColor: Vector4 = this.selectedVoxelsDefaultColor.copy();
     selectedAreaMesh: RenderableObject | null = null;
     selectedAreaModified: boolean = false;
 
@@ -1148,5 +1149,9 @@ export class VoxelObject{
         if(!this.voxelExists(v)) return false;
         const voxel = this.getVoxel(v);
         return voxel? false : true;
+    }
+
+    setSelectedVoxelsColor(v: Vector3){
+        this.selectedVoxelColor = new Vector4(v.x, v.y, v.z, this.selectedVoxelsAlpha);
     }
 }

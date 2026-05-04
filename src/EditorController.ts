@@ -7,6 +7,7 @@ import { clamp, mod } from "./math/utils";
 import type { Vector2 } from "./math/vector2.type"
 import { Vector3 } from "./math/vector3.type"
 import { debugPaintColor, defaultColor } from "./sampleObjects";
+import { Vector4 } from "./math/vector4.type";
 
 type SelectSession = {
     startCoords: Vector3 | null,
@@ -410,10 +411,10 @@ export class EditorController{
         let selectedAreaChanged = false;
         if(selectMode=="Voxel" || selectMode=="Face"){
                 if(editMode=="Add"){
-                    voxelObjectChanged = this.scene!.getObjectRef().addSelectedVoxels(defaultColor)!=0;
+                    voxelObjectChanged = this.scene!.getObjectRef().addSelectedVoxels(this.currentColor)!=0;
                     selectedAreaChanged = this.scene!.getObjectRef().resetSelect()!=0;
                 }else if(editMode=="Paint"){
-                    voxelObjectChanged = this.scene!.getObjectRef().paintSelectedVoxels(debugPaintColor)!=0;
+                    voxelObjectChanged = this.scene!.getObjectRef().paintSelectedVoxels(this.currentColor)!=0;
                     selectedAreaChanged = this.scene!.getObjectRef().resetSelect()!=0;
                 }else if(editMode=="Remove"){
                     voxelObjectChanged = this.scene!.getObjectRef().removeSelectedVoxels()!=0;
@@ -455,7 +456,7 @@ export class EditorController{
             if(editMode == "Add"){
                 if(selectMode=="Voxel"){
                     this.scene!.getObjectRef().selectVoxel(hitVoxel);
-                    voxelObjectChanged = this.scene!.getObjectRef().addSelectedVoxels(defaultColor) != 0;
+                    voxelObjectChanged = this.scene!.getObjectRef().addSelectedVoxels(this.currentColor) != 0;
                 }else if(selectMode=="Cube"){
                     selectedAreaChanged = this.scene!.getObjectRef().selectCube(this.selectSession.startCoords!, hitVoxel);
                 }
@@ -469,7 +470,7 @@ export class EditorController{
             }else if(editMode=="Paint"){
                 if(selectMode=="Voxel"){
                     this.scene!.getObjectRef().selectVoxel(hitVoxel);
-                    voxelObjectChanged = this.scene!.getObjectRef().paintSelectedVoxels(debugPaintColor) != 0;
+                    voxelObjectChanged = this.scene!.getObjectRef().paintSelectedVoxels(this.currentColor) != 0;
                 }else if(selectMode=="Cube"){
                     selectedAreaChanged = this.scene!.getObjectRef().selectCube(this.selectSession.startCoords!, hitVoxel);
                 }
@@ -518,9 +519,9 @@ export class EditorController{
             this.selectSession.endCoords = hitVoxel;
             if(selectMode=="Cube"){
                 if(editMode=="Add"){
-                    this.scene!.getObjectRef().addSelectedVoxels(defaultColor);
+                    this.scene!.getObjectRef().addSelectedVoxels(this.currentColor);
                 }else if(editMode=="Paint"){
-                    this.scene!.getObjectRef().paintSelectedVoxels(debugPaintColor);
+                    this.scene!.getObjectRef().paintSelectedVoxels(this.currentColor);
                 }else if(editMode=="Remove"){
                     this.scene!.getObjectRef().removeSelectedVoxels();
                 }
@@ -549,5 +550,20 @@ export class EditorController{
         if(!this.initialized) return;
         this.scene!.options.borderWire = this.scene!.options.borderWire? false : true;
         this.renderScene!();
+    }
+
+    //color
+
+    //current color should in most cases have alpha of 255
+    currentColor: Vector4 = new Vector4(0,0,0,255);
+    
+    setCurrentColor(c: Vector3){
+        if(!this.initialized) return;
+        this.currentColor = new Vector4(c.x, c.y, c.z, 255);
+        this.scene!.getObjectRef().setSelectedVoxelsColor(c);
+    }
+
+    getCurrentColor(): Vector4{
+        return this.currentColor;
     }
 }

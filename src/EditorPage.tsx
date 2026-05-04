@@ -17,6 +17,7 @@ import { Scene } from "./classes/scene";
 import { Renderer } from "./classes/renderer";
 import { ControllerContext } from "./ControllerContext";
 import ScenePropertiesWidget from "./editorWidgets/ScenePropertiesWidget";
+import { ColorPaletteWidget } from "./editorWidgets/ColorPaletteWidget";
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -475,6 +476,16 @@ export default function EditorPage() {
     version={scenePropertiesVersion}
   />
   
+  const [colorPaletteVersion, setColorPaletteVersion] = useState<number>(0);
+  function onColorPaletteVersion(){
+    setScenePropertiesVersion(prev=>prev+1);
+  }
+  const [isColorPaletteOpen, setIscolorPaletteOpen] = useState<boolean>(false);
+  const colorPaletteWidget: React.ReactNode = <ColorPaletteWidget
+        isOpen={isColorPaletteOpen}
+        onOpenChange={setIscolorPaletteOpen}
+        version={colorPaletteVersion}
+  />
   return (
     <div className="EditorPage">
       <div className="EditorNav"></div>
@@ -553,6 +564,7 @@ export default function EditorPage() {
               {selectToolsWidget}
               {editToolsWidget}
               {scenePropertiesWidget}
+              {colorPaletteWidget}
               </div>
             </ResizableContainer>
           </div>
