@@ -683,6 +683,7 @@ export class VoxelObject{
         if(this.borderGrid){
             return this.borderGrid;
         }
+        
         const out: RenderableObject = new RenderableObject();
         const objectStart: Vector3 = new Vector3(
             -(this.size.x * this.baseVoxelSize) / 2,
@@ -777,7 +778,7 @@ export class VoxelObject{
 
         this.borderGrid = out;
         return out;
-}
+    }
 
     //receives point in this object model space
     //returns id of possible vexel in this object
@@ -886,7 +887,6 @@ export class VoxelObject{
             return false;
         }
     }
-
 
     //adds voxels of the same face as starting voxel of given coordinates
     //emptyVoxels = true : selects only empty voxels, otherwise only non-empty
@@ -1021,6 +1021,65 @@ export class VoxelObject{
         return true;
     }
 
+    //reset selected voxels and selects every empty voxel in object
+    //returns number of newly selected voxels
+    selectEmptyVoxels(): number{
+        this.resetSelect();
+
+        let selectedVoxelsNumber = 0;
+        for(let x: number = 0; x <= this.size.x; x++){
+            for(let y: number = 0; y <= this.size.y; y++){
+                for(let z: number = 0; z <= this.size.z; z++){
+                    if(this.isVoxelEmpty(new Vector3(x,y,z))){
+                        selectedVoxelsNumber++;     
+                        this.selectedVoxels.add(new Vector3(x,y,z).toString());    
+                    }       
+                }
+            }
+        }
+
+        if(selectedVoxelsNumber>0) this.selectedAreaModified = true;
+        return selectedVoxelsNumber;
+    }
+
+    selectAllVoxels(): number{
+        let selectedVoxelsNumber = 0;
+        for(let x: number = 0; x <= this.size.x; x++){
+            for(let y: number = 0; y <= this.size.y; y++){
+                for(let z: number = 0; z <= this.size.z; z++){
+                    if(this.voxelExists(new Vector3(x,y,z))){
+                        selectedVoxelsNumber++;     
+                        this.selectedVoxels.add(new Vector3(x,y,z).toString());    
+                    }       
+                }
+            }
+        }
+
+        if(selectedVoxelsNumber>0) this.selectedAreaModified = true;
+        return selectedVoxelsNumber;
+    }
+
+    //reset selected voxels and selects every non-empty voxel in object
+    //returns number of newly selected voxels
+    selectNonEmptyVoxels(){
+        this.resetSelect();
+
+        let selectedVoxelsNumber = 0;
+        for(let x: number = 0; x <= this.size.x; x++){
+            for(let y: number = 0; y <= this.size.y; y++){
+                for(let z: number = 0; z <= this.size.z; z++){
+                    if(this.isVoxelNonEmpty(new Vector3(x,y,z))){
+                        selectedVoxelsNumber++;     
+                        this.selectedVoxels.add(new Vector3(x,y,z).toString());    
+                    }       
+                }
+            }
+        }
+
+        if(selectedVoxelsNumber>0) this.selectedAreaModified = true;
+        return selectedVoxelsNumber;
+    }
+
     //adds voxel to every coord stored in selectedVoxels if the voxel they point at is empty
     //returns number of added voxels
     addSelectedVoxels(color: Vector4) : number{
@@ -1035,6 +1094,24 @@ export class VoxelObject{
         return addedVoxels;
     }
 
+    //fills every empty voxel with voxel of given color
+    //removes every non-empty voxel
+    //returns number of modified voxels
+    reverseSelectedVoxels(color: Vector4): number{
+        let modifiedVoxels: number = 0;
+        this.selectedVoxels.forEach(v=>{
+            const voxel = Vector3.fromString(v);
+            if(this.isVoxelEmpty(voxel)){
+                this.setVoxel(voxel, {color});
+                modifiedVoxels++;
+            }else if(this.isVoxelNonEmpty(voxel)){
+                this.removeVoxel(voxel);
+                modifiedVoxels++;
+            }
+        });     
+        return modifiedVoxels;
+    }
+
     //nulls every voxel which id is stored in selectedVoxels
     //returns number of nulled voxels which were prevoiusly non-empty
     removeSelectedVoxels() : number{
@@ -1045,6 +1122,142 @@ export class VoxelObject{
             removedVoxels++;
         });
         return removedVoxels;
+    }
+
+    //rotations currently work only when full object is selected because they create fresh object and fill it only with rotated voxels
+    //todo: FIX!
+    rotateSelectedVoxelsByX(): number{
+        let modifiedVoxels = 0;
+        const maxY = this.size.y-1;
+        const rotatedObject = new VoxelObject(this.size);
+        this.selectedVoxels.forEach(v=>{
+            const voxelPosititon = Vector3.fromString(v);
+            const voxel: Voxel | null = this.getVoxel(voxelPosititon);
+            const newVoxelPosition = new Vector3(voxelPosititon.x, voxelPosititon.z, maxY - voxelPosititon.y);
+            if(this.voxelExists(newVoxelPosition)){
+                if(voxel){
+                    rotatedObject.setVoxel(newVoxelPosition, copyVoxel(voxel))
+                }
+            }
+            modifiedVoxels++;
+        });
+        this.voxels = rotatedObject.voxels;
+        this.mesh = null;
+        return modifiedVoxels;
+    }
+
+    rotateSelectedVoxelsByY(): number{
+        let modifiedVoxels = 0;
+        const maxZ = this.size.z-1;
+        const rotatedObject = new VoxelObject(this.size);
+        this.selectedVoxels.forEach(v=>{
+            const voxelPosititon = Vector3.fromString(v);
+            const voxel: Voxel | null = this.getVoxel(voxelPosititon);
+            const newVoxelPosition = new Vector3(maxZ - voxelPosititon.z, voxelPosititon.y, voxelPosititon.x);
+            if(this.voxelExists(newVoxelPosition)){
+                if(voxel){
+                    rotatedObject.setVoxel(newVoxelPosition, copyVoxel(voxel))
+                }
+            }
+            modifiedVoxels++;
+        });
+        this.voxels = rotatedObject.voxels;
+        this.mesh = null;
+        return modifiedVoxels;  
+    }
+
+    rotateSelectedVoxelsByZ(): number{
+        let modifiedVoxels = 0;
+        const maxX = this.size.x-1;
+        const rotatedObject = new VoxelObject(this.size);
+        this.selectedVoxels.forEach(v=>{
+            const voxelPosititon = Vector3.fromString(v);
+            const voxel: Voxel | null = this.getVoxel(voxelPosititon);
+            const newVoxelPosition = new Vector3(voxelPosititon.y, maxX - voxelPosititon.x, voxelPosititon.z);
+            if(this.voxelExists(newVoxelPosition)){
+                if(voxel){
+                    rotatedObject.setVoxel(newVoxelPosition, copyVoxel(voxel))
+                }
+            }
+            modifiedVoxels++;
+        });
+        this.voxels = rotatedObject.voxels;
+        this.mesh = null;
+        return modifiedVoxels;
+    }
+
+    flipSelectedVoxelsByX(): number{
+        let modifiedVoxels = 0;
+        for(let x = 0; x < Math.floor(this.size.x/2); x++){
+            for(let y = 0; y < this.size.y; y++){
+                for(let z = 0; z < this.size.z; z++){
+                    if(this.selectedVoxels.has(new Vector3(x,y,z).toString())){
+                        const voxelPosition = new Vector3(x,y,z);
+                        const flippedVoxelPosition = new Vector3(this.size.x - 1 - x ,y,z);
+                        if(!voxelPosition.equals(flippedVoxelPosition)){
+                            this.swapVoxels(voxelPosition , flippedVoxelPosition);
+                            modifiedVoxels++;
+                        }
+                    }
+                }   
+            }   
+        }
+        this.mesh = null;
+        return modifiedVoxels;
+
+    }
+
+    flipSelectedVoxelsByY(): number{
+        let modifiedVoxels = 0;
+        for(let x = 0; x < this.size.x; x++){
+            for(let y = 0; y < Math.floor(this.size.y/2); y++){
+                for(let z = 0; z < this.size.z; z++){
+                    if(this.selectedVoxels.has(new Vector3(x,y,z).toString())){
+                        const voxelPosition = new Vector3(x,y,z);
+                        const flippedVoxelPosition = new Vector3(x ,this.size.y - 1 -y,z);
+                        if(!voxelPosition.equals(flippedVoxelPosition)){
+                            this.swapVoxels(voxelPosition , flippedVoxelPosition);
+                            modifiedVoxels++;
+                        }
+                    }
+                }   
+            }   
+        }
+        this.mesh = null;
+        return modifiedVoxels;
+    }
+
+    flipSelectedVoxelsByZ(): number{
+        let modifiedVoxels = 0;
+        for(let x = 0; x < this.size.x; x++){
+            for(let y = 0; y < this.size.y; y++){
+                for(let z = 0; z < Math.floor(this.size.z/2); z++){
+                    if(this.selectedVoxels.has(new Vector3(x,y,z).toString())){
+                        const voxelPosition = new Vector3(x,y,z);
+                        const flippedVoxelPosition = new Vector3(x ,y,this.size.z - 1 -z);
+                        if(!voxelPosition.equals(flippedVoxelPosition)){
+                            this.swapVoxels(voxelPosition , flippedVoxelPosition);
+                            modifiedVoxels++;
+                        }
+                    }
+                }   
+            }   
+        }
+        this.mesh = null;
+        return modifiedVoxels;
+    }
+
+    //swaps values beetwen 2 voxels
+    //returns false if id of any voxels was incorrect, true otherwise
+    swapVoxels(pos1: Vector3, pos2: Vector3 ): boolean{
+        if(!this.voxelExists(pos1) || !this.voxelExists(pos2)) return false;
+        const voxel1: Voxel | null = this.isVoxelEmpty(pos1)? null : copyVoxel(this.getVoxel(pos1)!);
+        const voxel2: Voxel | null = this.isVoxelEmpty(pos2)? null : copyVoxel(this.getVoxel(pos2)!);;
+        
+        voxel2==null? this.removeVoxel(pos1) : this.setVoxel(pos1, voxel2);
+        voxel1==null? this.removeVoxel(pos2) : this.setVoxel(pos2, voxel1);
+
+        return true;
     }
 
     //changes color of every non-empty voxel which id is stored in selectedVoxels
@@ -1108,8 +1321,8 @@ export class VoxelObject{
             this.selectedVoxels = newSelectedVoxels;
             //this.voxelsModified = true;
             this.rebuildMesh();
-            this.getBorderGrid();
-            this.getBorderMesh();
+            this.borderGrid = null;
+            this.borderWire = null;
         }
         return this.size;
     }

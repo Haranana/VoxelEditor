@@ -1,13 +1,14 @@
 import type { RefObject } from "react";
 import type { Camera, ProjectionType } from "./classes/camera";
 import type { Scene } from "./classes/scene";
-import { faceDirectionToVector, vectorToFaceDirection } from "./classes/voxelObject";
+import { faceDirectionToVector, vectorToFaceDirection, VoxelObject } from "./classes/voxelObject";
 import type { EditMode, SelectMode } from "./EditorPage";
 import { clamp, mod } from "./math/utils";
 import type { Vector2 } from "./math/vector2.type"
 import { Vector3 } from "./math/vector3.type"
 import { debugPaintColor, defaultColor } from "./sampleObjects";
 import { Vector4 } from "./math/vector4.type";
+import { generateVoxelObjectCylinder, generateVoxelObjectPyramid, generateVoxelObjectSphere } from "./VoxelObjectGenerator";
 
 type SelectSession = {
     startCoords: Vector3 | null,
@@ -566,4 +567,145 @@ export class EditorController{
     getCurrentColor(): Vector4{
         return this.currentColor;
     }
+
+    //voxel object advanced modifiers
+    changeVoxelObjectSizeTo(newSize: Vector3){
+        if(!this.initialized) return;
+        const object = this.scene!.getObjectRef();
+        const currentSize: Vector3 = object.size;
+        object.resize(newSize);
+        if(currentSize != object.size){
+            this.renderScene!();
+        }
+    }
+
+    changeVoxelObjectSizeByScalar(mult: number){
+        if(!this.initialized) return;
+        const object = this.scene!.getObjectRef();
+        const currentSize: Vector3 = object.size;
+        object.resize(currentSize.multByScalar(mult));
+        if(currentSize != object.size){
+            this.renderScene!();
+        }
+    }
+
+    doubleVoxelObjectSize(){
+        if(!this.initialized) return;
+        this.changeVoxelObjectSizeByScalar(2);
+    }
+
+    halfVoxelObjectSize(){
+        if(!this.initialized) return;
+        this.changeVoxelObjectSizeByScalar(1/2);
+    }
+
+    fillVoxelObjectVoxels(){
+        if(!this.initialized) return;
+        const object: VoxelObject = this.scene!.getObjectRef();
+        const objectModified: boolean = object.selectEmptyVoxels() > 0;
+        object.addSelectedVoxels(this.currentColor);
+        object.resetSelect();
+        if(objectModified){
+            console.log("AAAAAAAAAAA");
+            this.renderScene!();
+        }
+    }
+
+    emptyVoxelObjectVoxels(){
+        if(!this.initialized) return;
+        const object: VoxelObject = this.scene!.getObjectRef();
+        const objectModified: boolean = object.selectNonEmptyVoxels() > 0;
+        object.removeSelectedVoxels();
+        object.resetSelect();
+        if(objectModified){
+            this.renderScene!();
+        }
+    }
+
+    reverseVoxelObjectVoxels(){
+        if(!this.initialized) return;
+        const object: VoxelObject = this.scene!.getObjectRef();
+        object.selectAllVoxels();
+        object.reverseSelectedVoxels(this.currentColor);
+        object.resetSelect();
+        this.renderScene!();
+    }
+
+    regenerateVoxelObjectToCube(){
+        if(!this.initialized) return;
+        this.fillVoxelObjectVoxels()
+    }
+
+    regenerateVoxelObjectToSphere(){
+        if(!this.initialized) return;
+        this.scene!.setObject(generateVoxelObjectSphere(this.scene!.getObjectRef().size, this.currentColor));
+        this.renderScene!();
+    }
+
+    regenerateVoxelObjectToPyramid(){
+        if(!this.initialized) return;
+        this.scene!.setObject(generateVoxelObjectPyramid(this.scene!.getObjectRef().size, this.currentColor));
+        this.renderScene!();
+    }
+
+    regenerateVoxelObjectToCylinder(){
+        if(!this.initialized) return;
+        this.scene!.setObject(generateVoxelObjectCylinder(this.scene!.getObjectRef().size, this.currentColor));
+        this.renderScene!();
+    }
+
+    flipVoxelObjectByX(){
+        if(!this.initialized) return;
+        const object = this.scene!.getObjectRef();
+        object.selectAllVoxels();
+        object.flipSelectedVoxelsByX();
+        object.resetSelect();
+        this.renderScene!();
+    }
+
+    flipVoxelObjectByY(){
+        if(!this.initialized) return;
+        const object = this.scene!.getObjectRef();
+        object.selectAllVoxels();
+        object.flipSelectedVoxelsByY();
+        object.resetSelect();
+        this.renderScene!();
+    }
+
+    flipVoxelObjectByZ(){
+        if(!this.initialized) return;
+        const object = this.scene!.getObjectRef();
+        object.selectAllVoxels();
+        object.flipSelectedVoxelsByZ();
+        object.resetSelect();
+        this.renderScene!();
+    }
+
+    rotateVoxelObjectByX(){
+        if(!this.initialized) return;
+        const object = this.scene!.getObjectRef();
+        object.selectAllVoxels();
+        object.rotateSelectedVoxelsByX();
+        object.resetSelect();
+        this.renderScene!();
+    }
+
+    rotateVoxelObjectByY(){
+        if(!this.initialized) return;
+        const object = this.scene!.getObjectRef();
+        object.selectAllVoxels();
+        object.rotateSelectedVoxelsByY();
+        object.resetSelect();
+        this.renderScene!();
+    }
+
+    rotateVoxelObjectByZ(){
+        if(!this.initialized) return;
+        const object = this.scene!.getObjectRef();
+        object.selectAllVoxels();
+        object.rotateSelectedVoxelsByZ();
+        object.resetSelect();
+        this.renderScene!();
+    }
+    
 }

@@ -1,9 +1,9 @@
-import { reactColorTypeToRgb, rgbToReactColorType, rgbToVector3, rgbToVector4, useColorPalettesStore, type ColorPalette, type ColorRGB } from "../state/ColorPalettes"
+import { reactColorTypeToRgb, rgbToReactColorType, rgbToVector3, useColorPalettesStore, type ColorPalette, type ColorRGB } from "../state/ColorPalettes"
 import "./ColorPaletteWidget.css"
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/16/solid";
-import { PhotoshopPicker, SketchPicker} from 'react-color'
+import { PhotoshopPicker} from 'react-color'
 import { ExpandableRow } from "./ExpandableRow";
-import { useContext, useEffect, useState, type RefObject } from "react";
+import { useContext, useEffect, useState } from "react";
 import { ControllerContext } from "../ControllerContext";
 
 export type ColorPaletteWidgetProps = {
@@ -68,8 +68,8 @@ export function ColorPaletteWidget(props: ColorPaletteWidgetProps){
                     {
                         isEditColorWindowOpen? 
                         <PhotoshopPicker className="EditColorWindow" 
-                        onChangeComplete={(c)=>{}}
-                        onAccept={(c)=>{
+                        onChangeComplete={(_)=>{}}
+                        onAccept={(_)=>{
                             setPalleteColor(chosenPaletteId, chosenColorId, (colorChangeWindowColor));
                             controller.setCurrentColor(rgbToVector3(colorChangeWindowColor));
                             setEditColorWindowOpen(false)}

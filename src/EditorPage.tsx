@@ -18,6 +18,7 @@ import { Renderer } from "./classes/renderer";
 import { ControllerContext } from "./ControllerContext";
 import ScenePropertiesWidget from "./editorWidgets/ScenePropertiesWidget";
 import { ColorPaletteWidget } from "./editorWidgets/ColorPaletteWidget";
+import { EditVoxelObjectWidget } from "./editorWidgets/EditVoxelObjectWidget";
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -58,7 +59,7 @@ export default function EditorPage() {
 
   const selectedObjectPropertiesRef =
     useRef<ObjectProperties>({
-      translation: new Vector3(0, 0, -500),
+      translation: new Vector3(0, 0, -1000),
       scale: new Vector3(1, 1, 1),
       rotation: new Vector3(0, 0, 0),
     });
@@ -76,8 +77,8 @@ export default function EditorPage() {
       rotation: new Vector3(0, 0, 0),
     },
     projectionType: "perspective",
-    distance: 500,
-    target: new Vector3(0,0,-500),
+    distance: 1000,
+    target: new Vector3(0,0,-1000),
     pitch: 0,
     yaw: 0,
   });
@@ -486,6 +487,15 @@ export default function EditorPage() {
         onOpenChange={setIscolorPaletteOpen}
         version={colorPaletteVersion}
   />
+
+  const [editObjectVersion, setEditObjectVersion] = useState<number>(0);
+  const [isEditVoxelObjectWidgetOpen, setEditVoxelObjectWidgetOpen] = useState<boolean>(false);
+  const editVoxelObjectWidget: React.ReactNode = <EditVoxelObjectWidget
+        isOpen={isEditVoxelObjectWidgetOpen}
+        onOpenChange={setEditVoxelObjectWidgetOpen}
+        version={editObjectVersion}
+  />
+
   return (
     <div className="EditorPage">
       <div className="EditorNav"></div>
@@ -565,6 +575,7 @@ export default function EditorPage() {
               {editToolsWidget}
               {scenePropertiesWidget}
               {colorPaletteWidget}
+              {editVoxelObjectWidget}
               </div>
             </ResizableContainer>
           </div>
