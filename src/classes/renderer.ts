@@ -1,6 +1,8 @@
 import { makeShaderDataDefinitions, makeStructuredView, type StructuredView } from "webgpu-utils";
-import { baseShader, baseShaderWithWireframe, borderGridShader, voxelObjectBorderShader, voxelObjectGridShader } from "../shaders/baseRenderableObjectShaders";
+import { baseShader, baseShaderWithWireframe, borderGridShader, cameraControllsGizmoShader, voxelObjectBorderShader, voxelObjectGridShader } from "../shaders/baseRenderableObjectShaders";
 import type { Scene } from "./scene";
+import { Matrices4 } from "../math/matrices";
+import { degreeToRadians } from "../math/utils";
 
 export type EntityRenderData = {
     renderPipeline: GPURenderPipeline | null;
@@ -64,6 +66,17 @@ export class Renderer{
     #isSceneBorderWireRenderDataLoaded() : boolean {
         return this.#sceneBorderWireRenderData.renderPipeline!=null && this.#sceneBorderWireRenderData.bindGroup!=null && 
         this.#sceneBorderWireRenderData.uniformBuffer!=null && this.#sceneBorderWireRenderData.uniformBufferView!=null
+    }
+
+    #cameraControllsRenderData: EntityRenderData = {
+        renderPipeline: null,
+        bindGroup: null,
+        uniformBuffer: null,
+        uniformBufferView: null
+    }
+    #isCameraControllsRenderDataDataLoaded() : boolean {
+        return this.#cameraControllsRenderData.renderPipeline!=null && this.#cameraControllsRenderData.bindGroup!=null && 
+        this.#cameraControllsRenderData.uniformBuffer!=null && this.#cameraControllsRenderData.uniformBufferView!=null
     }
 
     #device: GPUDevice | null  = null
@@ -130,6 +143,7 @@ export class Renderer{
         this.loadSelectedAreaRenderData();
         this.loadSceneBorderGridRenderData();
         this.loadSceneBorderWireRenderData();
+        this.loadCameraControllsRenderData();
         this.initialized = true;
 
         return true
@@ -163,6 +177,87 @@ export class Renderer{
             depthStoreOp: 'store',
             },
         };
+    }
+
+    loadCameraControllsRenderData(){
+        if(!this.initialized) return false;
+        const device = this.#device!;
+
+        const shaderCode = cameraControllsGizmoShader();
+        const shaderModule = device.createShaderModule({
+            label: 'camera controlls gizmo shader module',
+            code: shaderCode,
+        });
+
+        const bindGroupLayout = device.createBindGroupLayout({
+        entries: [
+            {
+                binding: 0,
+                visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+                buffer: { type: "uniform" },
+            },
+        ],
+        });
+
+        this.#cameraControllsRenderData.uniformBufferView = makeStructuredView(makeShaderDataDefinitions(shaderCode).uniforms.uniformData);
+        this.#cameraControllsRenderData.uniformBuffer = device.createBuffer({
+            label: 'uniform buffer',
+            size: this.#cameraControllsRenderData.uniformBufferView.arrayBuffer.byteLength,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+
+        const pipelineLayout = device.createPipelineLayout({
+            bindGroupLayouts: [bindGroupLayout],
+        });
+
+        this.#cameraControllsRenderData.renderPipeline = device.createRenderPipeline({
+            label: 'Selected object mesh pipeline',
+            layout: pipelineLayout,
+            vertex: {
+                entryPoint: `vertexShader`,
+                module: shaderModule,
+                buffers:[
+                    {
+                        arrayStride: 4*4,
+                        attributes:[
+                            {
+                                shaderLocation: 0,
+                                offset: 0,
+                                format: 'float32x3',
+                            },
+                            {
+                                shaderLocation: 1,
+                                offset: 12,
+                                format: 'unorm8x4',
+                            },
+                        ]
+                    }
+                ]
+            },
+            fragment: {
+                entryPoint: `fragmentShader`,
+                module: shaderModule,
+                targets: [{format: this.#presentationFormat!}],
+            },
+            primitive: {
+                topology: "triangle-list",
+                cullMode: 'none',
+            },
+            depthStencil: {
+                depthWriteEnabled: false,
+                depthCompare: 'always',
+                format: 'depth24plus',
+            },
+        });
+
+        this.#cameraControllsRenderData.bindGroup = device.createBindGroup({
+            label: 'bind group for uniform data',
+            layout: bindGroupLayout,
+            entries:[{
+                binding: 0,
+                resource: {buffer: this.#cameraControllsRenderData.uniformBuffer!},
+            }]
+        })
     }
 
     loadVoxelObjectRenderData(){
@@ -870,6 +965,42 @@ export class Renderer{
             pass.setBindGroup(0, this.#selectedAreaRenderData.bindGroup);
             //console.log(`[renderScene] drawing ${meshData.trianglesIndices.length} vertices of selected area`);
             pass.drawIndexed(meshData.trianglesIndices.length);
+        }
+
+        //render camera gizmo
+        if(this.#isCameraControllsRenderDataDataLoaded() && scene.initialized){
+            const mesh = scene.getCameraControllsGizmoRef()!;
+            
+            const meshData = mesh.getVerticesDataWithoutUV();
+           // console.log(meshData.trianglesIndices)
+            const vertexBuffer = device.createBuffer({
+                label: 'vertex data buffer',
+                size: meshData.vertexData.byteLength,
+                usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+            });
+            device.queue.writeBuffer(vertexBuffer , 0 , meshData.vertexData);
+
+            const indexBuffer = device.createBuffer({
+                label: 'index data buffer',
+                size: meshData.trianglesIndices.byteLength,
+                usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+            });
+            device.queue.writeBuffer(indexBuffer, 0 , meshData.trianglesIndices);
+
+            const camera = scene.getCameraCopy();
+            this.#cameraControllsRenderData.uniformBufferView!.set({
+                anchor: [0.8, 0.8],
+                scale: [0.0025, 0.005],
+                objectRotation: Matrices4.rotation( degreeToRadians(camera.pitch), degreeToRadians(camera.yaw) ,0.0).toArrays(),
+            });
+            device.queue.writeBuffer(this.#cameraControllsRenderData.uniformBuffer!, 0, this.#cameraControllsRenderData.uniformBufferView!.arrayBuffer);
+
+            pass.setPipeline(this.#cameraControllsRenderData.renderPipeline!);
+            pass.setVertexBuffer(0, vertexBuffer);
+            pass.setIndexBuffer(indexBuffer, "uint32");
+            pass.setBindGroup(0, this.#cameraControllsRenderData.bindGroup);
+            pass.drawIndexed(meshData.trianglesIndices.length);
+            
         }
 
         pass.end();

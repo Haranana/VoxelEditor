@@ -4,14 +4,25 @@ import { degreeToRadians } from "../math/utils";
 import { Vector2 } from "../math/vector2.type";
 import { Vector3 } from "../math/vector3.type";
 import type { ObjectProperties } from "../RenderableObjectTypes";
+import { getCameraControllsGizmo } from "../sampleObjects";
 import type { Camera } from "./camera";
 import { getVoxelFromObject } from "./rayCaster";
+import type { RenderableObject } from "./renderableObject";
 import { VoxelObject } from "./voxelObject";
+
 export type RenderSceneOptions = {
     borderWire: boolean,
     borderGrid: boolean,
     voxelObjectsGrid: boolean,
 }
+
+export type RenderGizmosOptions = {
+    cameraControllGizmo: boolean,
+    objectMoveGizmo: boolean,
+    objectResizeGizmo: boolean,
+    objectRotateGizmo: boolean,
+};
+
 export class Scene{
 
     #voxelObject: VoxelObject = new VoxelObject(new Vector3(0,0,0));
@@ -20,6 +31,7 @@ export class Scene{
     #perspectiveNdcProjectionMatrix: Matrix4 =Matrices4.identity();
     #orthoNdcProjectionMatrix: Matrix4 = Matrices4.identity();
     #canvas: HTMLCanvasElement | null = null;
+    #cameraControllsGizmo: RenderableObject | null = null;
     initialized: boolean = false
     
     options: RenderSceneOptions = {
@@ -27,6 +39,13 @@ export class Scene{
         borderGrid: true,
         voxelObjectsGrid: true,
     };
+
+    gizmosOptions: RenderGizmosOptions = {
+        cameraControllGizmo: true,
+        objectMoveGizmo: false,
+        objectResizeGizmo: false,
+        objectRotateGizmo: false,
+    }
 
     constructor(voxelObject: VoxelObject, camera: Camera){
         this.#voxelObject = voxelObject;
@@ -45,7 +64,8 @@ export class Scene{
             degreeToRadians(this.#camera.fovY), this.#camera.near, this.#camera.far, this.#canvas.width/this.#canvas.height);
         this.#orthoNdcProjectionMatrix = PerspectiveMatrices.orthogonalProjection(
             -this.#canvas.width/2, this.#canvas.width/2,-this.#canvas.height/2, this.#canvas.height/2, this.#camera.near, this.#camera.far) 
-    
+        
+        this.#cameraControllsGizmo = getCameraControllsGizmo();
         this.initialized = true;
         return true;
     }
@@ -96,6 +116,11 @@ export class Scene{
 
     getCanvasRef(){
         return this.#canvas;
+    }
+
+    getCameraControllsGizmoRef() : RenderableObject | null{
+        if(!this.initialized) return null;
+        return this.#cameraControllsGizmo;
     }
 
     getCameraView(): Matrix4{
