@@ -1,13 +1,6 @@
-import { Matrices4, PerspectiveMatrices } from "../math/matrices";
-import { Matrix4 } from "../math/matrix4.type";
-import { degreeToRadians } from "../math/utils";
-import { Vector2 } from "../math/vector2.type";
-import { Vector3 } from "../math/vector3.type";
-import type { ObjectProperties } from "../RenderableObjectTypes";
-import { getCameraControllsGizmo } from "../sampleObjects";
-import type { Camera } from "./camera";
-import { getVoxelFromObject } from "./rayCaster";
-import type { RenderableObject } from "./renderableObject";
+import { Camera } from "./camera";
+import { RenderableObject, RenderTechniqueType } from "./renderableObject";
+import { SceneObject } from "./sceneObject";
 import { VoxelObject } from "./voxelObject";
 
 export type RenderSceneOptions = {
@@ -23,152 +16,163 @@ export type RenderGizmosOptions = {
     objectRotateGizmo: boolean,
 };
 
+export class Gizmos{
+
+    static #cameraControllGizmo: RenderableObject | null = null;
+    static #objectMoveGizmo: RenderableObject | null = null;
+    static #objectResizeGizmo: RenderableObject | null = null;
+    static #objectRotateGizmo: RenderableObject | null = null;
+
+    //objects themselved to be created later
+    static #createCameraControllGizmo(): RenderableObject{
+        const out: RenderableObject = new RenderableObject();
+        out.material = {
+            renderTechnique: RenderTechniqueType.GIZMO
+        }
+
+        return out;
+    }
+
+    static #createObjectMoveGizmo(): RenderableObject{
+        const out: RenderableObject = new RenderableObject();
+        out.material = {
+            renderTechnique: RenderTechniqueType.GIZMO
+        }
+    
+        return out;
+    }
+
+    static #createObjectResizeGizmo(): RenderableObject{
+        const out: RenderableObject = new RenderableObject();
+        out.material = {
+            renderTechnique: RenderTechniqueType.GIZMO
+        }
+    
+        return out;
+    }
+
+    static #createObjectRotateGizmo(): RenderableObject{
+        const out: RenderableObject = new RenderableObject();
+        out.material = {
+            renderTechnique: RenderTechniqueType.GIZMO
+        }
+    
+        return out;
+    }
+
+    static getCameraControllGizmo(): RenderableObject{
+        if(!this.#cameraControllGizmo){
+            this.#cameraControllGizmo = this.#createCameraControllGizmo()
+        }
+        return this.#cameraControllGizmo;
+    }
+
+    static getObjectMoveGizmo(): RenderableObject{
+        if(!this.#objectMoveGizmo){
+            this.#objectMoveGizmo = this.#createObjectMoveGizmo()    
+        }
+        return this.#objectMoveGizmo;
+    }
+
+    static getObjectResizeGizmo(): RenderableObject{
+        if(!this.#objectResizeGizmo){
+            this.#objectResizeGizmo = this.#createObjectResizeGizmo()
+        }
+        return this.#objectResizeGizmo;
+    }
+
+    static getObjectRotateGizmo(): RenderableObject{
+        if(!this.#objectRotateGizmo){
+            this.#objectRotateGizmo = this.#createObjectRotateGizmo()
+        }
+        return this.#objectRotateGizmo;
+    }
+}
+
 export class Scene{
 
-    #voxelObject: VoxelObject = new VoxelObject(new Vector3(0,0,0));
-    #camera: Camera
-    #objectTransformMatrix: Matrix4 = Matrices4.identity();
-    #perspectiveNdcProjectionMatrix: Matrix4 =Matrices4.identity();
-    #orthoNdcProjectionMatrix: Matrix4 = Matrices4.identity();
-    #canvas: HTMLCanvasElement | null = null;
-    #cameraControllsGizmo: RenderableObject | null = null;
-    initialized: boolean = false
-    
-    options: RenderSceneOptions = {
-        borderWire: true,
-        borderGrid: true,
-        voxelObjectsGrid: true,
-    };
+    readonly objects: Map<string, SceneObject> = new Map<string, SceneObject>();
+    #selectedSceneObjectId: string | null = null;
+    #selectedVoxelObjectId: string | null = null;
+    #activeCameraId: string | null = null; 
 
-    gizmosOptions: RenderGizmosOptions = {
-        cameraControllGizmo: true,
-        objectMoveGizmo: false,
-        objectResizeGizmo: false,
-        objectRotateGizmo: false,
+    getActiveCamera(): Camera | null{
+        if(this.#activeCameraId){
+            const objectWithActiveCameraId : SceneObject | undefined = this.objects.get(this.#activeCameraId);
+            if(objectWithActiveCameraId instanceof Camera){
+                return objectWithActiveCameraId;
+            }            
+        }
+        return null;
     }
 
-    constructor(voxelObject: VoxelObject, camera: Camera){
-        this.#voxelObject = voxelObject;
-        this.#camera = camera;
-       
+    getSelectedVoxelObject(): VoxelObject | null {
+        if(this.#selectedVoxelObjectId){
+            const objectWithSelectedObjectId : SceneObject | undefined = this.objects.get(this.#selectedVoxelObjectId);
+            if(objectWithSelectedObjectId instanceof VoxelObject){
+                return objectWithSelectedObjectId;
+            }            
+        }
+        return null;
     }
 
-    init(canvas: HTMLCanvasElement){
-        if(this.initialized) return false;
-        this.#canvas = canvas;
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = Math.floor(canvas.clientWidth * dpr);
-        canvas.height = Math.floor(canvas.clientHeight * dpr);
-
-        this.#perspectiveNdcProjectionMatrix = PerspectiveMatrices.PerspectiveProjection(
-            degreeToRadians(this.#camera.fovY), this.#camera.near, this.#camera.far, this.#canvas.width/this.#canvas.height);
-        this.#orthoNdcProjectionMatrix = PerspectiveMatrices.orthogonalProjection(
-            -this.#canvas.width/2, this.#canvas.width/2,-this.#canvas.height/2, this.#canvas.height/2, this.#camera.near, this.#camera.far) 
-        
-        this.#cameraControllsGizmo = getCameraControllsGizmo();
-        this.initialized = true;
-        return true;
-    }
-    
-
-
-    setNdcProjectionMatrices() : boolean{
-        if(!this.initialized) return false
-        this.#perspectiveNdcProjectionMatrix = PerspectiveMatrices.PerspectiveProjection(
-            degreeToRadians(this.#camera.fovY), this.#camera.near, this.#camera.far, this.#canvas!.width/this.#canvas!.height);
-        this.#orthoNdcProjectionMatrix = PerspectiveMatrices.orthogonalProjection(
-            -this.#canvas!.width/2, this.#canvas!.width/2,-this.#canvas!.height/2, this.#canvas!.height/2, this.#camera.near, this.#camera.far) 
-        return true;
+    getSelectedSceneObject(): SceneObject | null{
+        if(this.#selectedSceneObjectId){
+            const objectWithSelectedObjectId : SceneObject | undefined = this.objects.get(this.#selectedSceneObjectId);
+            if(objectWithSelectedObjectId instanceof SceneObject){
+                return objectWithSelectedObjectId;
+            }            
+        }
+        return null;
     }
 
-    getPerspectiveProjectionMatrix(){
-        return this.#perspectiveNdcProjectionMatrix;
+    setActiveCameraId(newId: string) : boolean{
+        if(this.objects.get(newId) instanceof Camera){
+            this.#activeCameraId = newId;
+            return true;
+        }
+        return false;
     }
 
-    getOrthoProjectionMatrix(){
-        return this.#orthoNdcProjectionMatrix;
+    setSelectedVoxelObjectId(newId: string) : boolean{
+        if(this.objects.get(newId) instanceof VoxelObject){
+            this.#selectedVoxelObjectId = newId;
+            return true;
+        }
+        return false;
     }
 
-    setObject(v: VoxelObject) : boolean{
-        if(!this.initialized) return false;
-        this.#voxelObject = v;
-        this.setNdcProjectionMatrices();
-        return true;
+    setSelectedSceneObjectId(newId: string) : boolean{
+        if(this.objects.has(newId)){
+            this.#selectedSceneObjectId = newId;
+            return true;
+        }
+        return false;
     }
 
-    getObjectRef(){
-        return this.#voxelObject;
+    getObjectsOfType<T extends SceneObject>(objType: new (...args: any[]) => T): T[]{
+        const out: T[] = [];
+        this.objects.forEach((obj)=>{
+            if(obj instanceof objType) out.push(obj);
+        });
+        return out;
     }
 
-    getObjectCopy(){
-        return this.#voxelObject.copy();
-    }
-
-    getCameraCopy(){
-        return {...this.#camera}
-    }
-
-    setCamera(c: Camera){
-        if(!this.initialized) return false;
-        this.#camera = c;
+    addObject(newObject: SceneObject): boolean{
+        if(this.objects.has(newObject.id)) return false;
+        this.objects.set(newObject.id , newObject);
+        if(newObject instanceof VoxelObject && !this.#selectedVoxelObjectId) this.#selectedVoxelObjectId = newObject.id;
+        if(newObject instanceof Camera && !this.#activeCameraId) this.#activeCameraId = newObject.id;
+        if(!this.#selectedSceneObjectId) this.#selectedSceneObjectId = newObject.id;
         return true;
     }
 
-    getCanvasRef(){
-        return this.#canvas;
+    removeObject(id: string): boolean{
+        if(!this.objects.has(id)) return false;
+        this.objects.delete(id);
+        if(this.#activeCameraId == id) this.#activeCameraId = null;
+        if(this.#selectedSceneObjectId == id) this.#selectedSceneObjectId = null;
+        if(this.#selectedVoxelObjectId == id) this.#selectedVoxelObjectId = null;
+        return true;
     }
-
-    getCameraControllsGizmoRef() : RenderableObject | null{
-        if(!this.initialized) return null;
-        return this.#cameraControllsGizmo;
-    }
-
-    getCameraView(): Matrix4{
-         const eye = new Vector3(
-            this.#camera.target.x + this.#camera.distance * Math.cos(degreeToRadians(this.#camera.pitch)) * Math.sin(degreeToRadians(this.#camera.yaw)),
-            this.#camera.target.y + this.#camera.distance * Math.sin(degreeToRadians(this.#camera.pitch)),
-            this.#camera.target.z + this.#camera.distance * Math.cos(degreeToRadians(this.#camera.pitch)) * Math.cos(degreeToRadians(this.#camera.yaw)),
-        );
-        return PerspectiveMatrices.lightView(
-            eye,
-            this.#camera.target,
-            new Vector3(0, 1, 0)
-        );
-    }
-
-    setObjectTransformMatrix(o: ObjectProperties){
-        const objectTranslation : Matrix4 = Matrices4.translation(o.translation)
-        const objectScale : Matrix4 = Matrices4.scaling(o.scale)
-        const objectRotation: Matrix4 = Matrices4.rotation(degreeToRadians(o.rotation.x), degreeToRadians(o.rotation.y), degreeToRadians(o.rotation.z))
-        this.#objectTransformMatrix = objectTranslation.multMatrix(objectRotation).multMatrix(objectScale);
-    }
-
-    getObjectTransformMatrix(): Matrix4{
-        return this.#objectTransformMatrix;
-    }
-
-    shootRay(clickPos: Vector2, lastEmpty: boolean = false, hitOnExit: boolean = true){    
-        if(!this.initialized) return; 
-        const canvas = this.#canvas!;
-        const objectTransformMatrix = this.#objectTransformMatrix;
-        const ndcProjectionMatrix = this.#camera.projectionType==="orthographic"?
-            PerspectiveMatrices.orthogonalProjection(-canvas.width/2, canvas.width/2,-canvas.height/2, canvas.height/2, this.#camera.near, this.#camera.far) 
-            : PerspectiveMatrices.PerspectiveProjection(degreeToRadians(this.#camera.fovY), this.#camera.near, this.#camera.far, canvas.width/canvas.height);
-        
-        
-         const eye = new Vector3(
-            this.#camera.target.x + this.#camera.distance * Math.cos(degreeToRadians(this.#camera.pitch)) * Math.sin(degreeToRadians(this.#camera.yaw)),
-            this.#camera.target.y + this.#camera.distance * Math.sin(degreeToRadians(this.#camera.pitch)),
-            this.#camera.target.z + this.#camera.distance * Math.cos(degreeToRadians(this.#camera.pitch)) * Math.cos(degreeToRadians(this.#camera.yaw)),
-        );
-
-        const cameraViewMatrix = PerspectiveMatrices.lightView(
-            eye,
-            this.#camera.target,
-            new Vector3(0, 1, 0)
-        );
-        
-        return getVoxelFromObject(this.#camera, clickPos, this.#voxelObject, new Vector2(canvas.width, canvas.height) , objectTransformMatrix, ndcProjectionMatrix, cameraViewMatrix, lastEmpty, hitOnExit);
-    }
-
 }

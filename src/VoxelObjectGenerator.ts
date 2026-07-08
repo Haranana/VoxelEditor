@@ -3,8 +3,8 @@ import { Vector2 } from "./math/vector2.type";
 import { Vector3 } from "./math/vector3.type";
 import type { Vector4 } from "./math/vector4.type";
 
-export function generateVoxelObjectPyramid(size: Vector3, color: Vector4): VoxelObject{
-    const obj = new VoxelObject(size);
+export function generateVoxelObjectPyramid(id: string, size: Vector3, color: Vector4): VoxelObject{
+    const obj = new VoxelObject(id, size);
     obj.baseVoxelSize = 40;
     let baseShortage = 0;
     for(let y: number = size.y-1; y>=0; y--){
@@ -18,8 +18,8 @@ export function generateVoxelObjectPyramid(size: Vector3, color: Vector4): Voxel
     return obj;
 }
 
-export function generateVoxelObjectCylinder(size: Vector3, color: Vector4): VoxelObject{
-    const obj = new VoxelObject(size);
+export function generateVoxelObjectCylinder(id: string, size: Vector3, color: Vector4): VoxelObject{
+    const obj = new VoxelObject(id, size);
     obj.baseVoxelSize = 40;
     const minWidth = Math.min(size.x, size.z);
     const radius = Math.ceil(minWidth/2);
@@ -37,8 +37,8 @@ export function generateVoxelObjectCylinder(size: Vector3, color: Vector4): Voxe
     return obj;
 }
 
-export function generateVoxelObjectSphere(size: Vector3, color: Vector4): VoxelObject{
-    const obj = new VoxelObject(size);
+export function generateVoxelObjectSphere(id: string, size: Vector3, color: Vector4): VoxelObject{
+    const obj = new VoxelObject(id, size);
     obj.baseVoxelSize = 40;
     const minWidth = Math.min(size.x, size.y, size.z);
     const radius = Math.ceil(minWidth/2);

@@ -7,7 +7,7 @@ import "../editorWidgets/ExpandableRow.css";
 import { ControllerContext } from "../ControllerContext";
 
 export type CameraPropertiesProps = {
-    camera: Camera;
+    camera: Camera | null;
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     cameraVersion: number;
@@ -31,6 +31,8 @@ export default function CameraPropertiesWidget(props: CameraPropertiesProps) {
             onOpenChange={props.onOpenChange}
         >
             <div className="CameraProperties ExpandableRowChild">
+                {camera?
+                <>
                 <div className="CameraProjectionProperties ExpendableRowChildSection">
                     <p>Projection</p>
 
@@ -205,6 +207,8 @@ export default function CameraPropertiesWidget(props: CameraPropertiesProps) {
                         />
                     </div>
                 </div>
+                </>
+                : ""}
             </div>
         </ExpandableRow>
     );

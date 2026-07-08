@@ -1,5 +1,7 @@
+import type { Transform } from "../classes/renderableObject";
 import {type Mat3, Matrix3 } from "./matrix3.type";
 import {type Mat4, Matrix4 } from "./matrix4.type";
+import { degreeToRadians } from "./utils";
 import type { Vector2 } from "./vector2.type";
 import {type Vector3 } from "./vector3.type";
 
@@ -95,6 +97,13 @@ export const Matrices4 = {
 
   rotation(angleX: number, angleY: number, angleZ: number): Matrix4 {
     return this.rotationZ(angleZ).multMatrix(this.rotationY(angleY)).multMatrix(this.rotationX(angleX));
+  },
+
+  transform(t: Transform){
+    const objectTranslation : Matrix4 = Matrices4.translation(t.translation)
+    const objectScale : Matrix4 = Matrices4.scaling(t.scale)
+    const objectRotation: Matrix4 = Matrices4.rotation(degreeToRadians(t.rotation.x), degreeToRadians(t.rotation.y), degreeToRadians(t.rotation.z))
+    return objectTranslation.multMatrix(objectRotation).multMatrix(objectScale);
   },
 
   rotationX(angle: number): Matrix4 {

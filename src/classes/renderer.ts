@@ -1,83 +1,96 @@
 import { makeShaderDataDefinitions, makeStructuredView, type StructuredView } from "webgpu-utils";
-import { baseShader, baseShaderWithWireframe, borderGridShader, cameraControllsGizmoShader, voxelObjectBorderShader, voxelObjectGridShader } from "../shaders/baseRenderableObjectShaders";
-import type { Scene } from "./scene";
+import { baseShader, borderGridShader, cameraControllsGizmoShader, voxelObjectBorderShader} from "../shaders/baseRenderableObjectShaders";
+import { Gizmos, type RenderGizmosOptions, type RenderSceneOptions, type Scene } from "./scene";
 import { Matrices4 } from "../math/matrices";
-import { degreeToRadians } from "../math/utils";
+import { RenderTechniqueType, type Mesh, type RenderableObject } from "./renderableObject";
+import { VoxelObject } from "./voxelObject";
+import { Vector2 } from "../math/vector2.type";
 
-export type EntityRenderData = {
-    renderPipeline: GPURenderPipeline | null;
-    bindGroup: GPUBindGroup | null;
-    uniformBuffer: GPUBuffer | null;
-    uniformBufferView: StructuredView | null;
+export type RenderTechniqueResources = {
+    renderPipeline: GPURenderPipeline,
+    bindGroup: GPUBindGroup,
+    uniformBuffer: GPUBuffer,
+    uniformBufferView: StructuredView,
+    shader: GPUShaderModule,
+}
+
+export type MeshGPUResources = {
+    indexBuffer: GPUBuffer,
+    vertexBuffer: GPUBuffer,
+}
+
+class GPUMeshCache{
+    cache: Map<Mesh, MeshGPUResources> = new Map();
+    get(m: Mesh) : MeshGPUResources | undefined{
+        return this.cache.get(m);
+    }
+    set(m: Mesh, res: MeshGPUResources){
+        this.cache.set(m,res);
+    }
+    delete(m: Mesh){
+        const obj = this.cache.get(m);
+        if(!obj) return;
+        obj.vertexBuffer.destroy();
+        obj.indexBuffer.destroy();
+        this.cache.delete(m);
+    }
+}
+
+//returns array of RenderableObjects to render in each frame based on scene and render options
+class SceneRenderCollector{
+    public static collect(scene: Scene, renderGizmoOptions: RenderGizmosOptions, renderSceneOptions: RenderSceneOptions): RenderableObject[]{
+        const out: RenderableObject[] = [];
+        scene.getObjectsOfType(VoxelObject).forEach((obj)=>{
+            out.push(obj.getRenderableObject());
+        });
+        const selectedVoxelObject = scene.getSelectedVoxelObject();
+        if(selectedVoxelObject){
+            if(renderSceneOptions.voxelObjectsGrid){
+                const newRenderableObject = selectedVoxelObject.getRenderableObject();
+                out.push(newRenderableObject);
+            }
+            if(renderSceneOptions.borderGrid){
+                const newRenderableObject = selectedVoxelObject.getBorderGrid();
+                out.push(newRenderableObject);
+            }
+            if(renderSceneOptions.borderWire){
+                const newRenderableObject = selectedVoxelObject.getBorderWire();
+                out.push(newRenderableObject);
+            }
+
+            const selectedObjectSelectedArea = selectedVoxelObject.getSelectedArea();
+
+            out.push(selectedObjectSelectedArea);
+
+            if(renderGizmoOptions.cameraControllGizmo){
+                const newRenderableObject = Gizmos.getCameraControllGizmo();
+                out.push(newRenderableObject);
+            }
+            if(renderGizmoOptions.objectMoveGizmo){
+                const newRenderableObject = Gizmos.getObjectMoveGizmo();
+                out.push(newRenderableObject);
+            }
+            if(renderGizmoOptions.objectResizeGizmo){
+                const newRenderableObject = Gizmos.getObjectResizeGizmo();
+                out.push(newRenderableObject);
+            }
+            if(renderGizmoOptions.objectRotateGizmo){
+                const newRenderableObject = Gizmos.getObjectRotateGizmo();
+                out.push(newRenderableObject);
+            }
+        }
+        
+        return out;
+    }
 }
 
 export class Renderer{
 
-    #voxelObjectRenderData: EntityRenderData = {
-        renderPipeline: null,
-        bindGroup: null,
-        uniformBuffer: null,
-        uniformBufferView: null
-    }
-    #isVoxelObjectRenderDataLoaded() : boolean {
-        return this.#voxelObjectRenderData.renderPipeline!=null && this.#voxelObjectRenderData.bindGroup!=null && 
-        this.#voxelObjectRenderData.uniformBuffer!=null && this.#voxelObjectRenderData.uniformBufferView!=null
-    }
+    #renderTechniques : Map<RenderTechniqueType, RenderTechniqueResources> = new Map();
 
-    #voxelObjectGridRenderData: EntityRenderData = {
-        renderPipeline: null,
-        bindGroup: null,
-        uniformBuffer: null,
-        uniformBufferView: null
-    }
-    #isVoxelObjectGridRenderDataLoaded() : boolean {
-        return this.#voxelObjectGridRenderData.renderPipeline!=null && this.#voxelObjectGridRenderData.bindGroup!=null && 
-        this.#voxelObjectGridRenderData.uniformBuffer!=null && this.#voxelObjectGridRenderData.uniformBufferView!=null
-    }
-
-    #selectedAreaRenderData: EntityRenderData = {
-        renderPipeline: null,
-        bindGroup: null,
-        uniformBuffer: null,
-        uniformBufferView: null
-    }
-    #isSelectedAreaRenderDataLoaded() : boolean {
-        return this.#selectedAreaRenderData.renderPipeline!=null && this.#selectedAreaRenderData.bindGroup!=null && 
-        this.#selectedAreaRenderData.uniformBuffer!=null && this.#selectedAreaRenderData.uniformBufferView!=null
-    }
-
-    #sceneBorderGridRenderData: EntityRenderData = {
-        renderPipeline: null,
-        bindGroup: null,
-        uniformBuffer: null,
-        uniformBufferView: null
-    }
-    #isSceneBorderGridRenderDataLoaded() : boolean {
-        return this.#sceneBorderGridRenderData.renderPipeline!=null && this.#sceneBorderGridRenderData.bindGroup!=null && 
-        this.#sceneBorderGridRenderData.uniformBuffer!=null && this.#sceneBorderGridRenderData.uniformBufferView!=null
-    }
-
-    #sceneBorderWireRenderData: EntityRenderData = {
-        renderPipeline: null,
-        bindGroup: null,
-        uniformBuffer: null,
-        uniformBufferView: null
-    }
-    #isSceneBorderWireRenderDataLoaded() : boolean {
-        return this.#sceneBorderWireRenderData.renderPipeline!=null && this.#sceneBorderWireRenderData.bindGroup!=null && 
-        this.#sceneBorderWireRenderData.uniformBuffer!=null && this.#sceneBorderWireRenderData.uniformBufferView!=null
-    }
-
-    #cameraControllsRenderData: EntityRenderData = {
-        renderPipeline: null,
-        bindGroup: null,
-        uniformBuffer: null,
-        uniformBufferView: null
-    }
-    #isCameraControllsRenderDataDataLoaded() : boolean {
-        return this.#cameraControllsRenderData.renderPipeline!=null && this.#cameraControllsRenderData.bindGroup!=null && 
-        this.#cameraControllsRenderData.uniformBuffer!=null && this.#cameraControllsRenderData.uniformBufferView!=null
-    }
+    //because of this cache, meshes need to be treated as effectively immutable, 
+    //also any method which deletes mesh should probably also delete it from this map
+    #meshCache: GPUMeshCache = new GPUMeshCache();
 
     #device: GPUDevice | null  = null
     #canvas: HTMLCanvasElement | null = null
@@ -86,16 +99,19 @@ export class Renderer{
     #depthTexture: GPUTexture | null = null
     #renderPassDescriptor: GPURenderPassDescriptor | null = null
     initialized: boolean = false;
+    initializing: boolean = false;
 
     constructor(){}
 
     async init(canvas: HTMLCanvasElement): Promise<boolean>{
-        if(this.initialized) return false;
+        if(this.initialized || this.initializing) return false;
+        this.initializing = true;
         const adapter = await navigator.gpu?.requestAdapter();
         if(!adapter) {
             return false;
         }
 
+        console.log("gimmie this device");
         const device = await adapter.requestDevice();
         if (!device) {
             return false;
@@ -138,14 +154,11 @@ export class Renderer{
             depthStoreOp: 'store',
             },
         };
-        this.loadVoxelObjectRenderData();
-        this.loadVoxelObjectGridRenderData();
-        this.loadSelectedAreaRenderData();
-        this.loadSceneBorderGridRenderData();
-        this.loadSceneBorderWireRenderData();
-        this.loadCameraControllsRenderData();
-        this.initialized = true;
 
+        this.#loadRenderTechniques();
+        
+        this.initialized = true;
+        this.initializing = false;
         return true
     }
 
@@ -179,9 +192,16 @@ export class Renderer{
         };
     }
 
-    loadCameraControllsRenderData(){
-        if(!this.initialized) return false;
-        const device = this.#device!;
+    #loadRenderTechniques(): void{
+        this.#loadGizmoRenderTechnique();
+        this.#loadFilledRenderTechnique();
+        this.#loadWireframeRenderTechnique();
+        this.#loadBorderRenderTechnique();
+    }
+
+    #loadGizmoRenderTechnique(): void{        
+        const device = this.#device;
+        if(!device) return;
 
         const shaderCode = cameraControllsGizmoShader();
         const shaderModule = device.createShaderModule({
@@ -199,10 +219,10 @@ export class Renderer{
         ],
         });
 
-        this.#cameraControllsRenderData.uniformBufferView = makeStructuredView(makeShaderDataDefinitions(shaderCode).uniforms.uniformData);
-        this.#cameraControllsRenderData.uniformBuffer = device.createBuffer({
+        const uniformBufferView = makeStructuredView(makeShaderDataDefinitions(shaderCode).uniforms.uniformData);
+        const uniformBuffer = device.createBuffer({
             label: 'uniform buffer',
-            size: this.#cameraControllsRenderData.uniformBufferView.arrayBuffer.byteLength,
+            size: uniformBufferView.arrayBuffer.byteLength,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
@@ -210,7 +230,7 @@ export class Renderer{
             bindGroupLayouts: [bindGroupLayout],
         });
 
-        this.#cameraControllsRenderData.renderPipeline = device.createRenderPipeline({
+        const renderPipeline = device.createRenderPipeline({
             label: 'Selected object mesh pipeline',
             layout: pipelineLayout,
             vertex: {
@@ -250,19 +270,27 @@ export class Renderer{
             },
         });
 
-        this.#cameraControllsRenderData.bindGroup = device.createBindGroup({
+        const bindGroup = device.createBindGroup({
             label: 'bind group for uniform data',
             layout: bindGroupLayout,
             entries:[{
                 binding: 0,
-                resource: {buffer: this.#cameraControllsRenderData.uniformBuffer!},
+                resource: {buffer: uniformBuffer},
             }]
+        })
+
+        this.#renderTechniques.set(RenderTechniqueType.GIZMO, {
+                renderPipeline,
+                bindGroup,
+                uniformBuffer,
+                uniformBufferView,
+                shader: shaderModule,
         })
     }
 
-    loadVoxelObjectRenderData(){
-        if(!this.initialized) false;
+    #loadFilledRenderTechnique(): void{
         const device = this.#device!;
+        if(!device) return;
 
         const shaderCode = baseShader();
         const shaderModule = device.createShaderModule({
@@ -280,10 +308,10 @@ export class Renderer{
         ],
         });
 
-        this.#voxelObjectRenderData.uniformBufferView = makeStructuredView(makeShaderDataDefinitions(shaderCode).uniforms.uniformData);
-        this.#voxelObjectRenderData.uniformBuffer = device.createBuffer({
+        const uniformBufferView = makeStructuredView(makeShaderDataDefinitions(shaderCode).uniforms.uniformData);
+        const uniformBuffer = device.createBuffer({
             label: 'uniform buffer',
-            size: this.#voxelObjectRenderData.uniformBufferView.arrayBuffer.byteLength,
+            size: uniformBufferView.arrayBuffer.byteLength,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
@@ -291,7 +319,7 @@ export class Renderer{
             bindGroupLayouts: [bindGroupLayout],
         });
 
-        this.#voxelObjectRenderData.renderPipeline = device.createRenderPipeline({
+        const renderPipeline = device.createRenderPipeline({
             label: 'Selected object mesh pipeline',
             layout: pipelineLayout,
             vertex: {
@@ -336,204 +364,28 @@ export class Renderer{
             },
         });
 
-        this.#voxelObjectRenderData.bindGroup = device.createBindGroup({
+        const bindGroup = device.createBindGroup({
             label: 'bind group for uniform data',
             layout: bindGroupLayout,
             entries:[{
                 binding: 0,
-                resource: {buffer: this.#voxelObjectRenderData.uniformBuffer!},
+                resource: {buffer: uniformBuffer!},
             }]
+        })
+
+        
+        this.#renderTechniques.set(RenderTechniqueType.FILLED, {
+                renderPipeline,
+                bindGroup,
+                uniformBuffer,
+                uniformBufferView,
+                shader: shaderModule,
         })
     }
 
-    loadVoxelObjectGridRenderData(){
-    if(!this.initialized) false;
+    #loadWireframeRenderTechnique(): void{
         const device = this.#device!;
-
-        const shaderCode = voxelObjectGridShader();
-        const shaderModule = device.createShaderModule({
-            label: 'voxel object shader module',
-            code: shaderCode,
-        });
-
-        const bindGroupLayout = device.createBindGroupLayout({
-        entries: [
-            {
-                binding: 0,
-                visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
-                buffer: { type: "uniform" },
-            },
-        ],
-        });
-
-        this.#voxelObjectGridRenderData.uniformBufferView = makeStructuredView(makeShaderDataDefinitions(shaderCode).uniforms.uniformData);
-        this.#voxelObjectGridRenderData.uniformBuffer = device.createBuffer({
-            label: 'uniform buffer',
-            size: this.#voxelObjectGridRenderData.uniformBufferView.arrayBuffer.byteLength,
-            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-        });
-
-        const pipelineLayout = device.createPipelineLayout({
-            bindGroupLayouts: [bindGroupLayout],
-        });
-
-        this.#voxelObjectGridRenderData.renderPipeline = device.createRenderPipeline({
-            label: 'Selected object mesh pipeline',
-            layout: pipelineLayout,
-            vertex: {
-                entryPoint: `vertexShader`,
-                module: shaderModule,
-                buffers:[
-                    {
-                        arrayStride: 6*4,
-                        attributes:[
-                            {
-                                shaderLocation: 0,
-                                offset: 0,
-                                format: 'float32x3',
-                            },
-                            {
-                                shaderLocation: 1,
-                                offset: 12,
-                                format: 'unorm8x4',
-                            },
-                            {
-                                shaderLocation: 2,
-                                offset: 16,
-                                format: 'float32x2',
-                            },
-                        ]
-                    }
-                ]
-            },
-            fragment: {
-                entryPoint: `fragmentShader`,
-                module: shaderModule,
-                targets: [{format: this.#presentationFormat!}],
-            },
-            primitive: {
-                topology: "triangle-list",
-                cullMode: 'front',
-            },
-            depthStencil: {
-                depthWriteEnabled: true,
-                depthCompare: 'less-equal',
-                format: 'depth24plus',
-            },
-        });
-
-        this.#voxelObjectGridRenderData.bindGroup = device.createBindGroup({
-            label: 'bind group for uniform data',
-            layout: bindGroupLayout,
-            entries:[{
-                binding: 0,
-                resource: {buffer: this.#voxelObjectGridRenderData.uniformBuffer!},
-            }]
-        })
-    }
-
-    loadSelectedAreaRenderData(){
-        if(!this.initialized) false;
-        const device = this.#device!;
-
-        const shaderCode = baseShader();
-        const shaderModule = device.createShaderModule({
-            label: 'voxel object shader module',
-            code: shaderCode,
-        });
-
-        const bindGroupLayout = device.createBindGroupLayout({
-        entries: [
-            {
-                binding: 0,
-                visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
-                buffer: { type: "uniform" },
-            },
-        ],
-        });
-
-        this.#selectedAreaRenderData.uniformBufferView = makeStructuredView(makeShaderDataDefinitions(shaderCode).uniforms.uniformData);
-        this.#selectedAreaRenderData.uniformBuffer = device.createBuffer({
-            label: 'uniform buffer',
-            size: this.#selectedAreaRenderData.uniformBufferView.arrayBuffer.byteLength,
-            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-        });
-
-        const pipelineLayout = device.createPipelineLayout({
-            bindGroupLayouts: [bindGroupLayout],
-        });
-
-        this.#selectedAreaRenderData.renderPipeline = device.createRenderPipeline({
-            label: 'Selected object mesh pipeline',
-            layout: pipelineLayout,
-            vertex: {
-                entryPoint: `vertexShader`,
-                module: shaderModule,
-                buffers:[
-                    {
-                        arrayStride: 6*4,
-                        attributes:[
-                            {
-                                shaderLocation: 0,
-                                offset: 0,
-                                format: 'float32x3',
-                            },
-                            {
-                                shaderLocation: 1,
-                                offset: 12,
-                                format: 'unorm8x4',
-                            },
-                            {
-                                shaderLocation: 2,
-                                offset: 16,
-                                format: 'float32x2',
-                            },
-                        ]
-                    }
-                ]
-            },
-            fragment: {
-                entryPoint: `fragmentShader`,
-                module: shaderModule,
-                targets: [{format: this.#presentationFormat!,
-                    blend: {
-                    color: {
-                        srcFactor: "src-alpha",
-                        dstFactor: "one-minus-src-alpha",
-                        operation: "add",
-                    },
-                    alpha: {
-                        srcFactor: "one",
-                        dstFactor: "one-minus-src-alpha",
-                        operation: "add",
-                    }
-                    }
-                }],
-            },
-            primitive: {
-                topology: "triangle-list",
-                cullMode: 'front',
-            },
-            depthStencil: {
-                depthWriteEnabled: true,
-                depthCompare: 'less-equal',
-                format: 'depth24plus',
-            },
-        });
-
-        this.#selectedAreaRenderData.bindGroup = device.createBindGroup({
-            label: 'bind group for uniform data',
-            layout: bindGroupLayout,
-            entries:[{
-                binding: 0,
-                resource: {buffer: this.#selectedAreaRenderData.uniformBuffer!},
-            }]
-        })
-    }
-
-    loadSceneBorderGridRenderData(){
-        if(!this.initialized) false;
-        const device = this.#device!;
+        if(!device) return;
         
         const shaderCode = borderGridShader();
         const shaderModule = device.createShaderModule({
@@ -551,10 +403,10 @@ export class Renderer{
         ],
         });
 
-        this.#sceneBorderGridRenderData.uniformBufferView = makeStructuredView(makeShaderDataDefinitions(shaderCode).uniforms.uniformData);
-        this.#sceneBorderGridRenderData.uniformBuffer = device.createBuffer({
+        const uniformBufferView = makeStructuredView(makeShaderDataDefinitions(shaderCode).uniforms.uniformData);
+        const uniformBuffer = device.createBuffer({
             label: 'uniform buffer',
-            size: this.#sceneBorderGridRenderData.uniformBufferView.arrayBuffer.byteLength,
+            size: uniformBufferView.arrayBuffer.byteLength,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
@@ -562,7 +414,7 @@ export class Renderer{
             bindGroupLayouts: [bindGroupLayout],
         });
 
-        this.#sceneBorderGridRenderData.renderPipeline = device.createRenderPipeline({
+        const renderPipeline = device.createRenderPipeline({
             label: 'Selected object mesh pipeline',
             layout: pipelineLayout,
             vertex: {
@@ -621,19 +473,27 @@ export class Renderer{
             },
         });
 
-        this.#sceneBorderGridRenderData.bindGroup = device.createBindGroup({
+        const bindGroup = device.createBindGroup({
             label: 'bind group for uniform data',
             layout: bindGroupLayout,
             entries:[{
                 binding: 0,
-                resource: {buffer: this.#sceneBorderGridRenderData.uniformBuffer!},
+                resource: {buffer: uniformBuffer!},
             }]
+        })
+
+        this.#renderTechniques.set(RenderTechniqueType.WIREFRAME, {
+            renderPipeline,
+            bindGroup,
+            uniformBuffer,
+            uniformBufferView,
+            shader: shaderModule,
         })
     }
 
-    loadSceneBorderWireRenderData(){
-        if(!this.initialized) false;
+    #loadBorderRenderTechnique(): void{
         const device = this.#device!;
+        if(!device) return;
 
         const shaderCode = voxelObjectBorderShader();
         const shaderModule = device.createShaderModule({
@@ -651,10 +511,10 @@ export class Renderer{
         ],
         });
 
-        this.#sceneBorderWireRenderData.uniformBufferView = makeStructuredView(makeShaderDataDefinitions(shaderCode).uniforms.uniformData);
-        this.#sceneBorderWireRenderData.uniformBuffer = device.createBuffer({
+        const uniformBufferView = makeStructuredView(makeShaderDataDefinitions(shaderCode).uniforms.uniformData);
+        const uniformBuffer = device.createBuffer({
             label: 'uniform buffer',
-            size: this.#sceneBorderWireRenderData.uniformBufferView.arrayBuffer.byteLength,
+            size: uniformBufferView.arrayBuffer.byteLength,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
@@ -662,7 +522,7 @@ export class Renderer{
             bindGroupLayouts: [bindGroupLayout],
         });
 
-        this.#sceneBorderWireRenderData.renderPipeline = device.createRenderPipeline({
+        const renderPipeline = device.createRenderPipeline({
             label: 'Selected object mesh pipeline',
             layout: pipelineLayout,
             vertex: {
@@ -707,24 +567,31 @@ export class Renderer{
             },
         });
 
-        this.#sceneBorderWireRenderData.bindGroup = device.createBindGroup({
+        const bindGroup = device.createBindGroup({
             label: 'bind group for uniform data',
             layout: bindGroupLayout,
             entries:[{
                 binding: 0,
-                resource: {buffer: this.#sceneBorderWireRenderData.uniformBuffer!},
+                resource: {buffer: uniformBuffer!},
             }]
+        })
+
+        this.#renderTechniques.set(RenderTechniqueType.BORDER, {
+            renderPipeline,
+            bindGroup,
+            uniformBuffer,
+            uniformBufferView,
+            shader: shaderModule,
         })
     }
 
-    renderScene(scene: Scene){
+    renderScene(scene: Scene, renderGizmoOptions: RenderGizmosOptions, renderSceneOptions: RenderSceneOptions){
         if(!this.initialized) return false;
-        //console.log(`[renderScene] camera: ` + scene.getCameraCopy().pitch + " : " + scene.getCameraCopy().yaw ) ;
+
         const device = this.#device!;
         const context = this.#context!;
-        const canvas = this.#canvas!;
-
-        this.resizeCanvas(scene);
+        const canvas = this.#canvas!
+        this.resizeCanvas();
         const canvasTexture = context.getCurrentTexture();
 
         if (this.#depthTexture!.width !== canvasTexture.width ||
@@ -733,6 +600,9 @@ export class Renderer{
             this.#depthTexture!.destroy();
             this.updateDepthTexture();
         };
+
+        const camera = scene.getActiveCamera();
+        if(!camera) return;
 
         const encoder : GPUCommandEncoder = device.createCommandEncoder({
             label: 'GPU command encoder'
@@ -755,260 +625,68 @@ export class Renderer{
             },
         };
         const pass : GPURenderPassEncoder = encoder.beginRenderPass(this.#renderPassDescriptor!);
-        //console.log(`[renderScene] after initializations, starting proper entities render`);
-        //render object
-        if(this.#isVoxelObjectRenderDataLoaded()){
-            if(scene.getObjectRef().shouldRebuildMesh()) {
-                scene.getObjectRef().rebuildMesh();
+        
+        //update uniform buffers on each render technique
+        //as for now each technique shares the same uniform buffer, so it's all the same
+        const ndcProjection = camera.getProjectionMatrix(new Vector2(canvas.width, canvas.height));
+        const shadersUniformsValuesResolution = [canvas.width, canvas.height];
+
+        this.#renderTechniques.forEach((v)=>{
+            v.uniformBufferView!.set({
+                resolution: shadersUniformsValuesResolution,
+                objectTransform: Matrices4.identity().toArrays(), //remnant of the prevoius architecture, will be deleted in the future
+                ndcProjection: ndcProjection.toArrays(),
+                viewMatrix: camera.getCameraView().toArrays(),
+            });
+            device.queue.writeBuffer(v.uniformBuffer!, 0, v.uniformBufferView!.arrayBuffer);
+        });
+        
+        
+        //render each object
+        const objectsToRender: RenderableObject[] = SceneRenderCollector.collect(scene, renderGizmoOptions, renderSceneOptions);
+        objectsToRender.forEach((obj)=>{
+            if(!obj.mesh || !obj.material) return;
+            const renderTechnique: RenderTechniqueResources | undefined = this.#renderTechniques.get(obj.material.renderTechnique)
+            if(!renderTechnique) return;
+
+            const meshResources = this.#meshCache.get(obj.mesh); 
+            let vertexBuffer;
+            let indexBuffer;
+            if(meshResources){
+                vertexBuffer = meshResources.vertexBuffer;
+                indexBuffer = meshResources.indexBuffer;
+            }else{    
+                vertexBuffer = device.createBuffer({
+                    label: 'vertex data buffer',
+                    size: obj.mesh.vertices.byteLength,
+                    usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+                });
+                device.queue.writeBuffer(vertexBuffer , 0 , obj.mesh.vertices);
+
+                indexBuffer = device.createBuffer({
+                    label: 'index data buffer',
+                    size: obj.mesh.indices.byteLength,
+                    usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+                });
+                device.queue.writeBuffer(indexBuffer, 0 , obj.mesh.indices);     
+                this.#meshCache.set(obj.mesh, {
+                    vertexBuffer,
+                    indexBuffer,
+                });                 
             }
-            const {vertexData, linesIndices, trianglesIndices, quadsIndices} = scene.getObjectRef().mesh!.getVerticesData();
-            //console.log(`[renderScene] object mesh has: ${trianglesIndices.length} indices`);
-            const vertexDataBuffer = device.createBuffer({
-                label: 'vertex data buffer',
-                size: vertexData.byteLength,
-                usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-            });
-            device.queue.writeBuffer(vertexDataBuffer , 0 , vertexData);
-
-            const trianglesIndexBuffer = device.createBuffer({
-                label: 'index data buffer',
-                size: trianglesIndices.byteLength,
-                usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
-            });
-            device.queue.writeBuffer(trianglesIndexBuffer, 0 , trianglesIndices);
-
-            const linesIndexBuffer = device.createBuffer({
-                label: 'index data buffer',
-                size: linesIndices.byteLength,
-                usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
-            });
-            device.queue.writeBuffer(linesIndexBuffer, 0 , linesIndices);
-
-            const quadsIndexBuffer = device.createBuffer({
-                label: 'index data buffer',
-                size: quadsIndices.byteLength,
-                usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
-            });
-            device.queue.writeBuffer(quadsIndexBuffer, 0 , quadsIndices);
-
-            const ndcProjection = scene.getCameraCopy().projectionType === "orthographic"? scene.getOrthoProjectionMatrix() : scene.getPerspectiveProjectionMatrix();
-            const shadersUniformsValuesResolution = [canvas.width, canvas.height];
-            this.#voxelObjectRenderData.uniformBufferView!.set({
-                resolution: shadersUniformsValuesResolution,
-                objectTransform: scene.getObjectTransformMatrix().toArrays(),
-                ndcProjection: ndcProjection.toArrays(),
-                viewMatrix: scene.getCameraView().toArrays(),
-            });
-            //console.log(`[viewMatrix]: ${scene.getCameraView().toArrays().toString()}`)
-            device.queue.writeBuffer(this.#voxelObjectRenderData.uniformBuffer!, 0, this.#voxelObjectRenderData.uniformBufferView!.arrayBuffer);
-
-            pass.setPipeline(this.#voxelObjectRenderData.renderPipeline!);
-            pass.setVertexBuffer(0 , vertexDataBuffer);
-            pass.setIndexBuffer(trianglesIndexBuffer, "uint32");
-            pass.setBindGroup(0, this.#voxelObjectRenderData.bindGroup);
-            //console.log(`[renderScene] drawing ${trianglesIndices.length} vertices of voxel object`);
-            pass.drawIndexed(trianglesIndices.length);
-        }
-
-        //render object grid
-        if(scene.options.voxelObjectsGrid && this.#isVoxelObjectGridRenderDataLoaded()){
-            const {vertexData, linesIndices, trianglesIndices, quadsIndices} = scene.getObjectRef().mesh!.getVerticesData();
-            //console.log(`[renderScene] object mesh has: ${trianglesIndices.length} indices`);
-            const vertexDataBuffer = device.createBuffer({
-                label: 'vertex data buffer',
-                size: vertexData.byteLength,
-                usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-            });
-            device.queue.writeBuffer(vertexDataBuffer , 0 , vertexData);
-
-            const trianglesIndexBuffer = device.createBuffer({
-                label: 'index data buffer',
-                size: trianglesIndices.byteLength,
-                usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
-            });
-            device.queue.writeBuffer(trianglesIndexBuffer, 0 , trianglesIndices);
-
-            const linesIndexBuffer = device.createBuffer({
-                label: 'index data buffer',
-                size: linesIndices.byteLength,
-                usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
-            });
-            device.queue.writeBuffer(linesIndexBuffer, 0 , linesIndices);
-
-            const quadsIndexBuffer = device.createBuffer({
-                label: 'index data buffer',
-                size: quadsIndices.byteLength,
-                usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
-            });
-            device.queue.writeBuffer(quadsIndexBuffer, 0 , quadsIndices);
-
-            const ndcProjection = scene.getCameraCopy().projectionType === "orthographic"? scene.getOrthoProjectionMatrix() : scene.getPerspectiveProjectionMatrix();
-            const shadersUniformsValuesResolution = [canvas.width, canvas.height];
-            this.#voxelObjectGridRenderData.uniformBufferView!.set({
-                resolution: shadersUniformsValuesResolution,
-                objectTransform: scene.getObjectTransformMatrix().toArrays(),
-                ndcProjection: ndcProjection.toArrays(),
-                viewMatrix: scene.getCameraView().toArrays(),
-            });
-            device.queue.writeBuffer(this.#voxelObjectGridRenderData.uniformBuffer!, 0, this.#voxelObjectGridRenderData.uniformBufferView!.arrayBuffer);
-
-            pass.setPipeline(this.#voxelObjectGridRenderData.renderPipeline!);
-            pass.setVertexBuffer(0 , vertexDataBuffer);
-            pass.setIndexBuffer(trianglesIndexBuffer, "uint32");
-            pass.setBindGroup(0, this.#voxelObjectGridRenderData.bindGroup);
-            pass.drawIndexed(trianglesIndices.length);
-        }
-
-        //render border grid
-        if(scene.options.borderGrid && this.#isSceneBorderGridRenderDataLoaded() ){
-            
-            const meshData = scene.getObjectRef().getBorderGrid().getVerticesData();
-
-            const vertexBuffer = device.createBuffer({
-                label: 'vertex data buffer',
-                size: meshData.vertexData.byteLength,
-                usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-            });
-            device.queue.writeBuffer(vertexBuffer , 0 , meshData.vertexData);
-
-            const indexBuffer = device.createBuffer({
-                label: 'index data buffer',
-                size: meshData.trianglesIndices.byteLength,
-                usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
-            });
-            device.queue.writeBuffer(indexBuffer, 0, meshData.trianglesIndices);
-
-            const shadersUniformsValuesResolution = [canvas.width, canvas.height];
-            this.#sceneBorderGridRenderData.uniformBufferView!.set({
-                resolution: shadersUniformsValuesResolution,
-                objectTransform: scene.getObjectTransformMatrix().toArrays(),
-                ndcProjection: scene.getPerspectiveProjectionMatrix().toArrays(),
-                viewMatrix: scene.getCameraView().toArrays(),
-            });
-            device.queue.writeBuffer(this.#sceneBorderGridRenderData.uniformBuffer!, 0, this.#sceneBorderGridRenderData.uniformBufferView!.arrayBuffer);
-
-            pass.setPipeline(this.#sceneBorderGridRenderData.renderPipeline!);
-            pass.setVertexBuffer(0, vertexBuffer);
+            pass.setPipeline(renderTechnique.renderPipeline);
+            pass.setVertexBuffer(0 , vertexBuffer);
             pass.setIndexBuffer(indexBuffer, "uint32");
-            pass.setBindGroup(0, this.#sceneBorderGridRenderData.bindGroup);
-            //console.log(`[renderScene] drawing ${meshData.trianglesIndices.length} vertices of border grid`);
-            pass.drawIndexed(meshData.trianglesIndices.length);
-        }
-
-        //render border wire
-        if(scene.options.borderWire && this.#isSceneBorderWireRenderDataLoaded()){
-            const meshData = scene.getObjectRef().getBorderMesh().getVerticesData();
-
-            const objectBorderVertexDataBuffer = device.createBuffer({
-                label: 'vertex data buffer',
-                size: meshData.vertexData.byteLength,
-                usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-            });
-            device.queue.writeBuffer(objectBorderVertexDataBuffer , 0 , meshData.vertexData);
-
-            const objectBorderTrianglesIndexBuffer = device.createBuffer({
-                label: 'index data buffer',
-                size: meshData.trianglesIndices.byteLength,
-                usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
-            });
-            device.queue.writeBuffer(objectBorderTrianglesIndexBuffer, 0, meshData.trianglesIndices);
-
-            const shadersUniformsValuesResolution = [canvas.width, canvas.height];
-            this.#sceneBorderWireRenderData.uniformBufferView!.set({
-                resolution: shadersUniformsValuesResolution,
-                objectTransform: scene.getObjectTransformMatrix().toArrays(),
-                ndcProjection: scene.getPerspectiveProjectionMatrix().toArrays(),
-                viewMatrix: scene.getCameraView().toArrays(),
-            });
-            device.queue.writeBuffer(this.#sceneBorderWireRenderData.uniformBuffer!, 0, this.#sceneBorderWireRenderData.uniformBufferView!.arrayBuffer);
-
-            pass.setPipeline(this.#sceneBorderWireRenderData.renderPipeline!);
-            pass.setVertexBuffer(0, objectBorderVertexDataBuffer);
-            pass.setIndexBuffer(objectBorderTrianglesIndexBuffer, "uint32");
-            pass.setBindGroup(0, this.#sceneBorderWireRenderData.bindGroup);
-            pass.drawIndexed(meshData.trianglesIndices.length);
-        }
-
-                //render selected area
-        if(this.#isSelectedAreaRenderDataLoaded()){
-
-            const selectedAreaMesh = scene.getObjectRef().getSelectedAreaMesh();
-            const meshData = selectedAreaMesh!.getVerticesData();
-            //console.log(`[renderScene] selectedAreaVertices: ${meshData.trianglesIndices.length}`)
-
-            const vertexBuffer = device.createBuffer({
-                label: 'vertex data buffer',
-                size: meshData.vertexData.byteLength,
-                usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-            });
-            device.queue.writeBuffer(vertexBuffer , 0 , meshData.vertexData);
-
-            const indexBuffer = device.createBuffer({
-                label: 'index data buffer',
-                size: meshData.trianglesIndices.byteLength,
-                usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
-            });
-            device.queue.writeBuffer(indexBuffer, 0 , meshData.trianglesIndices);
-
-            const shadersUniformsValuesResolution = [canvas.width, canvas.height];
-            this.#selectedAreaRenderData.uniformBufferView!.set({
-                resolution: shadersUniformsValuesResolution,
-                objectTransform: scene.getObjectTransformMatrix().toArrays(),
-                ndcProjection: scene.getPerspectiveProjectionMatrix().toArrays(),
-                viewMatrix: scene.getCameraView().toArrays(),
-            });
-            device.queue.writeBuffer(this.#selectedAreaRenderData.uniformBuffer!, 0, this.#selectedAreaRenderData.uniformBufferView!.arrayBuffer);
-
-            pass.setPipeline(this.#selectedAreaRenderData.renderPipeline!);
-            pass.setVertexBuffer(0, vertexBuffer);
-            pass.setIndexBuffer(indexBuffer, "uint32");
-            pass.setBindGroup(0, this.#selectedAreaRenderData.bindGroup);
-            //console.log(`[renderScene] drawing ${meshData.trianglesIndices.length} vertices of selected area`);
-            pass.drawIndexed(meshData.trianglesIndices.length);
-        }
-
-        //render camera gizmo
-        if(this.#isCameraControllsRenderDataDataLoaded() && scene.initialized){
-            const mesh = scene.getCameraControllsGizmoRef()!;
-            
-            const meshData = mesh.getVerticesDataWithoutUV();
-           // console.log(meshData.trianglesIndices)
-            const vertexBuffer = device.createBuffer({
-                label: 'vertex data buffer',
-                size: meshData.vertexData.byteLength,
-                usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-            });
-            device.queue.writeBuffer(vertexBuffer , 0 , meshData.vertexData);
-
-            const indexBuffer = device.createBuffer({
-                label: 'index data buffer',
-                size: meshData.trianglesIndices.byteLength,
-                usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
-            });
-            device.queue.writeBuffer(indexBuffer, 0 , meshData.trianglesIndices);
-
-            const camera = scene.getCameraCopy();
-            this.#cameraControllsRenderData.uniformBufferView!.set({
-                anchor: [0.8, 0.8],
-                scale: [0.0025, 0.005],
-                objectRotation: Matrices4.rotation( degreeToRadians(camera.pitch), degreeToRadians(camera.yaw) ,0.0).toArrays(),
-            });
-            device.queue.writeBuffer(this.#cameraControllsRenderData.uniformBuffer!, 0, this.#cameraControllsRenderData.uniformBufferView!.arrayBuffer);
-
-            pass.setPipeline(this.#cameraControllsRenderData.renderPipeline!);
-            pass.setVertexBuffer(0, vertexBuffer);
-            pass.setIndexBuffer(indexBuffer, "uint32");
-            pass.setBindGroup(0, this.#cameraControllsRenderData.bindGroup);
-            pass.drawIndexed(meshData.trianglesIndices.length);
-            
-        }
+            pass.setBindGroup(0, renderTechnique.bindGroup);
+            pass.drawIndexed(obj.mesh.indices.length);
+        });
 
         pass.end();
         const commandBuffer = encoder.finish();
         device.queue.submit([commandBuffer]);
     }
 
-    resizeCanvas(scene: Scene | null = null) {
+    resizeCanvas() {
         if(!this.initialized) return;
         const canvas = this.#canvas!;
         const dpr = window.devicePixelRatio || 1;
@@ -1018,10 +696,5 @@ export class Renderer{
           canvas.width = w;
           canvas.height = h;
         }
-        if(scene){
-            scene.setNdcProjectionMatrices();
-        }
-
     };
-
 }

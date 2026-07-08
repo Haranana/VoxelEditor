@@ -1,9 +1,10 @@
 import { clamp } from "../math/utils";
-import { Vector2 } from "../math/vector2.type";
 import { Vector3 } from "../math/vector3.type";
 import { Vector4 } from "../math/vector4.type";
-import { RenderableObject } from "./renderableObject";
+import { RenderableObject, RenderTechniqueType } from "./renderableObject";
+import { SceneObject } from "./sceneObject";
 import { copyVoxel, type Voxel } from "./voxel.type";
+import { getVoxelObjectBorderGridMesh, getVoxelObjectBorderWireMesh, getVoxelObjectMesh, getVoxelObjectSelectedAreaMesh } from "./VoxelMesher";
 
 export type FaceDirection = 
 | "PosX"
@@ -49,751 +50,140 @@ export function vectorToFaceDirection(v: Vector3){
 //(0,0,0) of model space should be middle of the object
 //for now without any chunk system or any other kind of optimization
 //any cell inside VoxelObject may have object of type Voxel or be null
-export class VoxelObject{
-    
-    //for now all voxels are stored simply as 3D array in VoxelObject
-    //in fututre this will be replaced by more sophisticated methods
-    voxels : (Voxel | null)[][][] = [[[]]];
+export class VoxelObject extends SceneObject{
+    //dictates hard borders of voxel object
+    readonly maxSize: Vector3 = new Vector3(256,256,256);
 
-    //selected voxels are of type string to ensure uniqueness by value
-    //use Vector3.toString() and Vector3.fromString() for conversion
-    selectedVoxels: Set<string> = new Set();
-   
-    maxSize: Vector3 = new Vector3(256,256,256);
     //size of whole voxelObject
     size : Vector3 = new Vector3(0,0,0);
     
     //how much units in worldSpace should one voxel take in each dimension
     baseVoxelSize = 50;
 
-    mesh: RenderableObject | null = null;
-    voxelsModified: boolean = false;
+    //for now all voxels are stored simply as 3D array in VoxelObject
+    //in fututre this will be replaced by more sophisticated methods
+    voxels : (Voxel | null)[][][] = [[[]]];
+    #renderableObject: RenderableObject = new RenderableObject();
+    
+
     borderModified: boolean = false;
+
     highlightedVoxelColor: Vector4 = new Vector4(160, 130, 210, 255);
     highlightedVoxel: Vector3 | null = null;
 
     selectedVoxelsAlpha = 160;
     selectedVoxelsDefaultColor: Vector4 = new Vector4(160, 130, 210, this.selectedVoxelsAlpha)
     selectedVoxelColor: Vector4 = this.selectedVoxelsDefaultColor.copy();
-    selectedAreaMesh: RenderableObject | null = null;
-    selectedAreaModified: boolean = false;
+
+    //selected voxels are of type string to ensure uniqueness by value
+    //use Vector3.toString() and Vector3.fromString() for conversion
+    selectedVoxels: Set<string> = new Set();
+    #selectedArea: RenderableObject = new RenderableObject();
 
     borderColor: Vector4 = new Vector4(160, 130, 210, 255);
-    borderGrid: RenderableObject | null = null;
-    borderWire: RenderableObject | null = null;
+    borderGrid: RenderableObject = new RenderableObject();
+    borderWire: RenderableObject = new RenderableObject();
 
-    constructor(size: Vector3){
+    constructor(id: string , size: Vector3){
+        super(id);
         this.size = size;
         this.voxels = Array.from({ length: size.x }, () =>
             Array.from({ length: size.y }, () =>
                 Array.from({ length: size.z }, () => null)
             )
         );
+        this.#renderableObject.material = {renderTechnique: RenderTechniqueType.FILLED};
+        this.#selectedArea.material = {renderTechnique: RenderTechniqueType.FILLED};
+        this.borderGrid.material = {renderTechnique: RenderTechniqueType.WIREFRAME};
+        this.borderWire.material = {renderTechnique: RenderTechniqueType.BORDER};
     }
 
-    getSelectedAreaMesh() : RenderableObject{
-        if(this.selectedAreaMesh==null || this.selectedAreaModified){
-            this.rebuildSelectedAreaMesh();    
+    //for now it is assumed that only mesh is modifiable in voxelObject's renderableObject
+    getRenderableObject(): RenderableObject{
+        if(this.#shouldRebuildRenderableObject()){
+            this.#rebuildRenderableObject();
         }
-        return this.selectedAreaMesh!;
+        return this.#renderableObject;
     }
 
-    shouldRebuildMesh(){
-        return !this.mesh;
+    #shouldRebuildRenderableObject(): boolean{
+        return this.#renderableObject.mesh == null
     }
 
-    rebuildSelectedAreaMesh(){
-
-        const out: RenderableObject = new RenderableObject();
-        const objectStart : Vector3 = new Vector3(-this.size.x/2 , -this.size.y/2, -this.size.z/2) 
-        this.selectedVoxels.forEach(v=>{
-            const currentVoxelCoords = Vector3.fromString(v);                    
-            const x = currentVoxelCoords.x;
-            const y = currentVoxelCoords.y;
-            const z =currentVoxelCoords.z;
-            const voxelStart = new Vector3( (objectStart.x + currentVoxelCoords.x)*this.baseVoxelSize , (objectStart.y+currentVoxelCoords.y)*this.baseVoxelSize, (objectStart.z+currentVoxelCoords.z)*this.baseVoxelSize);
-
-            const voxelColor = this.selectedVoxelColor;
-            const voxelVertices : Map<string, Vector3> = new Map();
-            
-            voxelVertices.set("A" , voxelStart.addVector(new Vector3(0,0,this.baseVoxelSize)));
-            voxelVertices.set( "B" , voxelStart.addVector(new Vector3(this.baseVoxelSize,0,this.baseVoxelSize)));
-            voxelVertices.set( "C" , voxelStart.addVector(new Vector3(this.baseVoxelSize,this.baseVoxelSize,this.baseVoxelSize)));
-            voxelVertices.set( "D" , voxelStart.addVector(new Vector3(0,this.baseVoxelSize,this.baseVoxelSize)));
-            voxelVertices.set( "E" , voxelStart.addVector(new Vector3(0,0,0)));
-            voxelVertices.set( "F" , voxelStart.addVector(new Vector3(this.baseVoxelSize,0,0)));
-            voxelVertices.set( "G" , voxelStart.addVector(new Vector3(this.baseVoxelSize,this.baseVoxelSize,0)));
-            voxelVertices.set( "H" , voxelStart.addVector(new Vector3(0,this.baseVoxelSize,0)));
-            
-            //front culling
-            if(!this.getVoxel(new Vector3(x,y,z+1)) && !this.selectedVoxels.has(new Vector3(x,y,z+1).toString()) ){
-                const currentVoxelId : number = out.vertices.length 
-                out.vertices.push({
-                    position: voxelVertices.get("A")!,
-                    quadUV: new Vector2(0,0), 
-                    color: voxelColor,
-                })
-                out.vertices.push({
-                    position: voxelVertices.get("B")!,
-                    quadUV: new Vector2(1,0), 
-                    color: voxelColor,
-                })
-                out.vertices.push({
-                    position: voxelVertices.get("C")!,
-                    quadUV: new Vector2(1,1), 
-                    color: voxelColor,
-                })
-                out.vertices.push({
-                    position: voxelVertices.get("D")!,
-                    quadUV: new Vector2(0,1), 
-                    color: voxelColor,
-                })
-                out.trianglesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId);
-                out.linesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId, currentVoxelId+2, currentVoxelId+3,currentVoxelId+3, currentVoxelId );
-                out.quadsIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId+3, currentVoxelId);
-            }
-            //back culling
-            if(!this.getVoxel(new Vector3(x,y,z-1)) && !this.selectedVoxels.has(new Vector3(x,y,z-1).toString())){
-                const currentVoxelId : number = out.vertices.length
-                                                out.vertices.push({
-                    position: voxelVertices.get("F")!,
-                    quadUV: new Vector2(0,0), 
-                    color: voxelColor,
-                })
-                out.vertices.push({
-                    position: voxelVertices.get("E")!,
-                    quadUV: new Vector2(1,0), 
-                    color: voxelColor,
-                })
-                out.vertices.push({
-                    position: voxelVertices.get("H")!,
-                    quadUV: new Vector2(1,1), 
-                    color: voxelColor,
-                })
-                out.vertices.push({
-                    position: voxelVertices.get("G")!,
-                    quadUV: new Vector2(0,1), 
-                    color: voxelColor,
-                })
-                out.trianglesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId);
-                                                out.linesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId, currentVoxelId+2, currentVoxelId+3,currentVoxelId+3, currentVoxelId );
-                out.quadsIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId+3, currentVoxelId);
-            }
-            //top culling
-            if(!this.getVoxel(new Vector3(x,y-1,z)) && !this.selectedVoxels.has(new Vector3(x,y-1,z).toString())){
-                const currentVoxelId : number = out.vertices.length
-                out.vertices.push({
-                    position: voxelVertices.get("E")!,
-                    quadUV: new Vector2(0,0), 
-                    color: voxelColor,
-                })
-                out.vertices.push({
-                    position: voxelVertices.get("F")!,
-                    quadUV: new Vector2(1,0), 
-                    color: voxelColor,
-                })
-                out.vertices.push({
-                    position: voxelVertices.get("B")!,
-                    quadUV: new Vector2(1,1), 
-                    color: voxelColor,
-                })
-                out.vertices.push({
-                    position: voxelVertices.get("A")!,
-                    quadUV: new Vector2(0,1), 
-                    color: voxelColor,
-                })
-                out.trianglesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId);
-                                                out.linesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId, currentVoxelId+2, currentVoxelId+3,currentVoxelId+3, currentVoxelId );
-                out.quadsIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId+3, currentVoxelId);
-            }
-            //bottom culling
-            if(!this.getVoxel(new Vector3(x,y+1,z)) && !this.selectedVoxels.has(new Vector3(x,y+1,z).toString())){
-                const currentVoxelId : number = out.vertices.length
-                out.vertices.push({
-                    position: voxelVertices.get("D")!,
-                    quadUV: new Vector2(0,0), 
-                    color: voxelColor,
-                })
-                out.vertices.push({
-                    position: voxelVertices.get("C")!,
-                    quadUV: new Vector2(1,0), 
-                    color: voxelColor,
-                })
-                out.vertices.push({
-                    position: voxelVertices.get("G")!,
-                    quadUV: new Vector2(1,1), 
-                    color: voxelColor,
-                })
-                out.vertices.push({
-                    position: voxelVertices.get("H")!,
-                    quadUV: new Vector2(0,1), 
-                    color: voxelColor,
-                })
-                out.trianglesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId);
-                out.linesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId, currentVoxelId+2, currentVoxelId+3,currentVoxelId+3, currentVoxelId );
-                out.quadsIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId+3, currentVoxelId);
-            }
-            //left culling
-            if(!this.getVoxel(new Vector3(x-1,y,z)) && !this.selectedVoxels.has(new Vector3(x-1,y,z).toString())){
-                const currentVoxelId : number = out.vertices.length
-                out.vertices.push({
-                    position: voxelVertices.get("E")!,
-                    quadUV: new Vector2(0,0), 
-                    color: voxelColor,
-                })
-                out.vertices.push({
-                    position: voxelVertices.get("A")!,
-                    quadUV: new Vector2(1,0), 
-                    color: voxelColor,
-                })
-                out.vertices.push({
-                    position: voxelVertices.get("D")!,
-                    quadUV: new Vector2(1,1), 
-                    color: voxelColor,
-                })
-                out.vertices.push({
-                    position: voxelVertices.get("H")!,
-                    quadUV: new Vector2(0,1), 
-                    color: voxelColor,
-                })
-                out.trianglesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId);
-                out.linesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId, currentVoxelId+2, currentVoxelId+3,currentVoxelId+3, currentVoxelId );
-                out.quadsIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId+3, currentVoxelId);
-            }
-            //right culling
-            if(!this.getVoxel(new Vector3(x+1,y,z)) && !this.selectedVoxels.has(new Vector3(x+1,y,z).toString())){
-                const currentVoxelId : number = out.vertices.length
-                out.vertices.push({
-                    position: voxelVertices.get("B")!,
-                    quadUV: new Vector2(0,0), 
-                    color: voxelColor,
-                })
-                out.vertices.push({
-                    position: voxelVertices.get("F")!,
-                    quadUV: new Vector2(1,0), 
-                    color: voxelColor,
-                })
-                out.vertices.push({
-                    position: voxelVertices.get("G")!,
-                    quadUV: new Vector2(1,1), 
-                    color: voxelColor,
-                })
-                out.vertices.push({
-                    position: voxelVertices.get("C")!,
-                    quadUV: new Vector2(0,1), 
-                    color: voxelColor,
-                })
-                out.trianglesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId);
-                out.linesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId, currentVoxelId+2, currentVoxelId+3,currentVoxelId+3, currentVoxelId );
-                out.quadsIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId+3, currentVoxelId);
-            }                  
-        })                                     
-        //console.log("[rebuildSelectedAreaMesh] done")
-        this.selectedAreaMesh = out;
-        this.selectedAreaModified = false;
+    #setRenderableObjectToRebuild(){
+        this.#renderableObject.mesh = null;
     }
 
-    getBorderMesh(): RenderableObject{
-        if(this.borderWire){
-            return this.borderWire;
+    #rebuildRenderableObject(){
+        this.#renderableObject.mesh = getVoxelObjectMesh(this);
+    }
+
+    getSelectedArea() : RenderableObject{
+        if(this.#shouldRebuildSelectedArea()){
+            this.#rebuildSelectedArea();
         }
-        const out: RenderableObject = new RenderableObject();
-        const objectStart : Vector3 = new Vector3(-(this.size.x*this.baseVoxelSize)/2 , -(this.size.y*this.baseVoxelSize)/2, -(this.size.z*this.baseVoxelSize)/2) 
-        //const borderColor = new Vector4(255,165,0,255);
-        const borderColor = this.borderColor;
-        const voxelVertices : Map<string, Vector3> = new Map();
-        let currentVoxelId: number = 0;
-        
-        const borderOffset = 0.1;
-        voxelVertices.set("A" , objectStart.addVector(new Vector3(0,0,this.baseVoxelSize*this.size.z)
-        .addVector(new Vector3(-borderOffset, -borderOffset, borderOffset))));
-        voxelVertices.set( "B" , objectStart.addVector(new Vector3(this.baseVoxelSize*this.size.x,0,this.baseVoxelSize*this.size.z)
-        .addVector(new Vector3(borderOffset, -borderOffset, borderOffset))));
-        voxelVertices.set( "C" , objectStart.addVector(new Vector3(this.baseVoxelSize*this.size.x,this.baseVoxelSize*this.size.y,this.baseVoxelSize*this.size.z)
-        .addVector(new Vector3(borderOffset, borderOffset, borderOffset))));
-        voxelVertices.set( "D" , objectStart.addVector(new Vector3(0,this.baseVoxelSize*this.size.y,this.baseVoxelSize*this.size.z)
-        .addVector(new Vector3(-borderOffset, borderOffset, borderOffset))));
-        voxelVertices.set( "E" , objectStart.addVector(new Vector3(0,0,0)
-        .addVector(new Vector3(-borderOffset, -borderOffset, -borderOffset))));
-        voxelVertices.set( "F" , objectStart.addVector(new Vector3(this.baseVoxelSize*this.size.x,0,0)
-        .addVector(new Vector3(borderOffset, -borderOffset, -borderOffset))));
-        voxelVertices.set( "G" , objectStart.addVector(new Vector3(this.baseVoxelSize*this.size.x,this.baseVoxelSize*this.size.y,0)
-        .addVector(new Vector3(borderOffset, borderOffset, -borderOffset))));
-        voxelVertices.set( "H" , objectStart.addVector(new Vector3(0,this.baseVoxelSize*this.size.y,0)
-        .addVector(new Vector3(-borderOffset, borderOffset, -borderOffset))));
-        
-        currentVoxelId  = out.vertices.length 
-        out.vertices.push({
-            position: voxelVertices.get("A")!,
-            quadUV: new Vector2(0,0), 
-            color: borderColor,
-        })
-        out.vertices.push({
-            position: voxelVertices.get("B")!,
-            quadUV: new Vector2(1,0), 
-            color: borderColor,
-        })
-        out.vertices.push({
-            position: voxelVertices.get("C")!,
-            quadUV: new Vector2(1,1), 
-            color: borderColor,
-        })
-        out.vertices.push({
-            position: voxelVertices.get("D")!,
-            quadUV: new Vector2(0,1), 
-            color: borderColor,
-        })
-        out.trianglesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId);
-        out.linesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId, currentVoxelId+2, currentVoxelId+3,currentVoxelId+3, currentVoxelId );
-        out.quadsIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId+3, currentVoxelId);
+        return this.#selectedArea;
+    }
+
+    #shouldRebuildSelectedArea(): boolean{
+        return this.#selectedArea.mesh == null
+    }
+
+    #setSelectedAreaToRebuild(){
+        this.#selectedArea.mesh = null;
+    }
+
+    #rebuildSelectedArea(){
+        this.#selectedArea.mesh = getVoxelObjectSelectedAreaMesh(this);
+    }
+
+    getBorderWire(): RenderableObject{
+       if(this.#shouldRebuildBorderWire()){
+        this.#rebuildBorderWire();
+       }
+       return this.borderWire;
+    }
+
+    #shouldRebuildBorderWire(): boolean{
+        return this.borderWire.mesh == null
+    }
+
+    #setBorderWireToRebuild(){
+        this.borderWire.mesh = null;
+    }
+
+    #rebuildBorderWire(): void{
+        this.borderWire.mesh=getVoxelObjectBorderWireMesh(this);
+    }
     
-        currentVoxelId = out.vertices.length
-        out.vertices.push({
-            position: voxelVertices.get("F")!,
-            quadUV: new Vector2(0,0), 
-            color: borderColor,
-        })
-        out.vertices.push({
-            position: voxelVertices.get("E")!,
-            quadUV: new Vector2(1,0), 
-            color: borderColor,
-        })
-        out.vertices.push({
-            position: voxelVertices.get("H")!,
-            quadUV: new Vector2(1,1), 
-            color: borderColor,
-        })
-        out.vertices.push({
-            position: voxelVertices.get("G")!,
-            quadUV: new Vector2(0,1), 
-            color: borderColor,
-        })
-        out.trianglesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId);
-                                        out.linesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId, currentVoxelId+2, currentVoxelId+3,currentVoxelId+3, currentVoxelId );
-        out.quadsIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId+3, currentVoxelId);
-    
-        currentVoxelId = out.vertices.length
-        out.vertices.push({
-            position: voxelVertices.get("E")!,
-            quadUV: new Vector2(0,0), 
-            color: borderColor,
-        })
-        out.vertices.push({
-            position: voxelVertices.get("F")!,
-            quadUV: new Vector2(1,0), 
-            color: borderColor,
-        })
-        out.vertices.push({
-            position: voxelVertices.get("B")!,
-            quadUV: new Vector2(1,1), 
-            color: borderColor,
-        })
-        out.vertices.push({
-            position: voxelVertices.get("A")!,
-            quadUV: new Vector2(0,1), 
-            color: borderColor,
-        })
-        out.trianglesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId);
-                                        out.linesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId, currentVoxelId+2, currentVoxelId+3,currentVoxelId+3, currentVoxelId );
-        out.quadsIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId+3, currentVoxelId);
-
-        currentVoxelId = out.vertices.length
-        out.vertices.push({
-            position: voxelVertices.get("D")!,
-            quadUV: new Vector2(0,0), 
-            color: borderColor,
-        })
-        out.vertices.push({
-            position: voxelVertices.get("C")!,
-            quadUV: new Vector2(1,0), 
-            color: borderColor,
-        })
-        out.vertices.push({
-            position: voxelVertices.get("G")!,
-            quadUV: new Vector2(1,1), 
-            color: borderColor,
-        })
-        out.vertices.push({
-            position: voxelVertices.get("H")!,
-            quadUV: new Vector2(0,1), 
-            color: borderColor,
-        })
-        out.trianglesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId);
-        out.linesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId, currentVoxelId+2, currentVoxelId+3,currentVoxelId+3, currentVoxelId );
-        out.quadsIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId+3, currentVoxelId);
-
-        currentVoxelId = out.vertices.length
-        out.vertices.push({
-            position: voxelVertices.get("E")!,
-            quadUV: new Vector2(0,0), 
-            color: borderColor,
-        })
-        out.vertices.push({
-            position: voxelVertices.get("A")!,
-            quadUV: new Vector2(1,0), 
-            color: borderColor,
-        })
-        out.vertices.push({
-            position: voxelVertices.get("D")!,
-            quadUV: new Vector2(1,1), 
-            color: borderColor,
-        })
-        out.vertices.push({
-            position: voxelVertices.get("H")!,
-            quadUV: new Vector2(0,1), 
-            color: borderColor,
-        })
-        out.trianglesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId);
-        out.linesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId, currentVoxelId+2, currentVoxelId+3,currentVoxelId+3, currentVoxelId );
-        out.quadsIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId+3, currentVoxelId);
-
-        currentVoxelId = out.vertices.length
-        out.vertices.push({
-            position: voxelVertices.get("B")!,
-            quadUV: new Vector2(0,0), 
-            color: borderColor,
-        })
-        out.vertices.push({
-            position: voxelVertices.get("F")!,
-            quadUV: new Vector2(1,0), 
-            color: borderColor,
-        })
-        out.vertices.push({
-            position: voxelVertices.get("G")!,
-            quadUV: new Vector2(1,1), 
-            color: borderColor,
-        })
-        out.vertices.push({
-            position: voxelVertices.get("C")!,
-            quadUV: new Vector2(0,1), 
-            color: borderColor,
-        })
-        out.trianglesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId);
-        out.linesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId, currentVoxelId+2, currentVoxelId+3,currentVoxelId+3, currentVoxelId );
-        out.quadsIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId+3, currentVoxelId);
-        
-        this.borderWire = out;
-        return out;
+    getBorderGrid(): RenderableObject{
+       if(this.#shouldRebuildBorderGrid()){
+        this.#rebuildBorderGrid();
+       }
+       return this.borderGrid;
     }
 
-    //simple meshing with culling
-    //in future probably add greedy meshing for exports
-    rebuildMesh(){
-        //console.log(`[rebuildMesh]`);
-        const out: RenderableObject = new RenderableObject();
-        const objectStart : Vector3 = new Vector3(-this.size.x/2 , -this.size.y/2, -this.size.z/2) 
-        for(let x = 0; x < this.size.x; x++){
-            for(let y = 0; y < this.size.y; y++){
-                for(let z = 0; z < this.size.z; z++){
-                    const currentVoxelCoords = new Vector3(x,y,z);
-                    const currentVoxelNonEmpty = this.getVoxel(currentVoxelCoords) != null;
-                    const currentVoxelHighlighted = this.highlightedVoxel != null && this.highlightedVoxel.equals(currentVoxelCoords);
-                    if(currentVoxelNonEmpty){
-                        
-                        const voxelStart = new Vector3( (objectStart.x +x)*this.baseVoxelSize , (objectStart.y+y)*this.baseVoxelSize, (objectStart.z+z)*this.baseVoxelSize);
-                        const getThisVoxelColor = (v: Vector3)=>{
-                            if(currentVoxelHighlighted){
-                                return this.highlightedVoxelColor;
-                            }else{
-                                return this.getVoxel(v)!.color;
-                            }
-                        }
-                        const voxelColor = getThisVoxelColor(currentVoxelCoords);
-                        const voxelVertices : Map<string, Vector3> = new Map();
-                        
-                        voxelVertices.set("A" , voxelStart.addVector(new Vector3(0,0,this.baseVoxelSize)));
-                        voxelVertices.set( "B" , voxelStart.addVector(new Vector3(this.baseVoxelSize,0,this.baseVoxelSize)));
-                        voxelVertices.set( "C" , voxelStart.addVector(new Vector3(this.baseVoxelSize,this.baseVoxelSize,this.baseVoxelSize)));
-                        voxelVertices.set( "D" , voxelStart.addVector(new Vector3(0,this.baseVoxelSize,this.baseVoxelSize)));
-                        voxelVertices.set( "E" , voxelStart.addVector(new Vector3(0,0,0)));
-                        voxelVertices.set( "F" , voxelStart.addVector(new Vector3(this.baseVoxelSize,0,0)));
-                        voxelVertices.set( "G" , voxelStart.addVector(new Vector3(this.baseVoxelSize,this.baseVoxelSize,0)));
-                        voxelVertices.set( "H" , voxelStart.addVector(new Vector3(0,this.baseVoxelSize,0)));
-                        
-                        //front culling
-                        if(!this.getVoxel(new Vector3(x,y,z+1))){
-                            const currentVoxelId : number = out.vertices.length 
-                            out.vertices.push({
-                                position: voxelVertices.get("A")!,
-                                quadUV: new Vector2(0,0), 
-                                color: voxelColor,
-                            })
-                            out.vertices.push({
-                                position: voxelVertices.get("B")!,
-                                quadUV: new Vector2(1,0), 
-                                color: voxelColor,
-                            })
-                            out.vertices.push({
-                                position: voxelVertices.get("C")!,
-                                quadUV: new Vector2(1,1), 
-                                color: voxelColor,
-                            })
-                            out.vertices.push({
-                                position: voxelVertices.get("D")!,
-                                quadUV: new Vector2(0,1), 
-                                color: voxelColor,
-                            })
-                            out.trianglesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId);
-                            out.linesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId, currentVoxelId+2, currentVoxelId+3,currentVoxelId+3, currentVoxelId );
-                            out.quadsIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId+3, currentVoxelId);
-                        }
-                        //back culling
-                        if(!this.getVoxel(new Vector3(x,y,z-1))){
-                            const currentVoxelId : number = out.vertices.length
-                                                            out.vertices.push({
-                                position: voxelVertices.get("F")!,
-                                quadUV: new Vector2(0,0), 
-                                color: voxelColor,
-                            })
-                            out.vertices.push({
-                                position: voxelVertices.get("E")!,
-                                quadUV: new Vector2(1,0), 
-                                color: voxelColor,
-                            })
-                            out.vertices.push({
-                                position: voxelVertices.get("H")!,
-                                quadUV: new Vector2(1,1), 
-                                color: voxelColor,
-                            })
-                            out.vertices.push({
-                                position: voxelVertices.get("G")!,
-                                quadUV: new Vector2(0,1), 
-                                color: voxelColor,
-                            })
-                            out.trianglesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId);
-                                                            out.linesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId, currentVoxelId+2, currentVoxelId+3,currentVoxelId+3, currentVoxelId );
-                            out.quadsIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId+3, currentVoxelId);
-                        }
-                        //top culling
-                        if(!this.getVoxel(new Vector3(x,y-1,z))){
-                            const currentVoxelId : number = out.vertices.length
-                            out.vertices.push({
-                                position: voxelVertices.get("E")!,
-                                quadUV: new Vector2(0,0), 
-                                color: voxelColor,
-                            })
-                            out.vertices.push({
-                                position: voxelVertices.get("F")!,
-                                quadUV: new Vector2(1,0), 
-                                color: voxelColor,
-                            })
-                            out.vertices.push({
-                                position: voxelVertices.get("B")!,
-                                quadUV: new Vector2(1,1), 
-                                color: voxelColor,
-                            })
-                            out.vertices.push({
-                                position: voxelVertices.get("A")!,
-                                quadUV: new Vector2(0,1), 
-                                color: voxelColor,
-                            })
-                            out.trianglesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId);
-                                                            out.linesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId, currentVoxelId+2, currentVoxelId+3,currentVoxelId+3, currentVoxelId );
-                            out.quadsIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId+3, currentVoxelId);
-                        }
-                        //bottom culling
-                        if(!this.getVoxel(new Vector3(x,y+1,z))){
-                            const currentVoxelId : number = out.vertices.length
-                            out.vertices.push({
-                                position: voxelVertices.get("D")!,
-                                quadUV: new Vector2(0,0), 
-                                color: voxelColor,
-                            })
-                            out.vertices.push({
-                                position: voxelVertices.get("C")!,
-                                quadUV: new Vector2(1,0), 
-                                color: voxelColor,
-                            })
-                            out.vertices.push({
-                                position: voxelVertices.get("G")!,
-                                quadUV: new Vector2(1,1), 
-                                color: voxelColor,
-                            })
-                            out.vertices.push({
-                                position: voxelVertices.get("H")!,
-                                quadUV: new Vector2(0,1), 
-                                color: voxelColor,
-                            })
-                            out.trianglesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId);
-                            out.linesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId, currentVoxelId+2, currentVoxelId+3,currentVoxelId+3, currentVoxelId );
-                            out.quadsIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId+3, currentVoxelId);
-                        }
-                        //left culling
-                        if(!this.getVoxel(new Vector3(x-1,y,z))){
-                            const currentVoxelId : number = out.vertices.length
-                            out.vertices.push({
-                                position: voxelVertices.get("E")!,
-                                quadUV: new Vector2(0,0), 
-                                color: voxelColor,
-                            })
-                            out.vertices.push({
-                                position: voxelVertices.get("A")!,
-                                quadUV: new Vector2(1,0), 
-                                color: voxelColor,
-                            })
-                            out.vertices.push({
-                                position: voxelVertices.get("D")!,
-                                quadUV: new Vector2(1,1), 
-                                color: voxelColor,
-                            })
-                            out.vertices.push({
-                                position: voxelVertices.get("H")!,
-                                quadUV: new Vector2(0,1), 
-                                color: voxelColor,
-                            })
-                            out.trianglesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId);
-                            out.linesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId, currentVoxelId+2, currentVoxelId+3,currentVoxelId+3, currentVoxelId );
-                            out.quadsIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId+3, currentVoxelId);
-                        }
-                        //right culling
-                        if(!this.getVoxel(new Vector3(x+1,y,z))){
-                            const currentVoxelId : number = out.vertices.length
-                            out.vertices.push({
-                                position: voxelVertices.get("B")!,
-                                quadUV: new Vector2(0,0), 
-                                color: voxelColor,
-                            })
-                            out.vertices.push({
-                                position: voxelVertices.get("F")!,
-                                quadUV: new Vector2(1,0), 
-                                color: voxelColor,
-                            })
-                            out.vertices.push({
-                                position: voxelVertices.get("G")!,
-                                quadUV: new Vector2(1,1), 
-                                color: voxelColor,
-                            })
-                            out.vertices.push({
-                                position: voxelVertices.get("C")!,
-                                quadUV: new Vector2(0,1), 
-                                color: voxelColor,
-                            })
-                            out.trianglesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId);
-                            out.linesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId, currentVoxelId+2, currentVoxelId+3,currentVoxelId+3, currentVoxelId );
-                            out.quadsIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId+3, currentVoxelId);
-                        }                                                       
-                    }
-                }
-            }
-        }
-        this.mesh = out;
+    #shouldRebuildBorderGrid(): boolean{
+        return this.borderGrid.mesh == null
     }
 
-    getBorderGrid(): RenderableObject {
-        if(this.borderGrid){
-            return this.borderGrid;
-        }
-        
-        const out: RenderableObject = new RenderableObject();
-        const objectStart: Vector3 = new Vector3(
-            -(this.size.x * this.baseVoxelSize) / 2,
-            -(this.size.y * this.baseVoxelSize) / 2,
-            -(this.size.z * this.baseVoxelSize) / 2
-        );
+    #setBorderGridToRebuild(){
+        this.borderGrid.mesh = null;
+    }
 
-        const color = new Vector4(40, 40, 40, 255);
-        const step = this.baseVoxelSize;
-
-        const addQuad = (A: Vector3, B: Vector3, C: Vector3, D: Vector3) => {
-            const currentVoxelId = out.vertices.length;
-            out.vertices.push(
-                { position: A, quadUV: new Vector2(0,0), color },
-                { position: B, quadUV: new Vector2(1,0), color },
-                { position: C, quadUV: new Vector2(1,1), color },
-                { position: D, quadUV: new Vector2(0,1), color }
-            );
-            out.trianglesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId);
-            out.linesIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId, currentVoxelId+2, currentVoxelId+3, currentVoxelId+3, currentVoxelId);
-            out.quadsIndices.push(currentVoxelId, currentVoxelId+1, currentVoxelId+1, currentVoxelId+2, currentVoxelId+2, currentVoxelId+3, currentVoxelId+3, currentVoxelId);
-        };
-
-        const v = (x: number, y: number, z: number) =>
-            objectStart.addVector(new Vector3(x * step, y * step, z * step));
-
-        for (let x = 0; x < this.size.x; x++) {
-            for (let y = 0; y < this.size.y; y++) {
-                addQuad(
-                    v(x, y, this.size.z),
-                    v(x+1, y, this.size.z),
-                    v(x+1, y+1, this.size.z),
-                    v(x, y+1, this.size.z)
-                );
-            }
-        }
-
-        for (let x = 0; x < this.size.x; x++) {
-            for (let y = 0; y < this.size.y; y++) {
-                addQuad(
-                    v(x+1, y, 0),
-                    v(x, y, 0),
-                    v(x, y+1, 0),
-                    v(x+1, y+1, 0)
-                );
-            }
-        }
-
-        for (let x = 0; x < this.size.x; x++) {
-            for (let z = 0; z < this.size.z; z++) {
-                addQuad(
-                    v(x, 0, z),
-                    v(x+1, 0, z),
-                    v(x+1, 0, z+1),
-                    v(x, 0, z+1)
-                );
-            }
-        }
-
-        for (let x = 0; x < this.size.x; x++) {
-            for (let z = 0; z < this.size.z; z++) {
-                addQuad(
-                    v(x, this.size.y, z+1),
-                    v(x+1, this.size.y, z+1),
-                    v(x+1, this.size.y, z),
-                    v(x, this.size.y, z)
-                );
-            }
-        }
-
-        for (let y = 0; y < this.size.y; y++) {
-            for (let z = 0; z < this.size.z; z++) {
-                addQuad(
-                    v(0, y, z),
-                    v(0, y, z+1),
-                    v(0, y+1, z+1),
-                    v(0, y+1, z)
-                );
-            }
-        }
-
-        for (let y = 0; y < this.size.y; y++) {
-            for (let z = 0; z < this.size.z; z++) {
-                addQuad(
-                    v(this.size.x, y, z+1),
-                    v(this.size.x, y, z),
-                    v(this.size.x, y+1, z),
-                    v(this.size.x, y+1, z+1)
-                );
-            }
-        }
-
-        this.borderGrid = out;
-        return out;
+    #rebuildBorderGrid(): void{
+        this.borderGrid.mesh=getVoxelObjectBorderGridMesh(this);
     }
 
     //receives point in this object model space
     //returns id of possible vexel in this object
     //whether any voxel exists under this id is unkown
     //assumes that (0,0,0) is in the middle of the object
-    pointCoordinatesToVexelId(v: Vector3) : Vector3{
-        
+    pointCoordinatesToVoxelId(v: Vector3) : Vector3{
         const xCord :number = Math.floor(v.x/this.baseVoxelSize)+this.size.x/2;
-        /*const yCord :number = this.size.y - Math.floor(v.x/this.baseVoxelSize)-this.size.y/2 - 1;*/
         const yCord :number = Math.floor(v.y/this.baseVoxelSize)+this.size.y/2;
         const zCord :number = Math.floor(v.z/this.baseVoxelSize)+this.size.z/2;
-        const result = new Vector3(xCord, yCord, zCord);
-
-        //console.log(`[pointCoordinatesToVexelId] chunkSize:${this.size} Conversion: ${v.toString()} => ${result.toString()}`)
-        
+        const result = new Vector3(xCord, yCord, zCord);        
         return result;
     }
 
@@ -819,7 +209,7 @@ export class VoxelObject{
     setVoxel(pos: Vector3, newVoxel: Voxel){
         try{
             this.voxels[pos.x][pos.y][pos.z] = newVoxel;
-            this.mesh = null;
+            this.#setRenderableObjectToRebuild();
             return true;
         }catch(e: any){
             return false;
@@ -829,31 +219,10 @@ export class VoxelObject{
     removeVoxel(pos: Vector3){
         try{
             this.voxels[pos.x][pos.y][pos.z] = null;
-            this.mesh = null;
+            this.#setRenderableObjectToRebuild();
             return true;
         }catch(e: any){
             return false;
-        }
-    }
-
-    highlightVoxel(pos: Vector3): boolean{
-        if(this.highlightedVoxel != null && this.highlightedVoxel.equals(pos)) {
-            return false;
-        }
-
-        if(this.isVoxelNonEmpty(pos)){
-            this.highlightedVoxel = pos.copy();
-            this.voxelsModified = true;
-            return true;
-        }else{
-            return false;
-        }
-    }
-
-    clearHighlight(){
-        if(this.highlightedVoxel == null){
-            this.highlightedVoxel = null;
-            this.voxelsModified = true;
         }
     }
 
@@ -863,7 +232,7 @@ export class VoxelObject{
         const clearedVoxels = this.selectedVoxels.size;
         if(clearedVoxels>0){
             this.selectedVoxels.clear();
-            this.selectedAreaModified = true;
+            this.#setSelectedAreaToRebuild();
         }
         return clearedVoxels;
     }
@@ -880,7 +249,7 @@ export class VoxelObject{
             }
             this.resetSelect();
             this.selectedVoxels.add(v.toString());
-            this.selectedAreaModified = true;
+            this.#setSelectedAreaToRebuild();
             return true;
             
         }else{
@@ -900,7 +269,7 @@ export class VoxelObject{
         this.resetSelect();
         this.#selectFaceRecursion(v, dir, emptyVoxels);
         //this.voxelsModified = true;
-        this.selectedAreaModified = true;
+        this.#setSelectedAreaToRebuild();
         //console.log(`[selectFace] voxels of given face: ${dir} | length: ${this.selectedVoxels.size}`)
         /*
         this.selectedVoxels.forEach((v)=>{
@@ -993,7 +362,7 @@ export class VoxelObject{
     selectCube(vStart: Vector3, vEnd: Vector3): boolean{
         if(!this.voxelExists(vStart)) return false;
         this.resetSelect();
-        this.selectedAreaModified = true;
+        this.#setSelectedAreaToRebuild();
         const clampedEnd = new Vector3(clamp({value: vEnd.x, min: 0 ,max: this.size.x-1 }), 
                                 clamp({value: vEnd.y, min: 0 ,max: this.size.y-1 }),
                                 clamp({value: vEnd.z, min: 0 ,max: this.size.z-1}));
@@ -1038,7 +407,9 @@ export class VoxelObject{
             }
         }
 
-        if(selectedVoxelsNumber>0) this.selectedAreaModified = true;
+        if(selectedVoxelsNumber>0) {
+            this.#setSelectedAreaToRebuild();
+        }
         return selectedVoxelsNumber;
     }
 
@@ -1055,7 +426,7 @@ export class VoxelObject{
             }
         }
 
-        if(selectedVoxelsNumber>0) this.selectedAreaModified = true;
+        if(selectedVoxelsNumber>0) this.#setSelectedAreaToRebuild();
         return selectedVoxelsNumber;
     }
 
@@ -1076,7 +447,9 @@ export class VoxelObject{
             }
         }
 
-        if(selectedVoxelsNumber>0) this.selectedAreaModified = true;
+        if(selectedVoxelsNumber>0) {
+            this.#setSelectedAreaToRebuild();
+        }
         return selectedVoxelsNumber;
     }
 
@@ -1129,7 +502,7 @@ export class VoxelObject{
     rotateSelectedVoxelsByX(): number{
         let modifiedVoxels = 0;
         const maxY = this.size.y-1;
-        const rotatedObject = new VoxelObject(this.size);
+        const rotatedObject = new VoxelObject(this.id, this.size);
         this.selectedVoxels.forEach(v=>{
             const voxelPosititon = Vector3.fromString(v);
             const voxel: Voxel | null = this.getVoxel(voxelPosititon);
@@ -1142,14 +515,14 @@ export class VoxelObject{
             modifiedVoxels++;
         });
         this.voxels = rotatedObject.voxels;
-        this.mesh = null;
+        this.#setRenderableObjectToRebuild();
         return modifiedVoxels;
     }
 
     rotateSelectedVoxelsByY(): number{
         let modifiedVoxels = 0;
         const maxZ = this.size.z-1;
-        const rotatedObject = new VoxelObject(this.size);
+        const rotatedObject = new VoxelObject(this.id, this.size);
         this.selectedVoxels.forEach(v=>{
             const voxelPosititon = Vector3.fromString(v);
             const voxel: Voxel | null = this.getVoxel(voxelPosititon);
@@ -1162,14 +535,14 @@ export class VoxelObject{
             modifiedVoxels++;
         });
         this.voxels = rotatedObject.voxels;
-        this.mesh = null;
+        this.#setRenderableObjectToRebuild();
         return modifiedVoxels;  
     }
 
     rotateSelectedVoxelsByZ(): number{
         let modifiedVoxels = 0;
         const maxX = this.size.x-1;
-        const rotatedObject = new VoxelObject(this.size);
+        const rotatedObject = new VoxelObject(this.id, this.size);
         this.selectedVoxels.forEach(v=>{
             const voxelPosititon = Vector3.fromString(v);
             const voxel: Voxel | null = this.getVoxel(voxelPosititon);
@@ -1182,7 +555,7 @@ export class VoxelObject{
             modifiedVoxels++;
         });
         this.voxels = rotatedObject.voxels;
-        this.mesh = null;
+        this.#setRenderableObjectToRebuild();
         return modifiedVoxels;
     }
 
@@ -1202,9 +575,8 @@ export class VoxelObject{
                 }   
             }   
         }
-        this.mesh = null;
+        this.#setRenderableObjectToRebuild();
         return modifiedVoxels;
-
     }
 
     flipSelectedVoxelsByY(): number{
@@ -1223,7 +595,7 @@ export class VoxelObject{
                 }   
             }   
         }
-        this.mesh = null;
+        this.#setRenderableObjectToRebuild();
         return modifiedVoxels;
     }
 
@@ -1243,7 +615,7 @@ export class VoxelObject{
                 }   
             }   
         }
-        this.mesh = null;
+        this.#setRenderableObjectToRebuild();
         return modifiedVoxels;
     }
 
@@ -1271,13 +643,16 @@ export class VoxelObject{
                 modifiedVoxels++;
             }
         });
+        if(modifiedVoxels>0){
+            this.#setRenderableObjectToRebuild();
+        }
         return modifiedVoxels;
     }
 
     //receives point in this object model space
     //return copy of voxel in those coordinates or null if there's none
     getVoxelFromModelSpacePoint(v: Vector3) : Voxel | null{
-        return this.getVoxel(this.pointCoordinatesToVexelId(v));
+        return this.getVoxel(this.pointCoordinatesToVoxelId(v));
     }
 
     //changes size of voxel object, according to argument newSize, 
@@ -1312,33 +687,30 @@ export class VoxelObject{
                 if(v.x < clampedNewSize.x && v.y < clampedNewSize.y && v.z < clampedNewSize.z){
                     newSelectedVoxels.add(vStr);
                 }else{
-                    this.selectedAreaModified = true;
+                    this.#setSelectedAreaToRebuild();
                 }
             })
 
             this.size = clampedNewSize;
             this.voxels = newVoxels;
             this.selectedVoxels = newSelectedVoxels;
-            //this.voxelsModified = true;
-            this.rebuildMesh();
-            this.borderGrid = null;
-            this.borderWire = null;
+
+            this.#setRenderableObjectToRebuild();
+            this.#setBorderGridToRebuild();
+            this.#setBorderWireToRebuild();
         }
         return this.size;
     }
 
     copy() : VoxelObject{
-        const out: VoxelObject = new VoxelObject(this.size);
+        const out: VoxelObject = new VoxelObject(this.id, this.size);
         out.voxels = this.voxels.map(layer =>
             layer.map(row =>
                 row.map(voxel => voxel ? { ...voxel } : null)
             )
         );
         out.baseVoxelSize = this.baseVoxelSize;
-        out.mesh = this.mesh;
-        //out.voxelsModified = this.voxelsModified;
-        //out.mesh = null
-
+        out.#renderableObject = this.#renderableObject;
         out.selectedVoxels = this.selectedVoxels;
         out.highlightedVoxel = this.highlightedVoxel;
         out.selectedVoxelColor = this.selectedVoxelColor;

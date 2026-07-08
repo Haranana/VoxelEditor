@@ -3,7 +3,7 @@ import "../src/Editor.css";
 import EditorCanvas from "./editorWidgets/EditorCanvas";
 import { type ObjectProperties } from "./RenderableObjectTypes";
 import { Vector3 } from "./math/vector3.type";
-import type { Camera } from "./classes/camera";
+import { Camera } from "./classes/camera";
 import CameraPropertiesWidget from "./editorWidgets/CameraPropertiesWidget";
 import { VoxelObject } from "./classes/voxelObject";
 import { getBasicSampleVoxelObject } from "./sampleObjects";
@@ -13,7 +13,7 @@ import ResizableContainer, {
 import { ActionButtonsPanel, type ActionButtonData } from "./editorWidgets/ActionButtonsPanel";
 import { EditToolsWidget } from "./editorWidgets/EditToolsWidget";
 import { SelectToolsWidget } from "./editorWidgets/SelectToolsWidget";
-import { Scene } from "./classes/scene";
+import { Scene, type RenderGizmosOptions, type RenderSceneOptions } from "./classes/scene";
 import { Renderer } from "./classes/renderer";
 import { ControllerContext } from "./ControllerContext";
 import ScenePropertiesWidget from "./editorWidgets/ScenePropertiesWidget";
@@ -37,11 +37,26 @@ export type EditMode =
 | "None"
 
 export default function EditorPage() {
+
   const controller = useContext(ControllerContext)!;
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const currentSelectionTypeRef = useRef<SelectMode>("Voxel");
   const currentEditTypeRef = useRef<EditMode>("Add");
+  const sceneRef = useRef<Scene>(new Scene());
+  const renderSceneOptionsRef = useRef<RenderSceneOptions>({
+    borderWire: true,
+    borderGrid: true,
+    voxelObjectsGrid: true,
+  });
+  const renderGizmosOptionsRef = useRef<RenderGizmosOptions>({
+    cameraControllGizmo: false,
+    objectMoveGizmo: false,
+    objectResizeGizmo: false,
+    objectRotateGizmo: false,
+  });
+  const rendererRef = useRef<Renderer>(new Renderer());
 
-  //states for updating widgets when controller changes some data
+  //states for updating widgets when controller changes data
   const [cameraPropertiesVersion, setCameraPropertiesVersion] = useState<number>(0);
   function onCameraUpdated(){
     setCameraPropertiesVersion(prev=>prev+1);
@@ -63,40 +78,31 @@ export default function EditorPage() {
       scale: new Vector3(1, 1, 1),
       rotation: new Vector3(0, 0, 0),
     });
+  
+  //init starting scene
+  useEffect(()=>{
+    const obj: VoxelObject = getBasicSampleVoxelObject("object") 
+    sceneRef.current.addObject(obj);
 
-  const selectedObjectRef = useRef<VoxelObject>(
-    getBasicSampleVoxelObject()
-  );
-  const selectedCameraRef = useRef<Camera>({
-    fovY: 90,
-    near: 0.1,
-    far: 5000,
-    transform: {
+    const camera: Camera = new Camera("Main camera", new Vector3(0,0,-1000), 1000);
+    camera.fovY = 90;
+    camera.near = 0.1;
+    camera.far = 5000,
+    camera.transform = {
       translation: new Vector3(0, 0, 0),
       scale: new Vector3(1, 1, 1),
       rotation: new Vector3(0, 0, 0),
     },
-    projectionType: "perspective",
-    distance: 1000,
-    target: new Vector3(0,0,-1000),
-    pitch: 0,
-    yaw: 0,
-  });
-  /*
-  const [renderOptions, _] = useState<RenderOptions>({
-    voxels: true,
-    objectGrid: true,
-    borderWire: true,
-    borderGrid: true,
-  });*/
+    camera.projectionType = "perspective",
+    camera.pitch = 0.0;
+    camera.yaw = 0.0;
+    sceneRef.current.addObject(camera);
+  },[])
 
-  const sceneRef = useRef<Scene>(new Scene(selectedObjectRef.current, selectedCameraRef.current));
-  const rendererRef = useRef<Renderer>(new Renderer());
-  
   useEffect(()=>{
-    if(selectedCameraRef.current==null) return;
+    if(!sceneRef.current.getActiveCamera()) return;
     
-    controller.init(selectedCameraRef.current, currentSelectionTypeRef, currentEditTypeRef, sceneRef.current, rerenderScene);
+    controller.init(currentSelectionTypeRef, currentEditTypeRef, sceneRef.current, rerenderScene);
     controller.onCameraModified = onCameraUpdated;
   },[]);
   
@@ -315,7 +321,7 @@ export default function EditorPage() {
   ]);
 
   const onRenderAndSceneInit = () => {
-    if(!sceneRef.current.initialized || !rendererRef.current.initialized) return;
+    if(!rendererRef.current.initialized) return;
     rerenderScene();
   }
 
@@ -324,39 +330,24 @@ export default function EditorPage() {
   const rerenderScene = useCallback(() => {
   if (
     rerenderOrderedRef.current ||
-    !sceneRef.current.initialized ||
     !rendererRef.current.initialized
   ) return;
 
   rerenderOrderedRef.current = true;
   
   requestAnimationFrame(() => {
-    rendererRef.current.renderScene(sceneRef.current);
+    rendererRef.current.renderScene(sceneRef.current, renderGizmosOptionsRef.current, renderSceneOptionsRef.current);
     rerenderOrderedRef.current = false;
   });
 }, []);
-
-
-  /*
-  const [isTransformObjectPropertiesOpen, setIsTransformObjectPropertiesOpen] = useState<boolean>(false);
-  const objectPropertiesWidget = <ObjectPropertiesWidget
-    objectProperties={selectedObjectProperties}
-    onPropertiesChange={setSelectedObjectProperties}
-    voxelObject={selectedObject}
-    setVoxelObject={setSelectedObject}
-    isOpen={isTransformObjectPropertiesOpen}
-    onOpenChange={setIsTransformObjectPropertiesOpen}
-  />*/
   
   const [isCameraPropertiesWidgetOpen, setIsCameraPropertiesWidgetOpen] = useState<boolean>(false);
   const cameraPropertiesWidget : React.ReactNode = <CameraPropertiesWidget
-    camera={selectedCameraRef.current}
+    camera={sceneRef.current.getActiveCamera()}
     isOpen={isCameraPropertiesWidgetOpen}
     onOpenChange={setIsCameraPropertiesWidgetOpen}
     cameraVersion={cameraPropertiesVersion}
   />
-
-  //const [currentSelectionType , setCurrentSelectionType] = useState<SelectMode>("Voxel");
   
   const [isSelectToolsWidgetOpen, setIsSelectToolsWidgetOpen] = useState<boolean>(false);
   const selectToolsButton : ActionButtonData[] = [
@@ -448,19 +439,19 @@ export default function EditorPage() {
     {
       id: "ObjectGrid",
       label: "object grid",
-      onClick: () => {controller.toggleSceneObjectGrid(); onScenePropertiesUpdated()},
+      onClick: () => {controller.toggleSceneObjectGrid(renderSceneOptionsRef.current); onScenePropertiesUpdated()},
     },
     {
       id: "borderGrid",
       label: "border grid",
-      onClick: () => {controller.toggleSceneBorderGrid(); onScenePropertiesUpdated()},
+      onClick: () => {controller.toggleSceneBorderGrid(renderSceneOptionsRef.current); onScenePropertiesUpdated()},
     },
     {
       id: "borderWire",
       label: "border wire",
       onClick: () => {
         console.log("A");
-        controller.toggleSceneBorderWire(); 
+        controller.toggleSceneBorderWire(renderSceneOptionsRef.current); 
         onScenePropertiesUpdated()
       },
     },
@@ -500,86 +491,90 @@ export default function EditorPage() {
     <div className="EditorPage">
       <div className="EditorNav"></div>
       <div className="EditorBody">
-        <div className="EditorBodyHorizontal" ref={bodyHorizontalRef}>
-          <div className="EditorBodyLeft">
-            <ResizableContainer
-              children={
-                null
-              }
-              width={leftPanelWidth}
-              height={null}
-              onWidthChange={onLeftPanelWidthChange}
-              onHeightChange={null}
-              hasRightHandle={true}
-              hasLeftHandle={false}
-              hasBottomHandle={false}
-              hasTopHandle={false}
-            />
-          </div>
-
-          <div className="EditorBodyVertical" ref={bodyVerticalRef}>
-            <div className="EditorBodyTop">
+        <ControllerContext value={controller}>
+          <div className="EditorBodyHorizontal" ref={bodyHorizontalRef}>
+            <div className="EditorBodyLeft">
               <ResizableContainer
-                children={<p></p>}
-                width={null}
-                height={topPanelHeight}
-                onWidthChange={null}
-                onHeightChange={onTopPanelHeightChange}
-                hasRightHandle={false}
+                children={
+                  null
+                }
+                width={leftPanelWidth}
+                height={null}
+                onWidthChange={onLeftPanelWidthChange}
+                onHeightChange={null}
+                hasRightHandle={true}
                 hasLeftHandle={false}
-                hasBottomHandle={true}
+                hasBottomHandle={false}
                 hasTopHandle={false}
               />
             </div>
 
-            <div className="EditorBodyCenter">
-              <EditorCanvas
-              renderer={rendererRef.current}
-              scene={sceneRef.current}
-              renderScene = {rerenderScene}
-              onRenderAndSceneInit={onRenderAndSceneInit}
-              objectProperties={selectedObjectPropertiesRef.current}
-              />
-            </div>
-
-            <div className="EditorBodyBottom">
-              <ResizableContainer
-                children={<p></p>}
-                width={null}
-                height={bottomPanelHeight}
-                onWidthChange={null}
-                onHeightChange={onBottomPanelHeightChange}
-                hasRightHandle={false}
-                hasLeftHandle={false}
-                hasBottomHandle={false}
-                hasTopHandle={true}
-              />
-            </div>
-          </div>
-
-          <div className="EditorBodyRight">
-            <ResizableContainer
-              width={rightPanelWidth}
-              height={null}
-              onWidthChange={onRightPanelWidthChange}
-              onHeightChange={null}
-              hasRightHandle={false}
-              hasLeftHandle={true}
-              hasBottomHandle={false}
-              hasTopHandle={false}
-            >
-              <div className="ResizableContainerChildWrapper">
-              {/*{objectPropertiesWidget}*/}
-              {cameraPropertiesWidget}
-              {selectToolsWidget}
-              {editToolsWidget}
-              {scenePropertiesWidget}
-              {colorPaletteWidget}
-              {editVoxelObjectWidget}
+            <div className="EditorBodyVertical" ref={bodyVerticalRef}>
+              <div className="EditorBodyTop">
+                <ResizableContainer
+                  children={<p></p>}
+                  width={null}
+                  height={topPanelHeight}
+                  onWidthChange={null}
+                  onHeightChange={onTopPanelHeightChange}
+                  hasRightHandle={false}
+                  hasLeftHandle={false}
+                  hasBottomHandle={true}
+                  hasTopHandle={false}
+                />
               </div>
-            </ResizableContainer>
+
+              <div className="EditorBodyCenter">
+                <EditorCanvas
+                renderer={rendererRef.current}
+                scene={sceneRef.current}
+                renderScene = {rerenderScene}
+                onRenderAndSceneInit={onRenderAndSceneInit}
+                objectProperties={selectedObjectPropertiesRef.current}
+                canvasRef={canvasRef}
+                />
+              </div>
+
+              <div className="EditorBodyBottom">
+                <ResizableContainer
+                  children={<p></p>}
+                  width={null}
+                  height={bottomPanelHeight}
+                  onWidthChange={null}
+                  onHeightChange={onBottomPanelHeightChange}
+                  hasRightHandle={false}
+                  hasLeftHandle={false}
+                  hasBottomHandle={false}
+                  hasTopHandle={true}
+                />
+              </div>
+            </div>
+
+            <div className="EditorBodyRight">
+              <ResizableContainer
+                width={rightPanelWidth}
+                height={null}
+                onWidthChange={onRightPanelWidthChange}
+                onHeightChange={null}
+                hasRightHandle={false}
+                hasLeftHandle={true}
+                hasBottomHandle={false}
+                hasTopHandle={false}
+              >
+                <div className="ResizableContainerChildWrapper">
+                {/*{objectPropertiesWidget}*/}
+                {cameraPropertiesWidget}
+                {selectToolsWidget}
+                {editToolsWidget}
+                {scenePropertiesWidget}
+                {colorPaletteWidget}
+                {editVoxelObjectWidget}
+                </div>
+              </ResizableContainer>
+            </div>
+            
           </div>
-        </div>
+        </ControllerContext>          
       </div>
     </div>
   );

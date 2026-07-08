@@ -42,11 +42,6 @@ export function getVoxelFromObject(_: Camera,
     
     const mvpInversion = ndcProjectionMatrix.multMatrix(cameraViewMatrix).multMatrix(objectTransformMatrix).getInversion();
     const EPS = 1e-6;
-    /*
-    const cameraPositionMs = new Vector3(
-    ...objectTransformMatrix.getInversion().multVector(
-        new Vector4(...camera.transform.translation.toArray4())
-    ).toArray3());*/
 
     const xNdc = (2 * pointSs.x) / canvasSize.x - 1;
     const yNdc = 1 - (2 * pointSs.y) / canvasSize.y;
@@ -71,7 +66,7 @@ export function getVoxelFromObject(_: Camera,
     
     let currentRayT: number = 0;
     if(obj.getVoxelFromModelSpacePoint(ray.get(currentRayT))){
-        return {voxelCoords: obj.pointCoordinatesToVexelId(ray.get(currentRayT)) , hitDirection: "PosX"};
+        return {voxelCoords: obj.pointCoordinatesToVoxelId(ray.get(currentRayT)) , hitDirection: "PosX"};
     }
 
     const xSign : number = ray.direction.x == 0? 0 : ray.direction.x < 0? -1 : 1;
@@ -81,8 +76,6 @@ export function getVoxelFromObject(_: Camera,
     const sign : Vector3 = new Vector3(
         xSign, ySign, zSign
     );
-
-
 
     //returns values of the first x,y,z of the next cell
     //assumes that voxelSize > 1 distance unit
@@ -200,7 +193,7 @@ export function getVoxelFromObject(_: Camera,
         currentRayT += (nextVoxelBoundary.minDelta + EPS);
 
         const rayValue = ray.get(currentRayT)
-        const voxelId = obj.pointCoordinatesToVexelId(rayValue);
+        const voxelId = obj.pointCoordinatesToVoxelId(rayValue);
         if(obj.voxelExists(voxelId) && obj.isVoxelNonEmpty(voxelId)){ //is in bb and hit non-empty voxel
             
             let result : {voxelCoords: Vector3, hitDirection: FaceDirection} | null = {voxelCoords: voxelId, hitDirection: nextVoxelBoundary.dir};

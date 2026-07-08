@@ -1,12 +1,12 @@
-import { RenderableObject } from "./classes/renderableObject";
+import { RenderableObject, RenderTechniqueType } from "./classes/renderableObject";
 import { VoxelObject } from "./classes/voxelObject";
 import { Vector3 } from "./math/vector3.type";
 import { Vector4 } from "./math/vector4.type";
 
 export const defaultColor: Vector4 = new Vector4(101, 204, 224,255);
 export const debugPaintColor: Vector4 = new Vector4(190,90,90,255); 
-export function getBasicSampleVoxelObject(){
-    const out: VoxelObject = new VoxelObject(new Vector3(16,16,16));
+export function getBasicSampleVoxelObject(id: string){
+    const out: VoxelObject = new VoxelObject(id, new Vector3(16,16,16));
     out.baseVoxelSize = 40;
 
     for(let x = 0; x < 16; x++){
@@ -25,6 +25,7 @@ export function getBasicSampleVoxelObject(){
 
 export function getCameraControllsGizmo(): RenderableObject{
     const out: RenderableObject = new RenderableObject();
+    /*
     const axisHeadSideLength = 5;
     const axisLineWidth = 2;
     const axisLineLength = 40
@@ -211,7 +212,7 @@ export function getCameraControllsGizmo(): RenderableObject{
         vertices.get("zPosHeadG")!,
         vertices.get("zPosHeadH")!,
         zAxisColor
-    );
-
+    );*/
+    out.material = {renderTechnique: RenderTechniqueType.GIZMO}
     return out;
 }

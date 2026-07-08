@@ -1,4 +1,4 @@
-import {  useContext, useEffect, useRef } from "react";
+import {  useContext, useEffect, useRef, type RefObject } from "react";
 import type { ObjectProperties } from "../RenderableObjectTypes";
 import { Vector2 } from "../math/vector2.type";
 import type { Renderer } from "../classes/renderer";
@@ -11,11 +11,11 @@ export type EditorCanvasProps = {
     onRenderAndSceneInit: ()=>void,
     renderScene: ()=>void,
     objectProperties: ObjectProperties;
+    canvasRef: RefObject<HTMLCanvasElement | null>;
 }
 
 export default function EditorCanvas(props: EditorCanvasProps) {
-    const controller = useContext(ControllerContext)!;
-    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const controller = useContext(ControllerContext);
 
     function getMousePos(canvas: HTMLCanvasElement, evt: React.MouseEvent<HTMLCanvasElement, MouseEvent>) {
     var rect = canvas.getBoundingClientRect();
@@ -26,45 +26,46 @@ export default function EditorCanvas(props: EditorCanvasProps) {
     }
     
     function handlePointerDown(e: React.PointerEvent<HTMLCanvasElement>){
-        if(!canvasRef.current) return; 
-        const clickPos = new Vector2(getMousePos(canvasRef.current, e).x , getMousePos(canvasRef.current, e).y);
-
+        if(!props.canvasRef.current || !controller) return; 
+        const clickPos = new Vector2(getMousePos(props.canvasRef.current, e).x , getMousePos(props.canvasRef.current, e).y);
+        const canvasSize = new Vector2(props.canvasRef.current.width, props.canvasRef.current.height);
+        
         if(e.button === 0){
-            controller.handleCanvasPointerDown(clickPos);
+            controller.handleCanvasPointerDown(clickPos, canvasSize);
         }else if(e.button===2){ 
             controller.startCameraMoveSession(clickPos);
         }
     }
 
     function handlePointerMove(e: React.PointerEvent<HTMLCanvasElement>){
-        if(!canvasRef.current) return; 
-        const clickPos = new Vector2(getMousePos(canvasRef.current, e).x , getMousePos(canvasRef.current, e).y);
+        if(!props.canvasRef.current || !controller) return; 
+        const clickPos = new Vector2(getMousePos(props.canvasRef.current, e).x , getMousePos(props.canvasRef.current, e).y);
+        const canvasSize = new Vector2(props.canvasRef.current.width, props.canvasRef.current.height);
 
         controller.updateCameraMoveSession(clickPos);
-        controller.handleCanvasPointerMove(clickPos);
+        controller.handleCanvasPointerMove(clickPos, canvasSize);
     }
 
     function handlePointerUp(e: React.PointerEvent<HTMLCanvasElement>){
-        if(!canvasRef.current) return; 
-        const clickPos = new Vector2(getMousePos(canvasRef.current, e).x , getMousePos(canvasRef.current, e).y);
+        if(!props.canvasRef.current || !controller) return; 
+        const clickPos = new Vector2(getMousePos(props.canvasRef.current, e).x , getMousePos(props.canvasRef.current, e).y);
+        const canvasSize = new Vector2(props.canvasRef.current.width, props.canvasRef.current.height);
+        
         controller.endCameraMoveSession();
-        controller.handleCanvasPointerUp(clickPos);
-
+        controller.handleCanvasPointerUp(clickPos, canvasSize);
     }
 
+    //TODO - do anything with that???
     function handlePointerCancel(_: React.PointerEvent<HTMLCanvasElement>){
-        if(!canvasRef.current) return; 
-
+        if(!props.canvasRef.current || !controller) return; 
     }
 
     useEffect(()=>{
-        const canvas = canvasRef.current;
+        const canvas = props.canvasRef.current;
         if (!canvas) return;
 
         const run = async () => {
             await props.renderer.init(canvas);
-            props.scene.init(canvas);
-            props.scene.setObjectTransformMatrix(props.objectProperties);
             props.onRenderAndSceneInit();
         };
 
@@ -73,7 +74,7 @@ export default function EditorCanvas(props: EditorCanvasProps) {
 
     const pressedKeysRef = useRef<Set<string>>(new Set());
     useEffect(() => {
-        const canvas = canvasRef.current;
+        const canvas = props.canvasRef.current;
         if (!canvas) return;
         
 
@@ -96,10 +97,11 @@ export default function EditorCanvas(props: EditorCanvasProps) {
 
     useEffect(() => {
         const handleWheel = (e: WheelEvent) => {
+            if(!controller) return;
             controller.setCameraDistanceByWheel(e.deltaY);
         };
 
-        const canvas = canvasRef.current;
+        const canvas = props.canvasRef.current;
         if (!canvas) return;
 
         canvas.addEventListener("wheel", handleWheel);
@@ -112,7 +114,7 @@ export default function EditorCanvas(props: EditorCanvasProps) {
   return (
     <div className="CanvasContainer">
         <canvas
-        ref={canvasRef}
+        ref={props.canvasRef}
         onContextMenu={(e)=>e.preventDefault()}
         
         onPointerDown={(e) => handlePointerDown(e)}
