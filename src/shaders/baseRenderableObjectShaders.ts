@@ -1,4 +1,4 @@
-export function baseShader(){
+export function filledObjectShader(){
     return `
     struct UniformDataStruct{
                 resolution: vec2f,
@@ -46,7 +46,7 @@ export function baseShader(){
     `
 }
 
-export function cameraControllsGizmoShader(){
+export function gizmoShader(){
 return `
     struct UniformDataStruct{
                 anchor: vec2f,
@@ -86,7 +86,7 @@ return `
             }
     `
 }
-
+/*
 export function baseShaderWithWireframe(){
     return `
     struct UniformDataStruct{
@@ -151,8 +151,9 @@ return vec4f(color, baseColor.a);
             }
     `
 }
+*/
 
-export function voxelObjectGridShader(){
+export function wireframeShader(){
 return `
     struct UniformDataStruct{
         resolution: vec2f,
@@ -195,28 +196,29 @@ return `
     }
 
     @fragment fn fragmentShader(v: VertexShaderOutput) -> @location(0) vec4f {
-        let baseColor = v.color;
-        let wireColor = vec4f(0.35, 0.35, 0.35, 1.0);
+            let wireColor = v.color;
 
-        let dx = min(v.quadUV.x, 1.0 - v.quadUV.x);
-        let dy = min(v.quadUV.y, 1.0 - v.quadUV.y);
-        let distToEdge = min(dx, dy);
+            let dx = min(v.quadUV.x, 1.0 - v.quadUV.x);
+            let dy = min(v.quadUV.y, 1.0 - v.quadUV.y);
+            let distToEdge = min(dx, dy);
 
-        let pixelSpan = 0.5*fwidth(distToEdge);
+            let pixelSpan = 0.5*fwidth(distToEdge);
+            let widthPx = 0.5;
+            let wire = 1.0 - smoothstep(widthPx * pixelSpan,
+                                        (widthPx + 1.0) * pixelSpan,
+                                        distToEdge);
 
-        let widthPx = 0.5;
+            
+            if (wire < 0.5) {
+                discard;
+            }
 
-        let wire = 1.0 - smoothstep(widthPx * pixelSpan,
-                                    (widthPx + 1.0) * pixelSpan,
-                                    distToEdge);
-
-
-        return mix(baseColor, wireColor, wire);
+            return wireColor;
     }
     `
 }
 
-export function borderGridShader(){
+export function gridShader(){
 return `
     struct UniformDataStruct{
                 resolution: vec2f,
@@ -270,16 +272,16 @@ return `
                                             distToEdge);
 
                 
-            if (wire < 0.5) {
-                discard;
-            }
+                if (wire < 0.5) {
+                    discard;
+                }
 
-            return wireColor;
+                return wireColor;
             }
     `
 }
 
-export function voxelObjectBorderShader(){
+export function outlineShader(){
 return `
     struct UniformDataStruct{
                 resolution: vec2f,
@@ -391,6 +393,7 @@ export function selectedAreaShader(){
             }
     `
 }
+
 export function additionalZShader(bias: number = 0.005){
         return `
     struct UniformDataStruct{

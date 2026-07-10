@@ -3,8 +3,9 @@ import { Vector3 } from "../math/vector3.type";
 export enum RenderTechniqueType {
     FILLED,
     WIREFRAME,
-    BORDER,
+    OUTLINE,
     GIZMO,
+    GRID,
 }
 
 
@@ -16,6 +17,38 @@ export class RenderableObject{
         translation: new Vector3(0,0,0),
         scale: new Vector3(1,1,1),
         rotation: new Vector3(0,0,0),
+    }
+    copy(){
+        const out = new RenderableObject();
+
+        out.mesh = this.mesh;
+
+        if (this.material) {
+            out.material = {
+                ...this.material,
+            };
+        }
+
+        out.collider = this.collider;
+
+        out.transform = {
+            translation: new Vector3(
+                this.transform.translation.x,
+                this.transform.translation.y,
+                this.transform.translation.z,
+            ),
+            scale: new Vector3(
+                this.transform.scale.x,
+                this.transform.scale.y,
+                this.transform.scale.z,
+            ),
+            rotation: new Vector3(
+                this.transform.rotation.x,
+                this.transform.rotation.y,
+                this.transform.rotation.z,
+            ),
+        };
+        return out;
     }
     
 }

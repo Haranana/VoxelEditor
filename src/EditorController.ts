@@ -621,7 +621,7 @@ export class EditorController{
     //scene
     toggleSceneObjectGrid(options: RenderSceneOptions){
         if(!this.initialized) return;
-        options.voxelObjectsGrid = !options.voxelObjectsGrid;
+        options.voxelObjectWireframe = !options.voxelObjectWireframe;
         this.renderScene!();
     }
 
@@ -633,7 +633,7 @@ export class EditorController{
 
     toggleSceneBorderWire(options: RenderSceneOptions){
         if(!this.initialized) return;
-        options.borderWire = !options.borderWire;
+        options.borderOutline = !options.borderOutline;
         this.renderScene!();
     }
 

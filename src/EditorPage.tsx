@@ -44,9 +44,10 @@ export default function EditorPage() {
   const currentEditTypeRef = useRef<EditMode>("Add");
   const sceneRef = useRef<Scene>(new Scene());
   const renderSceneOptionsRef = useRef<RenderSceneOptions>({
-    borderWire: true,
     borderGrid: true,
-    voxelObjectsGrid: true,
+    borderOutline: true,    
+    voxelObject: false,
+    voxelObjectWireframe: true,
   });
   const renderGizmosOptionsRef = useRef<RenderGizmosOptions>({
     cameraControllGizmo: false,
@@ -72,24 +73,17 @@ export default function EditorPage() {
     setEditToolsPropertiesVersion(prev=>prev+1);
   }
 
-  const selectedObjectPropertiesRef =
-    useRef<ObjectProperties>({
-      translation: new Vector3(0, 0, -1000),
-      scale: new Vector3(1, 1, 1),
-      rotation: new Vector3(0, 0, 0),
-    });
-  
   //init starting scene
   useEffect(()=>{
-    const obj: VoxelObject = getBasicSampleVoxelObject("object") 
+    const obj: VoxelObject = getBasicSampleVoxelObject("object")     
     sceneRef.current.addObject(obj);
 
-    const camera: Camera = new Camera("Main camera", new Vector3(0,0,-1000), 1000);
+    const camera: Camera = new Camera("Main camera", new Vector3(0,0,0), 1000);
     camera.fovY = 90;
     camera.near = 0.1;
     camera.far = 5000,
     camera.transform = {
-      translation: new Vector3(0, 0, 0),
+      translation: new Vector3(0, 0, -1000),
       scale: new Vector3(1, 1, 1),
       rotation: new Vector3(0, 0, 0),
     },
@@ -438,7 +432,7 @@ export default function EditorPage() {
   const scenePropertiesButton : ActionButtonData[] = [
     {
       id: "ObjectGrid",
-      label: "object grid",
+      label: "object wireframe",
       onClick: () => {controller.toggleSceneObjectGrid(renderSceneOptionsRef.current); onScenePropertiesUpdated()},
     },
     {
@@ -448,9 +442,8 @@ export default function EditorPage() {
     },
     {
       id: "borderWire",
-      label: "border wire",
+      label: "border outline",
       onClick: () => {
-        console.log("A");
         controller.toggleSceneBorderWire(renderSceneOptionsRef.current); 
         onScenePropertiesUpdated()
       },
@@ -530,7 +523,6 @@ export default function EditorPage() {
                 scene={sceneRef.current}
                 renderScene = {rerenderScene}
                 onRenderAndSceneInit={onRenderAndSceneInit}
-                objectProperties={selectedObjectPropertiesRef.current}
                 canvasRef={canvasRef}
                 />
               </div>

@@ -15,28 +15,28 @@ export function getVoxelObjectMesh(v: VoxelObject): Mesh{
     });
 
     const addVoxelSideToMesh = (leftTopPosition: Vector3, rightTopPosition: Vector3, rightBottomPosition: Vector3, leftBottomPosition: Vector3, color: Vector4) =>{
-    const leftTop : MeshBuilderVertex = {
-        position: leftTopPosition,
-        quadUV: new Vector2(0,0), 
-        color,
+        const leftTop : MeshBuilderVertex = {
+            position: leftTopPosition,
+            quadUV: new Vector2(0,0), 
+            color,
+        }
+        const rightTop: MeshBuilderVertex = {
+            position: rightTopPosition,
+            quadUV: new Vector2(1,0), 
+            color,
+        }
+        const rightBottom: MeshBuilderVertex = {
+            position: rightBottomPosition,
+            quadUV: new Vector2(1,1), 
+            color,
+        }
+        const leftBottom: MeshBuilderVertex = {
+            position: leftBottomPosition,
+            quadUV: new Vector2(0,1), 
+            color,
+        }
+        meshBuilder.addQuad(leftTop,rightTop,rightBottom,leftBottom)
     }
-    const rightTop: MeshBuilderVertex = {
-        position: rightTopPosition,
-        quadUV: new Vector2(1,0), 
-        color,
-    }
-    const rightBottom: MeshBuilderVertex = {
-        position: rightBottomPosition,
-        quadUV: new Vector2(1,1), 
-        color,
-    }
-    const leftBottom: MeshBuilderVertex = {
-        position: leftBottomPosition,
-        quadUV: new Vector2(0,1), 
-        color,
-    }
-    meshBuilder.addQuad(leftTop,rightTop,rightBottom,leftBottom)
-}
 
     const objectStart : Vector3 = new Vector3(-v.size.x/2 , -v.size.y/2, -v.size.z/2) 
     for(let x = 0; x < v.size.x; x++){
@@ -64,6 +64,98 @@ export function getVoxelObjectMesh(v: VoxelObject): Mesh{
                     const rightTopBackPosition = voxelStartPosition.addVector(new Vector3(voxelSize,0,0)); //f
                     const rightBottomBackPosition = voxelStartPosition.addVector(new Vector3(voxelSize,voxelSize,0)); //g
                     const leftBottomBackPosition = voxelStartPosition.addVector(new Vector3(0,voxelSize,0)); //h
+                    
+                    //front culling
+                    if(!v.isVoxelNonEmpty(new Vector3(x,y,z+1))){
+                        addVoxelSideToMesh(leftTopFrontPosition, rightTopFrontPosition, rightBottomFrontPosition, leftBottomFrontPosition, voxelColor);
+                    }
+
+                    //back culling
+                    if(!v.isVoxelNonEmpty(new Vector3(x,y,z-1))){
+                        addVoxelSideToMesh(rightTopBackPosition, leftTopBackPosition, leftBottomBackPosition, rightBottomBackPosition, voxelColor);
+                    }
+
+                    //top culling
+                    if(!v.isVoxelNonEmpty(new Vector3(x,y-1,z))){
+                        addVoxelSideToMesh(leftTopBackPosition, rightTopBackPosition, rightTopFrontPosition, leftTopFrontPosition, voxelColor);
+                    }
+
+                    //bottom culling
+                    if(!v.isVoxelNonEmpty(new Vector3(x,y+1,z))){
+                        addVoxelSideToMesh(leftBottomFrontPosition, rightBottomFrontPosition, rightBottomBackPosition, leftBottomBackPosition, voxelColor);
+                    }
+
+                    //left culling
+                    if(!v.isVoxelNonEmpty(new Vector3(x-1,y,z))){
+                        addVoxelSideToMesh(leftTopBackPosition, leftTopFrontPosition, leftBottomFrontPosition, leftBottomBackPosition, voxelColor);
+                    }
+
+                    //right culling
+                    if(!v.isVoxelNonEmpty(new Vector3(x+1,y,z))){
+                        addVoxelSideToMesh(rightTopFrontPosition, rightTopBackPosition, rightBottomBackPosition, rightBottomFrontPosition, voxelColor);
+                    }                                                       
+                }
+            }
+        }
+    }
+    return meshBuilder.build();
+}
+
+export function getVoxelObjectWireframeMesh(v: VoxelObject): Mesh{
+    const epsilon = 0.001;
+     const meshBuilder: MeshBuilder = new MeshBuilder({
+        topology: "triangle-list",
+        attributes:[
+            "color",
+            "quadUV",
+        ]
+    });
+
+    const addVoxelSideToMesh = (leftTopPosition: Vector3, rightTopPosition: Vector3, rightBottomPosition: Vector3, leftBottomPosition: Vector3, color: Vector4) =>{
+        const leftTop : MeshBuilderVertex = {
+            position: leftTopPosition,
+            quadUV: new Vector2(0,0), 
+            color,
+        }
+        const rightTop: MeshBuilderVertex = {
+            position: rightTopPosition,
+            quadUV: new Vector2(1,0), 
+            color,
+        }
+        const rightBottom: MeshBuilderVertex = {
+            position: rightBottomPosition,
+            quadUV: new Vector2(1,1), 
+            color,
+        }
+        const leftBottom: MeshBuilderVertex = {
+            position: leftBottomPosition,
+            quadUV: new Vector2(0,1), 
+            color,
+        }
+        meshBuilder.addQuad(leftTop,rightTop,rightBottom,leftBottom)
+    }
+
+    const objectStart : Vector3 = new Vector3(-v.size.x/2 , -v.size.y/2, -v.size.z/2) 
+    for(let x = 0; x < v.size.x; x++){
+        for(let y = 0; y < v.size.y; y++){
+            for(let z = 0; z < v.size.z; z++){
+                const currentVoxelCoords = new Vector3(x,y,z);
+                const currentVoxelNonEmpty = v.isVoxelNonEmpty(currentVoxelCoords);
+                if(currentVoxelNonEmpty){
+                    const voxelStartPosition = new Vector3( (objectStart.x +x)*v.baseVoxelSize , (objectStart.y+y)*v.baseVoxelSize, (objectStart.z+z)*v.baseVoxelSize);
+                
+                    
+                    const voxelSize = v.baseVoxelSize;
+                    const voxelColor = v.objectGridColor;
+
+                    const leftTopFrontPosition = voxelStartPosition.addVector(new Vector3(0-epsilon,0-epsilon,voxelSize+epsilon)); //a
+                    const rightTopFrontPosition = voxelStartPosition.addVector(new Vector3(voxelSize+epsilon,0-epsilon,voxelSize+epsilon)); //b
+                    const rightBottomFrontPosition = voxelStartPosition.addVector(new Vector3(voxelSize+epsilon,voxelSize+epsilon,voxelSize+epsilon)); //c
+                    const leftBottomFrontPosition = voxelStartPosition.addVector(new Vector3(0-epsilon,voxelSize+epsilon,voxelSize+epsilon)); //d
+                    const leftTopBackPosition = voxelStartPosition.addVector(new Vector3(0-epsilon,0-epsilon,0-epsilon)); //e
+                    const rightTopBackPosition = voxelStartPosition.addVector(new Vector3(voxelSize+epsilon,0-epsilon,0-epsilon)); //f
+                    const rightBottomBackPosition = voxelStartPosition.addVector(new Vector3(voxelSize+epsilon,voxelSize+epsilon,0-epsilon)); //g
+                    const leftBottomBackPosition = voxelStartPosition.addVector(new Vector3(0-epsilon,voxelSize+epsilon,0-epsilon)); //h
                     
                     //front culling
                     if(!v.isVoxelNonEmpty(new Vector3(x,y,z+1))){

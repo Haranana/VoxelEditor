@@ -4,7 +4,7 @@ import { Vector4 } from "../math/vector4.type";
 import { RenderableObject, RenderTechniqueType } from "./renderableObject";
 import { SceneObject } from "./sceneObject";
 import { copyVoxel, type Voxel } from "./voxel.type";
-import { getVoxelObjectBorderGridMesh, getVoxelObjectBorderWireMesh, getVoxelObjectMesh, getVoxelObjectSelectedAreaMesh } from "./VoxelMesher";
+import { getVoxelObjectBorderGridMesh, getVoxelObjectBorderWireMesh, getVoxelObjectMesh, getVoxelObjectSelectedAreaMesh, getVoxelObjectWireframeMesh } from "./VoxelMesher";
 
 export type FaceDirection = 
 | "PosX"
@@ -64,12 +64,8 @@ export class VoxelObject extends SceneObject{
     //in fututre this will be replaced by more sophisticated methods
     voxels : (Voxel | null)[][][] = [[[]]];
     #renderableObject: RenderableObject = new RenderableObject();
-    
-
-    borderModified: boolean = false;
-
-    highlightedVoxelColor: Vector4 = new Vector4(160, 130, 210, 255);
-    highlightedVoxel: Vector3 | null = null;
+    #objectGrid: RenderableObject = new RenderableObject();
+    objectGridColor: Vector4 = new Vector4(100,100,100,255);
 
     selectedVoxelsAlpha = 160;
     selectedVoxelsDefaultColor: Vector4 = new Vector4(160, 130, 210, this.selectedVoxelsAlpha)
@@ -93,9 +89,10 @@ export class VoxelObject extends SceneObject{
             )
         );
         this.#renderableObject.material = {renderTechnique: RenderTechniqueType.FILLED};
+        this.#objectGrid.material = {renderTechnique: RenderTechniqueType.WIREFRAME}
         this.#selectedArea.material = {renderTechnique: RenderTechniqueType.FILLED};
-        this.borderGrid.material = {renderTechnique: RenderTechniqueType.WIREFRAME};
-        this.borderWire.material = {renderTechnique: RenderTechniqueType.BORDER};
+        this.borderGrid.material = {renderTechnique: RenderTechniqueType.GRID};
+        this.borderWire.material = {renderTechnique: RenderTechniqueType.OUTLINE};
     }
 
     //for now it is assumed that only mesh is modifiable in voxelObject's renderableObject
@@ -112,10 +109,32 @@ export class VoxelObject extends SceneObject{
 
     #setRenderableObjectToRebuild(){
         this.#renderableObject.mesh = null;
+        this.#setObjectGridToRebuild();
     }
 
     #rebuildRenderableObject(){
-        this.#renderableObject.mesh = getVoxelObjectMesh(this);
+        const newMesh = getVoxelObjectMesh(this);
+        this.#renderableObject.mesh = newMesh;
+    }
+
+    getObjectGrid(): RenderableObject{
+        if(this.#shouldRebuildObjectGrid()){
+            this.#rebuildObjectGrid();
+        }
+        return this.#objectGrid;
+    }
+
+    #shouldRebuildObjectGrid(): boolean{
+        return this.#objectGrid.mesh == null
+    }
+
+    #setObjectGridToRebuild(){
+        this.#objectGrid.mesh = null;
+    }
+
+    #rebuildObjectGrid(){
+        const newMesh = getVoxelObjectWireframeMesh(this);
+        this.#objectGrid.mesh = newMesh;
     }
 
     getSelectedArea() : RenderableObject{
@@ -134,7 +153,8 @@ export class VoxelObject extends SceneObject{
     }
 
     #rebuildSelectedArea(){
-        this.#selectedArea.mesh = getVoxelObjectSelectedAreaMesh(this);
+        const newMesh = getVoxelObjectSelectedAreaMesh(this);
+        this.#selectedArea.mesh = newMesh;
     }
 
     getBorderWire(): RenderableObject{
@@ -712,9 +732,7 @@ export class VoxelObject extends SceneObject{
         out.baseVoxelSize = this.baseVoxelSize;
         out.#renderableObject = this.#renderableObject;
         out.selectedVoxels = this.selectedVoxels;
-        out.highlightedVoxel = this.highlightedVoxel;
         out.selectedVoxelColor = this.selectedVoxelColor;
-        out.highlightedVoxelColor = this.highlightedVoxelColor;
         return out;
     }
 

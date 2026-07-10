@@ -4,9 +4,10 @@ import { SceneObject } from "./sceneObject";
 import { VoxelObject } from "./voxelObject";
 
 export type RenderSceneOptions = {
-    borderWire: boolean,
     borderGrid: boolean,
-    voxelObjectsGrid: boolean,
+    borderOutline: boolean,    
+    voxelObject: boolean,
+    voxelObjectWireframe: boolean,
 }
 
 export type RenderGizmosOptions = {

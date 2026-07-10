@@ -1,5 +1,4 @@
 import {  useContext, useEffect, useRef, type RefObject } from "react";
-import type { ObjectProperties } from "../RenderableObjectTypes";
 import { Vector2 } from "../math/vector2.type";
 import type { Renderer } from "../classes/renderer";
 import type { Scene } from "../classes/scene";
@@ -10,7 +9,6 @@ export type EditorCanvasProps = {
     scene: Scene,
     onRenderAndSceneInit: ()=>void,
     renderScene: ()=>void,
-    objectProperties: ObjectProperties;
     canvasRef: RefObject<HTMLCanvasElement | null>;
 }
 

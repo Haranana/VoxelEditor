@@ -1,10 +1,11 @@
 import { makeShaderDataDefinitions, makeStructuredView, type StructuredView } from "webgpu-utils";
-import { baseShader, borderGridShader, cameraControllsGizmoShader, voxelObjectBorderShader} from "../shaders/baseRenderableObjectShaders";
+import { filledObjectShader, gizmoShader, gridShader, outlineShader, wireframeShader} from "../shaders/baseRenderableObjectShaders";
 import { Gizmos, type RenderGizmosOptions, type RenderSceneOptions, type Scene } from "./scene";
 import { Matrices4 } from "../math/matrices";
 import { RenderTechniqueType, type Mesh, type RenderableObject } from "./renderableObject";
 import { VoxelObject } from "./voxelObject";
 import { Vector2 } from "../math/vector2.type";
+import type { SceneObject } from "./sceneObject";
 
 export type RenderTechniqueResources = {
     renderPipeline: GPURenderPipeline,
@@ -40,26 +41,33 @@ class GPUMeshCache{
 class SceneRenderCollector{
     public static collect(scene: Scene, renderGizmoOptions: RenderGizmosOptions, renderSceneOptions: RenderSceneOptions): RenderableObject[]{
         const out: RenderableObject[] = [];
+        
+        const isSelectedVoxelObject = (obj: SceneObject) =>{
+            if(!(obj instanceof VoxelObject)) return false;
+            if(!scene.getSelectedVoxelObject()) return false;
+            if(scene.getSelectedVoxelObject()!.id!=obj.id) return false;
+            return true;
+        }
+
         scene.getObjectsOfType(VoxelObject).forEach((obj)=>{
+            if(renderSceneOptions.voxelObject && isSelectedVoxelObject(obj)) return;
             out.push(obj.getRenderableObject());
         });
         const selectedVoxelObject = scene.getSelectedVoxelObject();
         if(selectedVoxelObject){
-            if(renderSceneOptions.voxelObjectsGrid){
-                const newRenderableObject = selectedVoxelObject.getRenderableObject();
+            if(renderSceneOptions.voxelObjectWireframe){
+                const newRenderableObject = selectedVoxelObject.getObjectGrid();
                 out.push(newRenderableObject);
             }
             if(renderSceneOptions.borderGrid){
                 const newRenderableObject = selectedVoxelObject.getBorderGrid();
                 out.push(newRenderableObject);
             }
-            if(renderSceneOptions.borderWire){
+            if(renderSceneOptions.borderOutline){
                 const newRenderableObject = selectedVoxelObject.getBorderWire();
                 out.push(newRenderableObject);
             }
-
             const selectedObjectSelectedArea = selectedVoxelObject.getSelectedArea();
-
             out.push(selectedObjectSelectedArea);
 
             if(renderGizmoOptions.cameraControllGizmo){
@@ -79,7 +87,7 @@ class SceneRenderCollector{
                 out.push(newRenderableObject);
             }
         }
-        
+                
         return out;
     }
 }
@@ -196,14 +204,15 @@ export class Renderer{
         this.#loadGizmoRenderTechnique();
         this.#loadFilledRenderTechnique();
         this.#loadWireframeRenderTechnique();
-        this.#loadBorderRenderTechnique();
+        this.#loadGridRenderTechnique();
+        this.#loadOutlineRenderTechnique();
     }
 
     #loadGizmoRenderTechnique(): void{        
         const device = this.#device;
         if(!device) return;
 
-        const shaderCode = cameraControllsGizmoShader();
+        const shaderCode = gizmoShader();
         const shaderModule = device.createShaderModule({
             label: 'camera controlls gizmo shader module',
             code: shaderCode,
@@ -289,10 +298,10 @@ export class Renderer{
     }
 
     #loadFilledRenderTechnique(): void{
-        const device = this.#device!;
+        const device = this.#device;
         if(!device) return;
 
-        const shaderCode = baseShader();
+        const shaderCode = filledObjectShader();
         const shaderModule = device.createShaderModule({
             label: 'voxel object shader module',
             code: shaderCode,
@@ -351,7 +360,21 @@ export class Renderer{
             fragment: {
                 entryPoint: `fragmentShader`,
                 module: shaderModule,
-                targets: [{format: this.#presentationFormat!}],
+                targets: [{
+                    format: this.#presentationFormat!,
+                    blend: {
+                        color: {
+                            srcFactor: "src-alpha",
+                            dstFactor: "one-minus-src-alpha",
+                            operation: "add",
+                        },
+                        alpha: {
+                            srcFactor: "one",
+                            dstFactor: "one-minus-src-alpha",
+                            operation: "add",
+                        },
+                    },
+                }],
             },
             primitive: {
                 topology: "triangle-list",
@@ -383,11 +406,11 @@ export class Renderer{
         })
     }
 
-    #loadWireframeRenderTechnique(): void{
+    #loadGridRenderTechnique(): void{
         const device = this.#device!;
         if(!device) return;
         
-        const shaderCode = borderGridShader();
+        const shaderCode = gridShader();
         const shaderModule = device.createShaderModule({
             label: 'voxel object shader module',
             code: shaderCode,
@@ -482,7 +505,7 @@ export class Renderer{
             }]
         })
 
-        this.#renderTechniques.set(RenderTechniqueType.WIREFRAME, {
+        this.#renderTechniques.set(RenderTechniqueType.GRID, {
             renderPipeline,
             bindGroup,
             uniformBuffer,
@@ -491,11 +514,110 @@ export class Renderer{
         })
     }
 
-    #loadBorderRenderTechnique(): void{
+    #loadWireframeRenderTechnique(): void{
         const device = this.#device!;
         if(!device) return;
 
-        const shaderCode = voxelObjectBorderShader();
+        const shaderCode = wireframeShader();
+        const shaderModule = device.createShaderModule({
+            label: 'voxel object shader module',
+            code: shaderCode,
+        });
+
+        const bindGroupLayout = device.createBindGroupLayout({
+        entries: [
+            {
+                binding: 0,
+                visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+                buffer: { type: "uniform" },
+            },
+        ],
+        });
+
+        const uniformBufferView = makeStructuredView(makeShaderDataDefinitions(shaderCode).uniforms.uniformData);
+        const uniformBuffer = device.createBuffer({
+            label: 'uniform buffer',
+            size: uniformBufferView.arrayBuffer.byteLength,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+
+        const pipelineLayout = device.createPipelineLayout({
+            bindGroupLayouts: [bindGroupLayout],
+        });
+
+        const renderPipeline = device.createRenderPipeline({
+            label: 'Selected object mesh pipeline',
+            layout: pipelineLayout,
+            vertex: {
+                entryPoint: `vertexShader`,
+                module: shaderModule,
+                buffers:[
+                    {
+                        arrayStride: 6*4,
+                        attributes:[
+                            {
+                                shaderLocation: 0,
+                                offset: 0,
+                                format: 'float32x3',
+                            },
+                            {
+                                shaderLocation: 1,
+                                offset: 12,
+                                format: 'unorm8x4',
+                            },
+                            {
+                                shaderLocation: 2,
+                                offset: 16,
+                                format: 'float32x2',
+                            },
+                        ]
+                    }
+                ]
+            },
+            fragment: {
+                entryPoint: `fragmentShader`,
+                module: shaderModule,
+                targets: [{format: this.#presentationFormat!}],
+            },
+            primitive: {
+                topology: "triangle-list",
+                cullMode: 'front',
+            },
+            depthStencil: {
+                depthWriteEnabled: false,
+                depthCompare: 'less-equal',
+                format: 'depth24plus',
+
+                depthBias: -1,
+                depthBiasSlopeScale: -1,
+                depthBiasClamp: 0,
+            },
+        });
+
+        const bindGroup = device.createBindGroup({
+            label: 'bind group for uniform data',
+            layout: bindGroupLayout,
+            entries:[{
+                binding: 0,
+                resource: {buffer: uniformBuffer!},
+            }]
+        })
+
+        
+        this.#renderTechniques.set(RenderTechniqueType.WIREFRAME, {
+                renderPipeline,
+                bindGroup,
+                uniformBuffer,
+                uniformBufferView,
+                shader: shaderModule,
+        })        
+    }
+
+    #loadOutlineRenderTechnique(): void{
+        const device = this.#device!;
+        if(!device) return;
+
+        const shaderCode = outlineShader();
         const shaderModule = device.createShaderModule({
             label: 'voxel object shader module',
             code: shaderCode,
@@ -576,7 +698,7 @@ export class Renderer{
             }]
         })
 
-        this.#renderTechniques.set(RenderTechniqueType.BORDER, {
+        this.#renderTechniques.set(RenderTechniqueType.OUTLINE, {
             renderPipeline,
             bindGroup,
             uniformBuffer,
