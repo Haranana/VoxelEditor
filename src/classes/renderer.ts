@@ -45,7 +45,7 @@ class SceneRenderCollector{
         const isSelectedVoxelObject = (obj: SceneObject) =>{
             if(!(obj instanceof VoxelObject)) return false;
             if(!scene.getSelectedVoxelObject()) return false;
-            if(scene.getSelectedVoxelObject()!.id!=obj.id) return false;
+            if(scene.getSelectedVoxelObject()!.sceneId!=obj.sceneId) return false;
             return true;
         }
 

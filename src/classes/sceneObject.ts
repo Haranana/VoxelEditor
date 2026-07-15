@@ -1,8 +1,9 @@
 export abstract class SceneObject {
     
-    readonly id: string;
-    
-    constructor(id: string) {
-        this.id = id;
+    sceneId: number | null = null;
+    name: string;
+
+    constructor(name = "object") {
+        this.name = name;
     }
 }

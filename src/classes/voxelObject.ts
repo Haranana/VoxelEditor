@@ -6,6 +6,8 @@ import { SceneObject } from "./sceneObject";
 import { copyVoxel, type Voxel } from "./voxel.type";
 import { getVoxelObjectBorderGridMesh, getVoxelObjectBorderWireMesh, getVoxelObjectMesh, getVoxelObjectSelectedAreaMesh, getVoxelObjectWireframeMesh } from "./VoxelMesher";
 
+export type VoxelArray = (Voxel | null)[][][];
+
 export type FaceDirection = 
 | "PosX"
 | "NegX"
@@ -80,8 +82,8 @@ export class VoxelObject extends SceneObject{
     borderGrid: RenderableObject = new RenderableObject();
     borderWire: RenderableObject = new RenderableObject();
 
-    constructor(id: string , size: Vector3){
-        super(id);
+    constructor(name: string , size: Vector3){
+        super(name);
         this.size = size;
         this.voxels = Array.from({ length: size.x }, () =>
             Array.from({ length: size.y }, () =>
@@ -234,6 +236,20 @@ export class VoxelObject extends SceneObject{
         }catch(e: any){
             return false;
         }
+    }
+
+    setVoxels(voxels: VoxelArray){
+        const size: Vector3 = new Vector3(voxels.length, voxels[0].length, voxels[0][0].length);
+        this.voxels = voxels;    
+        const sizeModified = this.size!==size;
+        this.size = size;
+
+        this.#setRenderableObjectToRebuild();
+        if(sizeModified){
+            this.#setBorderGridToRebuild();
+            this.#setBorderWireToRebuild();
+        }
+
     }
 
     removeVoxel(pos: Vector3){
@@ -522,19 +538,19 @@ export class VoxelObject extends SceneObject{
     rotateSelectedVoxelsByX(): number{
         let modifiedVoxels = 0;
         const maxY = this.size.y-1;
-        const rotatedObject = new VoxelObject(this.id, this.size);
+        const outVoxels = this.#getFreshVoxelArray();
         this.selectedVoxels.forEach(v=>{
             const voxelPosititon = Vector3.fromString(v);
             const voxel: Voxel | null = this.getVoxel(voxelPosititon);
             const newVoxelPosition = new Vector3(voxelPosititon.x, voxelPosititon.z, maxY - voxelPosititon.y);
             if(this.voxelExists(newVoxelPosition)){
                 if(voxel){
-                    rotatedObject.setVoxel(newVoxelPosition, copyVoxel(voxel))
+                    outVoxels[newVoxelPosition.x][newVoxelPosition.y][newVoxelPosition.z] = copyVoxel(voxel)
                 }
             }
             modifiedVoxels++;
         });
-        this.voxels = rotatedObject.voxels;
+        this.voxels = outVoxels;
         this.#setRenderableObjectToRebuild();
         return modifiedVoxels;
     }
@@ -542,19 +558,19 @@ export class VoxelObject extends SceneObject{
     rotateSelectedVoxelsByY(): number{
         let modifiedVoxels = 0;
         const maxZ = this.size.z-1;
-        const rotatedObject = new VoxelObject(this.id, this.size);
+        const outVoxels = this.#getFreshVoxelArray();
         this.selectedVoxels.forEach(v=>{
             const voxelPosititon = Vector3.fromString(v);
             const voxel: Voxel | null = this.getVoxel(voxelPosititon);
             const newVoxelPosition = new Vector3(maxZ - voxelPosititon.z, voxelPosititon.y, voxelPosititon.x);
             if(this.voxelExists(newVoxelPosition)){
                 if(voxel){
-                    rotatedObject.setVoxel(newVoxelPosition, copyVoxel(voxel))
+                    outVoxels[newVoxelPosition.x][newVoxelPosition.y][newVoxelPosition.z] = copyVoxel(voxel)
                 }
             }
             modifiedVoxels++;
         });
-        this.voxels = rotatedObject.voxels;
+        this.voxels = outVoxels;
         this.#setRenderableObjectToRebuild();
         return modifiedVoxels;  
     }
@@ -562,19 +578,19 @@ export class VoxelObject extends SceneObject{
     rotateSelectedVoxelsByZ(): number{
         let modifiedVoxels = 0;
         const maxX = this.size.x-1;
-        const rotatedObject = new VoxelObject(this.id, this.size);
+        const outVoxels = this.#getFreshVoxelArray();
         this.selectedVoxels.forEach(v=>{
             const voxelPosititon = Vector3.fromString(v);
             const voxel: Voxel | null = this.getVoxel(voxelPosititon);
             const newVoxelPosition = new Vector3(voxelPosititon.y, maxX - voxelPosititon.x, voxelPosititon.z);
             if(this.voxelExists(newVoxelPosition)){
                 if(voxel){
-                    rotatedObject.setVoxel(newVoxelPosition, copyVoxel(voxel))
+                    outVoxels[newVoxelPosition.x][newVoxelPosition.y][newVoxelPosition.z] = copyVoxel(voxel);
                 }
             }
             modifiedVoxels++;
         });
-        this.voxels = rotatedObject.voxels;
+        this.voxels = outVoxels;
         this.#setRenderableObjectToRebuild();
         return modifiedVoxels;
     }
@@ -723,16 +739,18 @@ export class VoxelObject extends SceneObject{
     }
 
     copy() : VoxelObject{
-        const out: VoxelObject = new VoxelObject(this.id, this.size);
+        const out: VoxelObject = new VoxelObject(this.name, this.size);
         out.voxels = this.voxels.map(layer =>
             layer.map(row =>
                 row.map(voxel => voxel ? { ...voxel } : null)
             )
         );
         out.baseVoxelSize = this.baseVoxelSize;
-        out.#renderableObject = this.#renderableObject;
-        out.selectedVoxels = this.selectedVoxels;
-        out.selectedVoxelColor = this.selectedVoxelColor;
+        out.#setRenderableObjectToRebuild();
+        out.#setObjectGridToRebuild();
+        out.#setBorderGridToRebuild();
+        out.#setBorderWireToRebuild();        
+        out.selectedVoxelColor = this.selectedVoxelColor.copy();
         return out;
     }
 
@@ -756,5 +774,23 @@ export class VoxelObject extends SceneObject{
 
     setSelectedVoxelsColor(v: Vector3){
         this.selectedVoxelColor = new Vector4(v.x, v.y, v.z, this.selectedVoxelsAlpha);
+    }
+
+    #getFreshVoxelArray(size: Vector3 = this.size) : (Voxel | null)[][][]{
+        const out = Array.from({ length: size.x }, () =>
+            Array.from({ length: size.y }, () =>
+                Array.from({ length: size.z }, () => null)
+            )
+        );
+        return out;
+    }
+
+    static getFreshVoxelArray(size: Vector3) : (Voxel | null)[][][]{
+        const out = Array.from({ length: size.x }, () =>
+            Array.from({ length: size.y }, () =>
+                Array.from({ length: size.z }, () => null)
+            )
+        );
+        return out;
     }
 }

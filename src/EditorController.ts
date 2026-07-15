@@ -7,7 +7,7 @@ import { clamp, mod } from "./math/utils";
 import type { Vector2 } from "./math/vector2.type"
 import { Vector3 } from "./math/vector3.type"
 import { Vector4 } from "./math/vector4.type";
-import { generateVoxelObjectCylinder, generateVoxelObjectPyramid, generateVoxelObjectSphere } from "./VoxelObjectGenerator";
+import { generateVoxelArrayCylinder, generateVoxelArrayPyramid, generateVoxelArraySphere } from "./VoxelArrayGenerator";
 import { getVoxelFromObject } from "./classes/rayCaster";
 import { Matrices4 } from "./math/matrices";
 
@@ -711,6 +711,7 @@ export class EditorController{
     emptyVoxelObjectVoxels(){
         if(!this.initialized) return;
         const scene = this.scene!;
+        scene.objects.forEach((o)=>{console.log(o.name)})
         const voxelObject = scene.getSelectedVoxelObject();
         if(!voxelObject) return;
 
@@ -720,6 +721,7 @@ export class EditorController{
         if(objectModified){
             this.renderScene!();
         }
+        scene.objects.forEach((o)=>{console.log(o.name)})
     }
 
     reverseVoxelObjectVoxels(){
@@ -745,7 +747,7 @@ export class EditorController{
         let voxelObject = scene.getSelectedVoxelObject();
         if(!voxelObject) return;
 
-        voxelObject = generateVoxelObjectSphere(voxelObject.id, voxelObject.size, this.currentColor);
+        voxelObject.setVoxels(generateVoxelArraySphere(voxelObject.size, this.currentColor))
         this.renderScene!();
     }
 
@@ -755,7 +757,7 @@ export class EditorController{
         let voxelObject = scene.getSelectedVoxelObject();
         if(!voxelObject) return;
 
-        voxelObject = generateVoxelObjectPyramid(voxelObject.id, voxelObject.size, this.currentColor);
+        voxelObject.setVoxels(generateVoxelArrayPyramid(voxelObject.size, this.currentColor))
         this.renderScene!();
     }
 
@@ -765,7 +767,7 @@ export class EditorController{
         let voxelObject = scene.getSelectedVoxelObject();
         if(!voxelObject) return;
 
-        voxelObject = generateVoxelObjectCylinder(voxelObject.id, voxelObject.size, this.currentColor);
+        voxelObject.setVoxels(generateVoxelArrayCylinder(voxelObject.size, this.currentColor));
         this.renderScene!();
     }
 

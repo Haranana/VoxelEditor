@@ -74,7 +74,10 @@ export default function EditorPage() {
   }
 
   //init starting scene
+  const startingSceneInitializedRef = useRef<boolean>(false);
   useEffect(()=>{
+    if(startingSceneInitializedRef.current) return;
+    startingSceneInitializedRef.current = true;
     const obj: VoxelObject = getBasicSampleVoxelObject("object")     
     sceneRef.current.addObject(obj);
 

@@ -24,6 +24,7 @@ export class Gizmos{
     static #objectResizeGizmo: RenderableObject | null = null;
     static #objectRotateGizmo: RenderableObject | null = null;
 
+
     //objects themselved to be created later
     static #createCameraControllGizmo(): RenderableObject{
         const out: RenderableObject = new RenderableObject();
@@ -92,13 +93,14 @@ export class Gizmos{
 
 export class Scene{
 
-    readonly objects: Map<string, SceneObject> = new Map<string, SceneObject>();
-    #selectedSceneObjectId: string | null = null;
-    #selectedVoxelObjectId: string | null = null;
-    #activeCameraId: string | null = null; 
+    readonly objects: Map<number, SceneObject> = new Map<number, SceneObject>();
+    #selectedSceneObjectId: number | null = null;
+    #selectedVoxelObjectId: number | null = null;
+    #activeCameraId: number | null = null; 
+    #nextSceneObjectId: number = 0;
 
     getActiveCamera(): Camera | null{
-        if(this.#activeCameraId){
+        if(this.#activeCameraId != null){
             const objectWithActiveCameraId : SceneObject | undefined = this.objects.get(this.#activeCameraId);
             if(objectWithActiveCameraId instanceof Camera){
                 return objectWithActiveCameraId;
@@ -108,7 +110,7 @@ export class Scene{
     }
 
     getSelectedVoxelObject(): VoxelObject | null {
-        if(this.#selectedVoxelObjectId){
+        if(this.#selectedVoxelObjectId != null){
             const objectWithSelectedObjectId : SceneObject | undefined = this.objects.get(this.#selectedVoxelObjectId);
             if(objectWithSelectedObjectId instanceof VoxelObject){
                 return objectWithSelectedObjectId;
@@ -118,7 +120,7 @@ export class Scene{
     }
 
     getSelectedSceneObject(): SceneObject | null{
-        if(this.#selectedSceneObjectId){
+        if(this.#selectedSceneObjectId != null){
             const objectWithSelectedObjectId : SceneObject | undefined = this.objects.get(this.#selectedSceneObjectId);
             if(objectWithSelectedObjectId instanceof SceneObject){
                 return objectWithSelectedObjectId;
@@ -127,7 +129,7 @@ export class Scene{
         return null;
     }
 
-    setActiveCameraId(newId: string) : boolean{
+    setActiveCameraId(newId: number) : boolean{
         if(this.objects.get(newId) instanceof Camera){
             this.#activeCameraId = newId;
             return true;
@@ -135,7 +137,7 @@ export class Scene{
         return false;
     }
 
-    setSelectedVoxelObjectId(newId: string) : boolean{
+    setSelectedVoxelObjectId(newId: number) : boolean{
         if(this.objects.get(newId) instanceof VoxelObject){
             this.#selectedVoxelObjectId = newId;
             return true;
@@ -143,7 +145,7 @@ export class Scene{
         return false;
     }
 
-    setSelectedSceneObjectId(newId: string) : boolean{
+    setSelectedSceneObjectId(newId: number) : boolean{
         if(this.objects.has(newId)){
             this.#selectedSceneObjectId = newId;
             return true;
@@ -159,18 +161,26 @@ export class Scene{
         return out;
     }
 
+    //adds object to the scene and appoints scene id to it
+    //object cannot be added if it already has scene id
     addObject(newObject: SceneObject): boolean{
-        if(this.objects.has(newObject.id)) return false;
-        this.objects.set(newObject.id , newObject);
-        if(newObject instanceof VoxelObject && !this.#selectedVoxelObjectId) this.#selectedVoxelObjectId = newObject.id;
-        if(newObject instanceof Camera && !this.#activeCameraId) this.#activeCameraId = newObject.id;
-        if(!this.#selectedSceneObjectId) this.#selectedSceneObjectId = newObject.id;
+        if(newObject.sceneId != null) return false;
+        this.objects.set(this.#nextSceneObjectId , newObject);
+        newObject.sceneId = this.#nextSceneObjectId;
+        this.#nextSceneObjectId++;
+
+        if(newObject instanceof VoxelObject && this.#selectedVoxelObjectId == null ) this.#selectedVoxelObjectId = newObject.sceneId;
+        if(newObject instanceof Camera && this.#activeCameraId == null) this.#activeCameraId = newObject.sceneId;
+        if(this.#selectedSceneObjectId == null) this.#selectedSceneObjectId = newObject.sceneId;
         return true;
     }
 
-    removeObject(id: string): boolean{
-        if(!this.objects.has(id)) return false;
+    removeObject(id: number): boolean{
+        const obj = this.objects.get(id);
+        if(!obj) return false;
+        obj.sceneId = null;
         this.objects.delete(id);
+        
         if(this.#activeCameraId == id) this.#activeCameraId = null;
         if(this.#selectedSceneObjectId == id) this.#selectedSceneObjectId = null;
         if(this.#selectedVoxelObjectId == id) this.#selectedVoxelObjectId = null;

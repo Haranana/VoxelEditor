@@ -5,8 +5,9 @@ import { Vector4 } from "./math/vector4.type";
 
 export const defaultColor: Vector4 = new Vector4(101, 204, 224,255);
 export const debugPaintColor: Vector4 = new Vector4(190,90,90,255); 
-export function getBasicSampleVoxelObject(id: string){
-    const out: VoxelObject = new VoxelObject(id, new Vector3(16,16,16));
+
+export function getBasicSampleVoxelObject(name: string){
+    const out: VoxelObject = new VoxelObject(name, new Vector3(16,16,16));
     out.baseVoxelSize = 40;
 
     for(let x = 0; x < 16; x++){
