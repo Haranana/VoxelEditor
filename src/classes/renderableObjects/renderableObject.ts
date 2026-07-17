@@ -1,4 +1,4 @@
-import { Vector3 } from "../math/vector3.type";
+import { Vector3 } from "../../math/vector3.type";
 
 export enum RenderTechniqueType {
     FILLED,
@@ -7,7 +7,6 @@ export enum RenderTechniqueType {
     GIZMO,
     GRID,
 }
-
 
 export class RenderableObject{
     mesh: Mesh | null = null;
@@ -18,6 +17,7 @@ export class RenderableObject{
         scale: new Vector3(1,1,1),
         rotation: new Vector3(0,0,0),
     }
+    
     copy(){
         const out = new RenderableObject();
 

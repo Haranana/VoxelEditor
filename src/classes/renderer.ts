@@ -2,17 +2,22 @@ import { makeShaderDataDefinitions, makeStructuredView, type StructuredView } fr
 import { filledObjectShader, gizmoShader, gridShader, outlineShader, wireframeShader} from "../shaders/baseRenderableObjectShaders";
 import { Gizmos, type RenderGizmosOptions, type RenderSceneOptions, type Scene } from "./scene";
 import { Matrices4 } from "../math/matrices";
-import { RenderTechniqueType, type Mesh, type RenderableObject } from "./renderableObject";
-import { VoxelObject } from "./voxelObject";
+import { RenderTechniqueType, type Mesh, type RenderableObject } from "./renderableObjects/renderableObject";
+import { VoxelObject } from "./sceneObjects/voxelObject";
 import { Vector2 } from "../math/vector2.type";
-import type { SceneObject } from "./sceneObject";
+import type { SceneObject } from "./sceneObjects/sceneObject";
 
 export type RenderTechniqueResources = {
-    renderPipeline: GPURenderPipeline,
-    bindGroup: GPUBindGroup,
-    uniformBuffer: GPUBuffer,
-    uniformBufferView: StructuredView,
-    shader: GPUShaderModule,
+    pipeline: GPURenderPipeline;
+    shaderCode: string;
+    shader: GPUShaderModule;
+    bindGroupLayout: GPUBindGroupLayout;
+}
+
+export type ObjectRenderResources = {
+    uniformBuffer: GPUBuffer;
+    uniformBufferView: StructuredView;
+    bindGroup: GPUBindGroup;
 }
 
 export type MeshGPUResources = {
@@ -95,6 +100,7 @@ class SceneRenderCollector{
 export class Renderer{
 
     #renderTechniques : Map<RenderTechniqueType, RenderTechniqueResources> = new Map();
+    #renderResources: Map<RenderableObject, ObjectRenderResources> = new Map();
 
     //because of this cache, meshes need to be treated as effectively immutable, 
     //also any method which deletes mesh should probably also delete it from this map
@@ -228,12 +234,15 @@ export class Renderer{
         ],
         });
 
+        /*
         const uniformBufferView = makeStructuredView(makeShaderDataDefinitions(shaderCode).uniforms.uniformData);
+        
         const uniformBuffer = device.createBuffer({
             label: 'uniform buffer',
             size: uniformBufferView.arrayBuffer.byteLength,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
+        */
 
         const pipelineLayout = device.createPipelineLayout({
             bindGroupLayouts: [bindGroupLayout],
@@ -279,6 +288,7 @@ export class Renderer{
             },
         });
 
+        /*
         const bindGroup = device.createBindGroup({
             label: 'bind group for uniform data',
             layout: bindGroupLayout,
@@ -286,14 +296,13 @@ export class Renderer{
                 binding: 0,
                 resource: {buffer: uniformBuffer},
             }]
-        })
+        })*/
 
         this.#renderTechniques.set(RenderTechniqueType.GIZMO, {
-                renderPipeline,
-                bindGroup,
-                uniformBuffer,
-                uniformBufferView,
-                shader: shaderModule,
+            pipeline: renderPipeline,
+            shader: shaderModule,
+            shaderCode,
+            bindGroupLayout: bindGroupLayout,
         })
     }
 
@@ -749,7 +758,8 @@ export class Renderer{
         const pass : GPURenderPassEncoder = encoder.beginRenderPass(this.#renderPassDescriptor!);
         
         //update uniform buffers on each render technique
-        //as for now each technique shares the same uniform buffer, so it's all the same
+        //as for now most techniques shares the same uniform buffer, so it's all the same
+        /*
         const ndcProjection = camera.getProjectionMatrix(new Vector2(canvas.width, canvas.height));
         const shadersUniformsValuesResolution = [canvas.width, canvas.height];
 
@@ -762,14 +772,21 @@ export class Renderer{
             });
             device.queue.writeBuffer(v.uniformBuffer!, 0, v.uniformBufferView!.arrayBuffer);
         });
+        */
         
         
         //render each object
         const objectsToRender: RenderableObject[] = SceneRenderCollector.collect(scene, renderGizmoOptions, renderSceneOptions);
         objectsToRender.forEach((obj)=>{
             if(!obj.mesh || !obj.material) return;
-            const renderTechnique: RenderTechniqueResources | undefined = this.#renderTechniques.get(obj.material.renderTechnique)
-            if(!renderTechnique) return;
+            const renderTechniqueRes: RenderTechniqueResources | undefined = this.#renderTechniques.get(obj.material.renderTechnique)
+            if(!renderTechniqueRes) return;
+
+            let renderResources: ObjectRenderResources | undefined = this.#renderResources.get(obj);
+            if(renderResources == null){
+                renderResources = this.getObjectRenderResources(device, obj, obj.material.renderTechnique, renderTechniqueRes);
+                this.#renderResources.set(obj, renderResources);
+            }
 
             const meshResources = this.#meshCache.get(obj.mesh); 
             let vertexBuffer;
@@ -796,16 +813,57 @@ export class Renderer{
                     indexBuffer,
                 });                 
             }
-            pass.setPipeline(renderTechnique.renderPipeline);
+            pass.setPipeline(renderTechnique.pipeline);
             pass.setVertexBuffer(0 , vertexBuffer);
             pass.setIndexBuffer(indexBuffer, "uint32");
-            pass.setBindGroup(0, renderTechnique.bindGroup);
+            pass.setBindGroup(0, renderResources.bindGroup);
             pass.drawIndexed(obj.mesh.indices.length);
         });
 
         pass.end();
         const commandBuffer = encoder.finish();
         device.queue.submit([commandBuffer]);
+    }
+
+    getObjectRenderResources(device: GPUDevice, obj: RenderableObject, renderTechniqueType: RenderTechniqueType, renderTechniqueRes: RenderTechniqueResources): ObjectRenderResources {
+
+
+        if(renderTechniqueType == RenderTechniqueType.FILLED){
+
+        }else if(renderTechniqueType == RenderTechniqueType.GIZMO){
+            const uniformBufferView = makeStructuredView(makeShaderDataDefinitions(renderTechniqueRes.shaderCode).uniforms.uniformData);
+            const uniformBuffer = device.createBuffer({
+                label: 'uniform buffer',
+                size: uniformBufferView.arrayBuffer.byteLength,
+                usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+            });
+            const bindGroup = device.createBindGroup({
+                label: 'bind group for uniform data',
+                layout: renderTechniqueRes.bindGroupLayout,
+                entries:[{
+                    binding: 0,
+                    resource: {buffer: uniformBuffer},
+                }]
+            })
+            uniformBufferView.set({
+                anchor: ,
+                scale: ,
+                objectRotation: ,
+            });
+            device.queue.writeBuffer(uniformBuffer, 0, uniformBufferView.arrayBuffer);
+            return {
+                uniformBuffer,
+                uniformBufferView,
+                bindGroup,
+            }
+            
+        }else if(renderTechniqueType == RenderTechniqueType.GRID){
+
+        }else if(renderTechniqueType == RenderTechniqueType.OUTLINE){
+
+        }else if(renderTechniqueType == RenderTechniqueType.WIREFRAME){
+
+        }
     }
 
     resizeCanvas() {

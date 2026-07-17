@@ -1,7 +1,10 @@
+import { Vector3 } from "../math/vector3.type";
+import { Vector4 } from "../math/vector4.type";
 import { Camera } from "./camera";
-import { RenderableObject, RenderTechniqueType } from "./renderableObject";
-import { SceneObject } from "./sceneObject";
-import { VoxelObject } from "./voxelObject";
+import { MeshBuilder } from "./MeshBuilder";
+import { RenderableObject, RenderTechniqueType } from "./renderableObjects/renderableObject";
+import { SceneObject } from "./sceneObjects/sceneObject";
+import { VoxelObject } from "./sceneObjects/voxelObject";
 
 export type RenderSceneOptions = {
     borderGrid: boolean,
@@ -27,10 +30,129 @@ export class Gizmos{
 
     //objects themselved to be created later
     static #createCameraControllGizmo(): RenderableObject{
-        const out: RenderableObject = new RenderableObject();
+    const out = new RenderableObject();
+
         out.material = {
             renderTechnique: RenderTechniqueType.GIZMO
-        }
+        };
+
+        const mesh = new MeshBuilder({
+            topology: "triangle-list",
+            attributes: ["color"]
+        });
+
+        const RED   = new Vector4(255, 32, 32, 255);
+        const GREEN = new Vector4(32, 255, 32, 255);
+        const BLUE  = new Vector4(32, 32, 255, 255);
+
+        const shaftLength = 40;
+        const shaftWidth = 2;
+        const headSize = 5;
+
+        const addBox = (
+            center: Vector3,
+            size: Vector3,
+            color: Vector4
+        ) => {
+
+            const hx = size.x / 2;
+            const hy = size.y / 2;
+            const hz = size.z / 2;
+
+            mesh.addBox(
+                {
+                    position: new Vector3(center.x - hx, center.y - hy, center.z + hz),
+                    color
+                },
+                {
+                    position: new Vector3(center.x + hx, center.y - hy, center.z + hz),
+                    color
+                },
+                {
+                    position: new Vector3(center.x + hx, center.y + hy, center.z + hz),
+                    color
+                },
+                {
+                    position: new Vector3(center.x - hx, center.y + hy, center.z + hz),
+                    color
+                },
+                {
+                    position: new Vector3(center.x - hx, center.y - hy, center.z - hz),
+                    color
+                },
+                {
+                    position: new Vector3(center.x + hx, center.y - hy, center.z - hz),
+                    color
+                },
+                {
+                    position: new Vector3(center.x + hx, center.y + hy, center.z - hz),
+                    color
+                },
+                {
+                    position: new Vector3(center.x - hx, center.y + hy, center.z - hz),
+                    color
+                }
+            );
+        };
+
+        // ---------- X ----------
+        addBox(
+            new Vector3(0, 0, 0),
+            new Vector3(shaftLength, shaftWidth, shaftWidth),
+            RED
+        );
+
+        addBox(
+            new Vector3(shaftLength / 2 + headSize / 2, 0, 0),
+            new Vector3(headSize, headSize, headSize),
+            RED
+        );
+
+        addBox(
+            new Vector3(-shaftLength / 2 - headSize / 2, 0, 0),
+            new Vector3(headSize, headSize, headSize),
+            RED
+        );
+
+        // ---------- Y ----------
+        addBox(
+            new Vector3(0, 0, 0),
+            new Vector3(shaftWidth, shaftLength, shaftWidth),
+            GREEN
+        );
+
+        addBox(
+            new Vector3(0, shaftLength / 2 + headSize / 2, 0),
+            new Vector3(headSize, headSize, headSize),
+            GREEN
+        );
+
+        addBox(
+            new Vector3(0, -shaftLength / 2 - headSize / 2, 0),
+            new Vector3(headSize, headSize, headSize),
+            GREEN
+        );
+
+        // ---------- Z ----------
+        addBox(
+            new Vector3(0, 0, 0),
+            new Vector3(shaftWidth, shaftWidth, shaftLength),
+            BLUE
+        );
+
+        addBox(
+            new Vector3(0, 0, shaftLength / 2 + headSize / 2),
+            new Vector3(headSize, headSize, headSize),
+            BLUE
+        );
+
+        addBox(
+            new Vector3(0, 0, -shaftLength / 2 - headSize / 2),
+            new Vector3(headSize, headSize, headSize),
+            BLUE
+        );
+
+        out.mesh = mesh.build();
 
         return out;
     }

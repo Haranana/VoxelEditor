@@ -7,7 +7,7 @@ import type { ObjectProperties } from "../RenderableObjectTypes";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/16/solid";
 import "../editorWidgets/ExpandableRow.css"
 import "../Editor.css"
-import type { VoxelObject } from "../classes/voxelObject";
+import type { VoxelObject } from "../classes/sceneObjects/voxelObject";
 
 export type ObjectPropertiesWidgetProps = {
     objectProperties: ObjectProperties;

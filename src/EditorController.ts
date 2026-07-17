@@ -1,7 +1,7 @@
 import type { RefObject } from "react";
 import type {ProjectionType } from "./classes/camera";
 import type { RenderSceneOptions, Scene } from "./classes/scene";
-import { faceDirectionToVector, vectorToFaceDirection } from "./classes/voxelObject";
+import { faceDirectionToVector, vectorToFaceDirection } from "./classes/sceneObjects/voxelObject";
 import type { EditMode, SelectMode } from "./EditorPage";
 import { clamp, mod } from "./math/utils";
 import type { Vector2 } from "./math/vector2.type"
@@ -703,7 +703,6 @@ export class EditorController{
         voxelObject.addSelectedVoxels(this.currentColor);
         voxelObject.resetSelect();
         if(objectModified){
-            console.log("AAAAAAAAAAA");
             this.renderScene!();
         }
     }

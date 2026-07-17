@@ -1,4 +1,4 @@
-import type { Transform } from "../classes/renderableObject";
+import type { Transform } from "../classes/renderableObjects/renderableObject";
 import {type Mat3, Matrix3 } from "./matrix3.type";
 import {type Mat4, Matrix4 } from "./matrix4.type";
 import { degreeToRadians } from "./utils";

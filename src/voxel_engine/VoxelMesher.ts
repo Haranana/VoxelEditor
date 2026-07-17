@@ -2,8 +2,8 @@ import { Vector2 } from "../math/vector2.type";
 import { Vector3 } from "../math/vector3.type";
 import { Vector4 } from "../math/vector4.type";
 import { MeshBuilder, type MeshBuilderVertex } from "./MeshBuilder";
-import type { Mesh } from "./renderableObject";
-import type { VoxelObject } from "./voxelObject";
+import type { Mesh } from "./renderableObjects/renderableObject";
+import type { VoxelObject } from "./sceneObjects/voxelObject";
 
 export function getVoxelObjectMesh(v: VoxelObject): Mesh{
     const meshBuilder: MeshBuilder = new MeshBuilder({

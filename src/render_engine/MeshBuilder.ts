@@ -1,7 +1,7 @@
 import { Vector2 } from "../math/vector2.type"
 import type { Vector3 } from "../math/vector3.type"
 import type { Vector4 } from "../math/vector4.type"
-import type { Mesh, VertexAttributes, VertexLayout } from "./renderableObject"
+import type { Mesh, VertexAttributes, VertexLayout } from "./renderableObjects/renderableObject"
 
 export type MeshBuilderVertexLayout = {
     topology: "line-list" | "triangle-list" //only supported topologies are line-list and triangle-list

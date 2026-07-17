@@ -52,38 +52,38 @@ return `
                 anchor: vec2f,
                 scale: vec2f,
                 objectRotation: mat4x4f,
-            };
+    };
 
-            struct Vertex{
-                @location(0) position: vec3f,
-                @location(1) color: vec4f,
-            };
+    struct Vertex{
+        @location(0) position: vec3f,
+        @location(1) color: vec4f,
+    };
 
-            struct VertexShaderOutput{
-                @builtin(position) position: vec4f,
-                @location(0) color: vec4f,
-            };
+    struct VertexShaderOutput{
+        @builtin(position) position: vec4f,
+        @location(0) color: vec4f,
+    };
 
-            @group(0) @binding(0) var<uniform> uniformData: UniformDataStruct;
+    @group(0) @binding(0) var<uniform> uniformData: UniformDataStruct;
 
-            @vertex fn vertexShader(
-                v: Vertex) -> VertexShaderOutput {
-                
-                var out: VertexShaderOutput;
-
-                let rotatedPos =  vec4f(v.position, 1.0) * uniformData.objectRotation;
-                let vertNdcPosition = vec4f(rotatedPos.x * uniformData.scale.x + uniformData.anchor.x, rotatedPos.y * uniformData.scale.y + uniformData.anchor.y, 0.5, 1.0);
-
-                out.position = vec4f(vertNdcPosition);
-                
-                out.color = v.color;
-
-                return out;
-            }
+    @vertex fn vertexShader(
+        v: Vertex) -> VertexShaderOutput {
         
-            @fragment fn fragmentShader(v: VertexShaderOutput) -> @location(0) vec4f {
-                return v.color;
-            }
+        var out: VertexShaderOutput;
+
+        let rotatedPos =  vec4f(v.position, 1.0) * uniformData.objectRotation;
+        let vertNdcPosition = vec4f(rotatedPos.x * uniformData.scale.x + uniformData.anchor.x, rotatedPos.y * uniformData.scale.y + uniformData.anchor.y, 0.5, 1.0);
+
+        out.position = vec4f(vertNdcPosition);
+        
+        out.color = v.color;
+
+        return out;
+    }
+
+    @fragment fn fragmentShader(v: VertexShaderOutput) -> @location(0) vec4f {
+        return v.color;
+    }
     `
 }
 /*

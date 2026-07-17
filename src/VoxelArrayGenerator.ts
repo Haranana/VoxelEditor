@@ -1,4 +1,4 @@
-import { VoxelObject, type VoxelArray } from "./classes/voxelObject";
+import { VoxelObject, type VoxelArray } from "./classes/sceneObjects/voxelObject";
 import { Vector2 } from "./math/vector2.type";
 import { Vector3 } from "./math/vector3.type";
 import type { Vector4 } from "./math/vector4.type";

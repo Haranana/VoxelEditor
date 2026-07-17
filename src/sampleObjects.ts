@@ -1,5 +1,5 @@
-import { RenderableObject, RenderTechniqueType } from "./classes/renderableObject";
-import { VoxelObject } from "./classes/voxelObject";
+import { RenderableObject, RenderTechniqueType } from "./classes/renderableObjects/renderableObject";
+import { VoxelObject } from "./classes/sceneObjects/voxelObject";
 import { Vector3 } from "./math/vector3.type";
 import { Vector4 } from "./math/vector4.type";
 

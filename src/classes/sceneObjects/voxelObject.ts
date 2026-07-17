@@ -1,10 +1,10 @@
-import { clamp } from "../math/utils";
-import { Vector3 } from "../math/vector3.type";
-import { Vector4 } from "../math/vector4.type";
-import { RenderableObject, RenderTechniqueType } from "./renderableObject";
+import { clamp } from "../../math/utils";
+import { Vector3 } from "../../math/vector3.type";
+import { Vector4 } from "../../math/vector4.type";
+import { RenderableObject, RenderTechniqueType } from "../renderableObjects/renderableObject";
 import { SceneObject } from "./sceneObject";
-import { copyVoxel, type Voxel } from "./voxel.type";
-import { getVoxelObjectBorderGridMesh, getVoxelObjectBorderWireMesh, getVoxelObjectMesh, getVoxelObjectSelectedAreaMesh, getVoxelObjectWireframeMesh } from "./VoxelMesher";
+import { copyVoxel, type Voxel } from "../../voxel_engine/voxel.type";
+import { getVoxelObjectBorderGridMesh, getVoxelObjectBorderWireMesh, getVoxelObjectMesh, getVoxelObjectSelectedAreaMesh, getVoxelObjectWireframeMesh } from "../VoxelMesher";
 
 export type VoxelArray = (Voxel | null)[][][];
 

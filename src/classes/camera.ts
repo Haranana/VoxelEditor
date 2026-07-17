@@ -4,7 +4,7 @@ import { degreeToRadians } from "../math/utils";
 import type { Vector2 } from "../math/vector2.type";
 import { Vector3 } from "../math/vector3.type";
 import type { ObjectProperties } from "../RenderableObjectTypes"
-import { SceneObject } from "./sceneObject";
+import { SceneObject } from "./sceneObjects/sceneObject";
 
 
 export type ProjectionType =

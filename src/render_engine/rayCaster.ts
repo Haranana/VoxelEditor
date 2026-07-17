@@ -4,7 +4,7 @@ import type { Vector2 } from "../math/vector2.type";
 import { Vector3 } from "../math/vector3.type";
 import { Vector4 } from "../math/vector4.type";
 import type { Camera } from "./camera";
-import { faceDirectionToVector, type FaceDirection, type VoxelObject } from "./voxelObject";
+import { faceDirectionToVector, type FaceDirection, type VoxelObject } from "./sceneObjects/voxelObject";
 
 class Ray{
     direction: Vector3;

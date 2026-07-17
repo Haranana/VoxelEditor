@@ -1,11 +1,10 @@
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import "../src/Editor.css";
 import EditorCanvas from "./editorWidgets/EditorCanvas";
-import { type ObjectProperties } from "./RenderableObjectTypes";
 import { Vector3 } from "./math/vector3.type";
 import { Camera } from "./classes/camera";
 import CameraPropertiesWidget from "./editorWidgets/CameraPropertiesWidget";
-import { VoxelObject } from "./classes/voxelObject";
+import { VoxelObject } from "./classes/sceneObjects/voxelObject";
 import { getBasicSampleVoxelObject } from "./sampleObjects";
 import ResizableContainer, {
   type ResizableContainerConsts,
@@ -50,10 +49,10 @@ export default function EditorPage() {
     voxelObjectWireframe: true,
   });
   const renderGizmosOptionsRef = useRef<RenderGizmosOptions>({
-    cameraControllGizmo: false,
-    objectMoveGizmo: false,
-    objectResizeGizmo: false,
-    objectRotateGizmo: false,
+    cameraControllGizmo: true,
+    objectMoveGizmo: true,
+    objectResizeGizmo: true,
+    objectRotateGizmo: true,
   });
   const rendererRef = useRef<Renderer>(new Renderer());
 
@@ -78,6 +77,7 @@ export default function EditorPage() {
   useEffect(()=>{
     if(startingSceneInitializedRef.current) return;
     startingSceneInitializedRef.current = true;
+    
     const obj: VoxelObject = getBasicSampleVoxelObject("object")     
     sceneRef.current.addObject(obj);
 
