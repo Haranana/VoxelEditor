@@ -1,8 +1,8 @@
 import { create} from "zustand";
 import { persist } from "zustand/middleware";
-import { Vector4 } from "../math/vector4.type";
-import { Vector3 } from "../math/vector3.type";
 import type { RGBColor } from "react-color";
+import { Vector4 } from "../../math/vector4.type";
+import { Vector3 } from "../../math/vector3.type";
 
 export type ColorRGB = {
     R: number,

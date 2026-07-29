@@ -1,4 +1,4 @@
-import type { Transform } from "../classes/renderableObjects/renderableObject";
+import type { WorldTransform } from "../render_engine/renderableObjects/renderableObject";
 import {type Mat3, Matrix3 } from "./matrix3.type";
 import {type Mat4, Matrix4 } from "./matrix4.type";
 import { degreeToRadians } from "./utils";
@@ -99,7 +99,7 @@ export const Matrices4 = {
     return this.rotationZ(angleZ).multMatrix(this.rotationY(angleY)).multMatrix(this.rotationX(angleX));
   },
 
-  transform(t: Transform){
+  transform(t: WorldTransform){
     const objectTranslation : Matrix4 = Matrices4.translation(t.translation)
     const objectScale : Matrix4 = Matrices4.scaling(t.scale)
     const objectRotation: Matrix4 = Matrices4.rotation(degreeToRadians(t.rotation.x), degreeToRadians(t.rotation.y), degreeToRadians(t.rotation.z))
