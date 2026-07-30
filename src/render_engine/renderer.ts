@@ -920,7 +920,21 @@ export class Renderer{
                 fragment: {
                     entryPoint: shader.fragmentEntryPoint,
                     module: shaderModule,
-                    targets: [{format: this.#presentationFormat!}],
+                    targets: [{format: this.#presentationFormat!,
+                        blend: {
+                            color: {
+                                srcFactor: "src-alpha",
+                                dstFactor: "one-minus-src-alpha",
+                                operation: "add",
+                            },
+                            alpha: {
+                                srcFactor: "one",
+                                dstFactor: "one-minus-src-alpha",
+                                operation: "add",
+                            },
+                },
+                    }],
+
                 },
                 primitive: obj.mesh.primitiveState,
                 depthStencil: obj.mesh.depthStencilState

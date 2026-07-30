@@ -5,8 +5,6 @@ import type { Mesh } from "../../../render_engine/meshes/Mesh";
 import { MeshBuilder, type MeshBuilderVertex } from "../../../render_engine/meshes/MeshBuilder";
 
 import type { VoxelObject } from "./voxel-object";
-
-
 // collection of functions for creating Meshes of VoxelObject and its associated elements 
 
 export function generateVoMesh(vo: VoxelObject): Mesh{
@@ -49,15 +47,13 @@ export function generateVoMesh(vo: VoxelObject): Mesh{
                 const currentVoxelCoords = new Vector3(x,y,z);
                 const currentVoxelNonEmpty = vo.isVoxelNonEmpty(currentVoxelCoords);
                 if(currentVoxelNonEmpty){
-                    const voxelStartPosition = new Vector3( (objectStart.x +x)*vo.baseVoxelSize , (objectStart.y+y)*vo.baseVoxelSize, (objectStart.z+z)*vo.baseVoxelSize);
+                    const voxelStartPosition = new Vector3( (objectStart.x +x)*vo.getVoxelSize() , (objectStart.y+y)*vo.getVoxelSize(), (objectStart.z+z)*vo.getVoxelSize());
                     
-
-
                     const getThisVoxelColor = (voxelId: Vector3)=>{
                             return vo.getVoxel(voxelId)!.color;
                     }
                     
-                    const voxelSize = vo.baseVoxelSize;
+                    const voxelSize = vo.getVoxelSize();
                     const voxelColor = getThisVoxelColor(currentVoxelCoords);
 
                     const leftTopFrontPosition = voxelStartPosition.addVector(new Vector3(0,0,voxelSize)); //a
@@ -106,7 +102,7 @@ export function generateVoMesh(vo: VoxelObject): Mesh{
 }
 
 export function generateVoGridMesh(vo: VoxelObject): Mesh{
-    const epsilon = 0.001;
+    const epsilon = 0.00;
     const meshBuilder: MeshBuilder = new MeshBuilder({
         topology: "triangle-list",
         attributes:[
@@ -115,7 +111,7 @@ export function generateVoGridMesh(vo: VoxelObject): Mesh{
         ]
     },
     {
-        depthWriteEnabled: true,
+        depthWriteEnabled: false,
         depthCompare: 'less-equal',
         format: 'depth24plus',        
     });
@@ -151,10 +147,10 @@ export function generateVoGridMesh(vo: VoxelObject): Mesh{
                 const currentVoxelCoords = new Vector3(x,y,z);
                 const currentVoxelNonEmpty = vo.isVoxelNonEmpty(currentVoxelCoords);
                 if(currentVoxelNonEmpty){
-                    const voxelStartPosition = new Vector3( (objectStart.x +x)*vo.baseVoxelSize , (objectStart.y+y)*vo.baseVoxelSize, (objectStart.z+z)*vo.baseVoxelSize);
+                    const voxelStartPosition = new Vector3( (objectStart.x +x)*vo.getVoxelSize() , (objectStart.y+y)*vo.getVoxelSize(), (objectStart.z+z)*vo.getVoxelSize());
                 
                     
-                    const voxelSize = vo.baseVoxelSize;
+                    const voxelSize = vo.getVoxelSize();
                     const voxelColor = vo.objectGridColor;
 
                     const leftTopFrontPosition = voxelStartPosition.addVector(new Vector3(0-epsilon,0-epsilon,voxelSize+epsilon)); //a
@@ -204,54 +200,48 @@ export function generateVoGridMesh(vo: VoxelObject): Mesh{
 
 export function generateVoBorderGridMesh(vo: VoxelObject): Mesh {
 
-    const meshBuilder = new MeshBuilder({
+    const meshBuilder: MeshBuilder = new MeshBuilder({
         topology: "triangle-list",
-        attributes: [
+        attributes:[
             "color",
             "quadUV",
-        ]
+        ],
+        cullMode: "front"
+    },
+    {
+        depthWriteEnabled: false,
+        depthCompare: 'less-equal',
+        format: 'depth24plus',        
     });
 
     const color = vo.borderColor;
 
-    const addQuad = (
-        A: Vector3,
-        B: Vector3,
-        C: Vector3,
-        D: Vector3
-    ) => {
-
-        meshBuilder.addQuad(
-            {
+    const addQuad = (A: Vector3,B: Vector3,C: Vector3,D: Vector3) => {
+        meshBuilder.addQuad({
                 position: A,
                 quadUV: new Vector2(0,0),
                 color,
-            },
-            {
+            },{
                 position: B,
                 quadUV: new Vector2(1,0),
                 color,
-            },
-            {
+            },{
                 position: C,
                 quadUV: new Vector2(1,1),
                 color,
-            },
-            {
+            },{
                 position: D,
                 quadUV: new Vector2(0,1),
                 color,
-            }
-        );
-    };
+    })};
+
+    const step = vo.getVoxelSize();
 
     const objectStart = new Vector3(
-        -(vo.size.x * vo.baseVoxelSize) / 2,
-        -(vo.size.y * vo.baseVoxelSize) / 2,
-        -(vo.size.z * vo.baseVoxelSize) / 2
+        -(vo.size.x  ) * step / 2,
+        -(vo.size.y  ) * step / 2,
+        -(vo.size.z  ) * step / 2
     );
-
-    const step = vo.baseVoxelSize;
 
     const pos = (x:number,y:number,z:number)=>
         objectStart.addVector(
@@ -261,11 +251,10 @@ export function generateVoBorderGridMesh(vo: VoxelObject): Mesh {
                 z * step
             )
         );
-
+    
     // FRONT
     for(let x = 0; x < vo.size.x; x++){
-        for(let y = 0; y < vo.size.y; y++){
-
+        for(let y = 0; y < vo.size.y; y++){           
             addQuad(
                 pos(x, y, vo.size.z),
                 pos(x+1, y, vo.size.z),
@@ -351,6 +340,10 @@ export function generateVoSelectedAreaMesh(vo: VoxelObject): Mesh {
             "color",
             "quadUV",
         ]
+    },{
+        depthWriteEnabled: false,
+        depthCompare: 'less-equal',
+        format: 'depth24plus',
     });
 
     const addVoxelSideToMesh = (
@@ -400,12 +393,12 @@ export function generateVoSelectedAreaMesh(vo: VoxelObject): Mesh {
         const z = voxelCoords.z;
 
         const voxelStartPosition = new Vector3(
-            (objectStart.x + x) * vo.baseVoxelSize,
-            (objectStart.y + y) * vo.baseVoxelSize,
-            (objectStart.z + z) * vo.baseVoxelSize
+            (objectStart.x + x) * vo.getVoxelSize(),
+            (objectStart.y + y) * vo.getVoxelSize(),
+            (objectStart.z + z) * vo.getVoxelSize()
         );
 
-        const voxelSize = vo.baseVoxelSize;
+        const voxelSize = vo.getVoxelSize();
         const voxelColor = vo.selectedVoxelColor;
 
         const leftTopFrontPosition = voxelStartPosition.addVector(new Vector3(0,0,voxelSize));
@@ -497,16 +490,22 @@ export function generateVoSelectedAreaMesh(vo: VoxelObject): Mesh {
 
 export function generateVoBorderOutlineMesh(vo: VoxelObject): Mesh {
 
-    const meshBuilder = new MeshBuilder({
+    const meshBuilder: MeshBuilder = new MeshBuilder({
         topology: "triangle-list",
-        attributes: [
+        attributes:[
             "color",
             "quadUV",
-        ]
+        ],
+        cullMode: "front"
+    },
+    {
+        depthWriteEnabled: false,
+        depthCompare: 'less-equal',
+        format: 'depth24plus',        
     });
 
     const borderColor = vo.borderColor;
-    const borderOffset = 0.1;
+    const borderOffset = 0;
 
     const addQuad = (
         topLeft: Vector3,
@@ -540,14 +539,14 @@ export function generateVoBorderOutlineMesh(vo: VoxelObject): Mesh {
     };
 
     const objectStart = new Vector3(
-        -(vo.size.x * vo.baseVoxelSize) / 2,
-        -(vo.size.y * vo.baseVoxelSize) / 2,
-        -(vo.size.z * vo.baseVoxelSize) / 2
+        -(vo.size.x * vo.getVoxelSize()) / 2,
+        -(vo.size.y * vo.getVoxelSize()) / 2,
+        -(vo.size.z * vo.getVoxelSize()) / 2
     );
 
-    const voxelSizeX = vo.baseVoxelSize * vo.size.x;
-    const voxelSizeY = vo.baseVoxelSize * vo.size.y;
-    const voxelSizeZ = vo.baseVoxelSize * vo.size.z;
+    const voxelSizeX = vo.getVoxelSize() * vo.size.x;
+    const voxelSizeY = vo.getVoxelSize() * vo.size.y;
+    const voxelSizeZ = vo.getVoxelSize() * vo.size.z;
 
     const A = objectStart.addVector(
         new Vector3(0,0,voxelSizeZ)

@@ -68,7 +68,7 @@ export class VoxelObject extends SceneObject{
     size : Vector3 = new Vector3(0,0,0);
     
     //how much units in worldSpace should one voxel take in each dimension
-    baseVoxelSize = 50;
+    #voxelSize = 50;
 
     //for now all voxels are stored simply as 3D array in VoxelObject
     //in fututre this will be replaced by more sophisticated methods
@@ -84,12 +84,18 @@ export class VoxelObject extends SceneObject{
 
     constructor(name: string , size: Vector3){
         super(name);
-        this.size = size;
+        this.size = size;        
         this.voxels = Array.from({ length: size.x }, () =>
             Array.from({ length: size.y }, () =>
                 Array.from({ length: size.z }, () => null)
             )
         );
+
+        this.#objectRo = RenderableObjectManager.createVoRo(this);
+        this.#objectGridRo = RenderableObjectManager.createVoBorderGridRo(this);
+        this.#selectedAreaRo = RenderableObjectManager.createVoSelectedAreaRo(this);
+        this.#borderGridRo = RenderableObjectManager.createVoBorderGridRo(this);
+        this.#borderOutlineRo = RenderableObjectManager.createVoBorderOutlineRo(this);
     }
 
     //managing renderable objects
@@ -122,7 +128,7 @@ export class VoxelObject extends SceneObject{
         this.#setBorderGridToRebuild();
     }
 
-    #objectRo: RenderableObject = RenderableObjectManager.createVoRo(this);
+    #objectRo: RenderableObject;
     #objectRoDirtyFlag: boolean = false;
     getObjectRo(): RenderableObject{
         if(this.#shouldRebuildObjectRo()){
@@ -140,7 +146,7 @@ export class VoxelObject extends SceneObject{
         RenderableObjectManager.rebuildVoRo(this, this.#objectRo);
     }
 
-    #objectGridRo: RenderableObject = RenderableObjectManager.createVoBorderGridRo(this);
+    #objectGridRo: RenderableObject;
     objectGridColor: Vector4 = new Vector4(100,100,100,255);
     #objectGridRoDirty: boolean = false;
     getObjectGridRo(): RenderableObject{
@@ -159,7 +165,7 @@ export class VoxelObject extends SceneObject{
         RenderableObjectManager.rebuildVoGridRo(this, this.#objectGridRo);
     }
 
-    #selectedAreaRo: RenderableObject = RenderableObjectManager.createVoSelectedAreaRo(this);
+    #selectedAreaRo: RenderableObject;
     #selectedAreaRoDirty: boolean = false;
     getSelectedAreaRo() : RenderableObject{
         if(this.#shouldRebuildSelectedAreaRo()){
@@ -179,7 +185,7 @@ export class VoxelObject extends SceneObject{
 
     borderColor: Vector4 = new Vector4(160, 130, 210, 255);
 
-    #borderOutlineRo: RenderableObject = RenderableObjectManager.createVoBorderOutlineRo(this);
+    #borderOutlineRo: RenderableObject;
     #borderOutlineRoDirty: boolean = false;
     getBorderOutlineRo(): RenderableObject{
        if(this.#shouldRebuildBorderOutlineRo()){
@@ -198,7 +204,7 @@ export class VoxelObject extends SceneObject{
     }
     
 
-    #borderGridRo: RenderableObject = RenderableObjectManager.createVoBorderGridRo(this);
+    #borderGridRo: RenderableObject;
     #borderGridRoDirty: boolean = false;
     getBorderGridRo(): RenderableObject{
        if(this.#shouldRebuildBorderGrid()){
@@ -221,9 +227,9 @@ export class VoxelObject extends SceneObject{
     //whether any voxel exists under this id is unkown
     //assumes that (0,0,0) is in the middle of the object
     pointCoordinatesToVoxelId(v: Vector3) : Vector3{
-        const xCord :number = Math.floor(v.x/this.baseVoxelSize)+this.size.x/2;
-        const yCord :number = Math.floor(v.y/this.baseVoxelSize)+this.size.y/2;
-        const zCord :number = Math.floor(v.z/this.baseVoxelSize)+this.size.z/2;
+        const xCord :number = Math.floor(v.x/this.#voxelSize)+this.size.x/2;
+        const yCord :number = Math.floor(v.y/this.#voxelSize)+this.size.y/2;
+        const zCord :number = Math.floor(v.z/this.#voxelSize)+this.size.z/2;
         const result = new Vector3(xCord, yCord, zCord);        
         return result;
     }
@@ -758,7 +764,7 @@ export class VoxelObject extends SceneObject{
                 row.map(voxel => voxel ? { ...voxel } : null)
             )
         );
-        out.baseVoxelSize = this.baseVoxelSize;
+        out.#voxelSize = this.#voxelSize;
         out.#notifyOfMeshChange();
         out.#notifyOfSizeChange();      
         out.selectedVoxelColor = this.selectedVoxelColor.copy();
@@ -785,5 +791,15 @@ export class VoxelObject extends SceneObject{
 
     setSelectedVoxelsColor(v: Vector3){
         this.selectedVoxelColor = new Vector4(v.x, v.y, v.z, this.selectedVoxelsAlpha);
+    }
+
+    setVoxelSize(n: number){
+        this.#voxelSize = n;
+        this.#notifyOfMeshChange();
+        this.#notifyOfSizeChange();
+    }
+
+    getVoxelSize(){
+        return this.#voxelSize
     }
 }

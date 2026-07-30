@@ -7,6 +7,8 @@ import type { Mesh, VertexLayout } from "./Mesh"
 export type MeshBuilderVertexLayout = {
     topology: "line-list" | "triangle-list" //only supported topologies are line-list and triangle-list
     attributes: MeshAttribute[]
+    frontFace?: "cw" | "ccw"
+    cullMode?: "front" | "back"
 }
 
 //refers to optional fields that should be expected from any vertex that is used by the MeshBuilder
@@ -45,8 +47,8 @@ export class MeshBuilder{
         return{
             topology: layout.topology,
             stripIndexFormat: layout.topology === "line-list" ? "uint32" : undefined, //triangle-list requires undefined stripIndexFormat
-            frontFace:  'cw',
-            cullMode:  'back',
+            frontFace: layout.frontFace? layout.frontFace : 'cw',
+            cullMode: layout.cullMode? layout.cullMode : 'back',
             unclippedDepth: false,
         }
     }

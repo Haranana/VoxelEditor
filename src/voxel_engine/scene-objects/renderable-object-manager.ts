@@ -44,7 +44,7 @@ export class RenderableObjectManager{
 
     static createVoGridRo(vo: VoxelObject): RenderableObject{
         const out: RenderableObject = new RenderableObject();
-        const shader = new Shader(worldObjectQuadWireframeShader(), "vertexShader", "fragmentShader", 
+        const shader = new Shader(worldObjectGridShader(), "vertexShader", "fragmentShader", 
         [new ViewportShaderResources(0) ,new CameraShaderResources(1),new WorldObjectShaderResources(2)]);
         out.mesh = generateVoGridMesh(vo);
         out.material = {
@@ -61,7 +61,7 @@ export class RenderableObjectManager{
         ro.worldTransform = {...vo.transform};
         
         if(!ro.material || !ro.material.shader){            
-            const shader = new Shader(worldObjectQuadWireframeShader(), "vertexShader", "fragmentShader", 
+            const shader = new Shader(worldObjectGridShader(), "vertexShader", "fragmentShader", 
             [new ViewportShaderResources(0) ,new CameraShaderResources(1),new WorldObjectShaderResources(2)]);
             ro.material = {shader};
         }
@@ -108,7 +108,7 @@ export class RenderableObjectManager{
 
     static createVoBorderOutlineRo(vo: VoxelObject): RenderableObject{
         const out: RenderableObject = new RenderableObject();
-        const shader = new Shader(worldObjectOutlineShader(), "vertexShader", "fragmentShader", 
+        const shader = new Shader(worldObjectGridShader(), "vertexShader", "fragmentShader", 
         [new ViewportShaderResources(0) ,new CameraShaderResources(1),new WorldObjectShaderResources(2)]);
         out.mesh = generateVoBorderOutlineMesh(vo);
         out.material = {
@@ -125,7 +125,7 @@ export class RenderableObjectManager{
         ro.worldTransform = {...vo.transform};
         
         if(!ro.material || !ro.material.shader){            
-            const shader = new Shader(worldObjectOutlineShader(), "vertexShader", "fragmentShader", 
+            const shader = new Shader(worldObjectGridShader(), "vertexShader", "fragmentShader", 
             [new ViewportShaderResources(0) ,new CameraShaderResources(1),new WorldObjectShaderResources(2)]);
             ro.material = {shader};
         }

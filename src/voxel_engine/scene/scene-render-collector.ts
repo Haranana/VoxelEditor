@@ -23,7 +23,7 @@ export class SceneRenderCollector{
                     return;
             }      
             const objToAdd = obj.getObjectRo();
-            console.log("[SceneRenderCollector] adding obj: " + objToAdd.name)                
+                   
             out.push(objToAdd);
         });
         
@@ -36,25 +36,25 @@ export class SceneRenderCollector{
 
             if(scene.seletedVoxelObjectRenderOptions.voxelObjectWireframe){
                 const newRenderableObject = selectedVo.getObjectGridRo();
-                console.log("[SceneRenderCollector] adding obj grid: " + newRenderableObject.name)
+                
                 out.push(newRenderableObject);
             }
 
             if(scene.seletedVoxelObjectRenderOptions.borderGrid){
                 const newRenderableObject = selectedVo.getBorderGridRo();
-                console.log("[SceneRenderCollector] adding obj border grid: " + newRenderableObject.name)                
+                
                 out.push(newRenderableObject);
             }
 
             if(scene.seletedVoxelObjectRenderOptions.borderOutline){
                 const newRenderableObject = selectedVo.getBorderOutlineRo();
-                console.log("[SceneRenderCollector] adding obj border outline: " + newRenderableObject.name)
+                
                 out.push(newRenderableObject);
             }
 
             if(selectedVo.selectedVoxels.size>0){
                 const selectedObjectSelectedArea = selectedVo.getSelectedAreaRo();
-                console.log("[SceneRenderCollector] adding obj selected area: " + selectedObjectSelectedArea.name)
+                
                 out.push(selectedObjectSelectedArea);
             }
 
@@ -77,7 +77,7 @@ export class SceneRenderCollector{
 
             loadedObjs = ""; out.forEach(obj => {
                 loadedObjs+=obj.name+" ,";
-            }); console.log("[SceneRenderCollector] loaded objects: " + loadedObjs);
+            }); 
             
 
         }             

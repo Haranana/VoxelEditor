@@ -55,7 +55,7 @@ export function getVoxelFromObject(_: Camera,
 
     const rayDirection: Vector3 = pointFarMsPersp.subVector(pointNearMsPersp).normalize();
     const rayOrigin: Vector3 = pointNearMsPersp;
-    const voxelSize: number = obj.baseVoxelSize; 
+    const voxelSize: number = obj.getVoxelSize(); 
     const ray: Ray = new Ray(rayOrigin, rayDirection);
 
     /*
