@@ -19,6 +19,8 @@ import { ColorPaletteWidget } from "../editor_widgets/ColorPaletteWidget";
 import { EditVoxelObjectWidget } from "../editor_widgets/EditVoxelObjectWidget";
 import ResizableContainer from "../editor_widgets/ResizableContainer";
 import EditorCanvas from "../editor_widgets/EditorCanvas";
+import { SceneListWidget } from "../editor_widgets/scene_list/SceneListWidget";
+import { getSampleCamera } from "../../voxel_engine/scene-objects/camera/sample-cameras";
 
 
 function clamp(value: number, min: number, max: number) {
@@ -85,19 +87,7 @@ export default function EditorPage() {
     const obj: VoxelObject = getBasicSampleVoxelObject("SampleObject")     
     sceneRef.current.addObject(obj);
 
-    const camera: Camera = new Camera("Main camera", new Vector3(0,0,0), 1000);
-    camera.fovY = 90;
-    camera.near = 0.1;
-    camera.far = 5000,
-    camera.transform = {
-      translation: new Vector3(0, 0, -1000),
-      scale: new Vector3(1, 1, 1),
-      rotation: new Vector3(0, 0, 0),
-    },
-    camera.projectionType = "perspective",
-    camera.pitch = 0.0;
-    camera.yaw = 0.0;
-    sceneRef.current.addObject(camera);
+    sceneRef.current.addObject(getSampleCamera("MainCamera"));
   },[])
 
   useEffect(()=>{
@@ -487,6 +477,8 @@ export default function EditorPage() {
     onOpenChange={setIsScenePropertiesWidgetOpen}
     version={scenePropertiesVersion}
   />
+
+  const sceneListWidget: React.ReactNode = <SceneListWidget></SceneListWidget>
   
   const [colorPaletteVersion, setColorPaletteVersion] = useState<number>(0);
   function onColorPaletteVersion(){
@@ -581,6 +573,7 @@ export default function EditorPage() {
                 hasTopHandle={false}
               >
                 <div className="ResizableContainerChildWrapper">
+                {sceneListWidget}
                 {/*{objectPropertiesWidget}*/}
                 {cameraPropertiesWidget}
                 {selectToolsWidget}

@@ -4,12 +4,15 @@ import type { EditMode, SelectMode } from "../page/EditorPage";
 import type { Scene } from "../../voxel_engine/scene/scene";
 import { clamp, mod } from "../../math/utils";
 import type { Vector2 } from "../../math/vector2.type";
-import type { ProjectionType } from "../../voxel_engine/scene-objects/camera/camera";
+import { Camera, type ProjectionType } from "../../voxel_engine/scene-objects/camera/camera";
 import { getVoxelFromObject } from "../../voxel_engine/voxel-ray-caster";
 import { Matrices4 } from "../../math/matrices";
-import { faceDirectionToVector, vectorToFaceDirection } from "../../voxel_engine/scene-objects/voxel/voxel-object";
+import { faceDirectionToVector, vectorToFaceDirection, VoxelObject } from "../../voxel_engine/scene-objects/voxel/voxel-object";
 import { Vector4 } from "../../math/vector4.type";
 import { generateCylinderVoxelArray, generatePyramidVoxelArray, generateSphereVoxelArray } from "../../voxel_engine/scene-objects/voxel/voxel-array-generator";
+import type { SceneObject } from "../../voxel_engine/scene-objects/sceneObject";
+import { getBasicSampleVoxelObject } from "../../voxel_engine/scene-objects/voxel/sample-voxel-objects";
+import { getSampleCamera } from "../../voxel_engine/scene-objects/camera/sample-cameras";
 
 
 type SelectSession = {
@@ -456,7 +459,7 @@ export class EditorController{
 
     resetSelectSession(){
         if(!this.initialized) return;
-        const selectedObject = this.scene!.getSelectedVoxelObject();
+        const selectedObject = this.scene!.getActiveVoxelObject();
         if(!selectedObject) return;
 
         const selectAreaModified = selectedObject.resetSelect();
@@ -472,7 +475,7 @@ export class EditorController{
     handleCanvasPointerDown(pointerPos: Vector2, canvasSize: Vector2){
         if(!this.initialized) return;
         const scene = this.scene!;
-        const voxelObject = scene.getSelectedVoxelObject();
+        const voxelObject = scene.getActiveVoxelObject();
         const camera = scene.getActiveCamera();
         if(!voxelObject || !camera) return;
 
@@ -511,7 +514,7 @@ export class EditorController{
     handleCanvasPointerMove(pointerPos: Vector2, canvasSize: Vector2){
         if(!this.initialized) return;
         const scene = this.scene!;
-        const voxelObject = scene.getSelectedVoxelObject();
+        const voxelObject = scene.getActiveVoxelObject();
         const camera = scene.getActiveCamera();
         if(!voxelObject || !camera) return;
 
@@ -591,7 +594,7 @@ export class EditorController{
     handleCanvasPointerUp(pointerPos: Vector2, canvasSize: Vector2){
         if(!this.initialized) return;
         const scene = this.scene!;
-        const voxelObject = scene.getSelectedVoxelObject();
+        const voxelObject = scene.getActiveVoxelObject();
         const camera = scene.getActiveCamera();
         if(!voxelObject || !camera) return;
 
@@ -647,6 +650,101 @@ export class EditorController{
         this.renderScene!();
     }
 
+    setSceneActiveObject(sceneId: number){
+        if(!this.initialized || !this.scene) return;
+        const obj: SceneObject | undefined = this.scene.getObjectById(sceneId);
+        console.log("joooo!" + obj?.name);
+        if(obj){
+            if(obj instanceof VoxelObject){
+                this.scene.setActiveVoxelObjectId(sceneId);
+            }else if(obj instanceof Camera){
+                this.scene.setActiveCameraId(sceneId);
+            }
+        }        
+    }
+
+    setSceneActiveCamera(sceneId: number){
+        if(!this.initialized || !this.scene) return;
+        this.scene.setActiveCameraId(sceneId);
+    }
+
+    setSceneActiveVo(sceneId: number){
+        if(!this.initialized || !this.scene) return;
+        this.scene.setActiveVoxelObjectId(sceneId);
+    }
+
+    deleteSceneObject(sceneId: number){
+        if(!this.initialized || !this.scene) return;
+        this.scene.removeObject(sceneId);        
+    }
+
+    toggleSceneObjectEnabled(sceneId: number){
+        if(!this.initialized || !this.scene) return;
+        this.scene.toggleObjectEnabled(sceneId);              
+    }
+
+    //returns null if editor is uninitialized or if scene is null
+    getSceneObjectsOfType<T extends SceneObject>(objType: abstract new (...args: any[]) => T): T[] | null{
+        if(!this.initialized || !this.scene) {            
+            return null;
+        }
+        return this.scene.getObjectsOfType(objType);
+    }
+
+    addNewVoxelObject(name: string = "VoxelObject", factoryFunction: ((name: string)=>VoxelObject) = getBasicSampleVoxelObject){
+        if(!this.initialized || !this.scene) return;
+        const vo = factoryFunction(name);
+        this.scene.addObject(vo);
+    }
+
+    addNewCamera(name: string = "Camera", factoryFunction: ((name: string)=>Camera) = getSampleCamera){
+        if(!this.initialized || !this.scene) return;
+        const c = factoryFunction(name);
+        this.scene.addObject(c);
+    }
+
+    //returns false if not initialized
+    isCameraActiveById(sceneId: number): boolean{
+        if(!this.initialized || !this.scene) return false;
+        return this.scene.isCameraActiveById(sceneId);        
+    }
+
+    //returns false if not initialized
+    isVoActiveById(sceneId: number): boolean{
+        if(!this.initialized || !this.scene) return false;
+        return this.scene.isVoxelObjectSelectedById(sceneId);        
+    }    
+
+    subscribeObjectEnabledChangeSceneEvent(listener: ()=>void){
+        if(!this.initialized || !this.scene) return;
+        this.scene.objectEnabledChangeEvent.subscribe(listener);
+    }
+
+    subscribeObjectListChangedSceneEvent(listener: ()=>void){
+        if(!this.initialized || !this.scene) return;
+        this.scene.objectListChangedEvent.subscribe(listener);
+    }
+
+    subscribeObjectAddedSceneEvent(listener: ()=>void){
+        if(!this.initialized || !this.scene) return;
+        this.scene.objectAddedEvent.subscribe(listener);
+    }
+
+    subscribeObjectRemovedSceneEvent(listener: ()=>void){
+        if(!this.initialized || !this.scene) return;
+        this.scene.objectRemovedEvent.subscribe(listener);
+    }
+
+    subscribeActiveVoChangedSceneEvent(listener: ()=>void){
+        if(!this.initialized || !this.scene) return;
+        this.scene.activeVoChanged.subscribe(listener);
+    }
+
+    subscribeActiveCameraChangedSceneEvent(listener: ()=>void){
+        if(!this.initialized || !this.scene) return;
+        this.scene.activeCameraChanged.subscribe(listener);
+    }
+
     //color
 
     //current color should in most cases have alpha of 255
@@ -655,7 +753,7 @@ export class EditorController{
     setCurrentColor(c: Vector3){
         if(!this.initialized) return;
         const scene = this.scene!;
-        const voxelObject = scene.getSelectedVoxelObject();
+        const voxelObject = scene.getActiveVoxelObject();
         if(!voxelObject) return;
 
         this.currentColor = new Vector4(c.x, c.y, c.z, 255);
@@ -670,7 +768,7 @@ export class EditorController{
     changeVoxelObjectSizeTo(newSize: Vector3){
         if(!this.initialized) return;
         const scene = this.scene!;
-        const voxelObject = scene.getSelectedVoxelObject();
+        const voxelObject = scene.getActiveVoxelObject();
         if(!voxelObject) return;
 
         const currentSize: Vector3 = voxelObject.size;
@@ -683,7 +781,7 @@ export class EditorController{
     changeVoxelObjectSizeByScalar(mult: number){
         if(!this.initialized) return;
         const scene = this.scene!;
-        const voxelObject = scene.getSelectedVoxelObject();
+        const voxelObject = scene.getActiveVoxelObject();
         if(!voxelObject) return;
 
         const currentSize: Vector3 = voxelObject.size;
@@ -706,7 +804,7 @@ export class EditorController{
     fillVoxelObjectVoxels(){
         if(!this.initialized) return;
         const scene = this.scene!;
-        const voxelObject = scene.getSelectedVoxelObject();
+        const voxelObject = scene.getActiveVoxelObject();
         if(!voxelObject) return;
 
         const objectModified: boolean = voxelObject.selectEmptyVoxels() > 0;
@@ -721,7 +819,7 @@ export class EditorController{
         if(!this.initialized) return;
         const scene = this.scene!;
         scene.objects.forEach((o)=>{console.log(o.name)})
-        const voxelObject = scene.getSelectedVoxelObject();
+        const voxelObject = scene.getActiveVoxelObject();
         if(!voxelObject) return;
 
         const objectModified: boolean = voxelObject.selectNonEmptyVoxels() > 0;
@@ -736,7 +834,7 @@ export class EditorController{
     reverseVoxelObjectVoxels(){
         if(!this.initialized) return;
         const scene = this.scene!;
-        const voxelObject = scene.getSelectedVoxelObject();
+        const voxelObject = scene.getActiveVoxelObject();
         if(!voxelObject) return;
 
         voxelObject.selectAllVoxels();
@@ -753,7 +851,7 @@ export class EditorController{
     regenerateVoxelObjectToSphere(){
         if(!this.initialized) return;
         const scene = this.scene!;
-        let voxelObject = scene.getSelectedVoxelObject();
+        let voxelObject = scene.getActiveVoxelObject();
         if(!voxelObject) return;
 
         voxelObject.setVoxels(generateSphereVoxelArray(voxelObject.size, this.currentColor))
@@ -763,7 +861,7 @@ export class EditorController{
     regenerateVoxelObjectToPyramid(){
         if(!this.initialized) return;
         const scene = this.scene!;
-        let voxelObject = scene.getSelectedVoxelObject();
+        let voxelObject = scene.getActiveVoxelObject();
         if(!voxelObject) return;
 
         voxelObject.setVoxels(generatePyramidVoxelArray(voxelObject.size, this.currentColor))
@@ -773,7 +871,7 @@ export class EditorController{
     regenerateVoxelObjectToCylinder(){
         if(!this.initialized) return;
         const scene = this.scene!;
-        let voxelObject = scene.getSelectedVoxelObject();
+        let voxelObject = scene.getActiveVoxelObject();
         if(!voxelObject) return;
 
         voxelObject.setVoxels(generateCylinderVoxelArray(voxelObject.size, this.currentColor));
@@ -783,7 +881,7 @@ export class EditorController{
     flipVoxelObjectByX(){
         if(!this.initialized) return;
         const scene = this.scene!;
-        let voxelObject = scene.getSelectedVoxelObject();
+        let voxelObject = scene.getActiveVoxelObject();
         if(!voxelObject) return;
 
         voxelObject.selectAllVoxels();
@@ -795,7 +893,7 @@ export class EditorController{
     flipVoxelObjectByY(){
         if(!this.initialized) return;
         const scene = this.scene!;
-        let voxelObject = scene.getSelectedVoxelObject();
+        let voxelObject = scene.getActiveVoxelObject();
         if(!voxelObject) return;
         
         voxelObject.selectAllVoxels();
@@ -807,7 +905,7 @@ export class EditorController{
     flipVoxelObjectByZ(){
         if(!this.initialized) return;
         const scene = this.scene!;
-        let voxelObject = scene.getSelectedVoxelObject();
+        let voxelObject = scene.getActiveVoxelObject();
         if(!voxelObject) return;
 
         voxelObject.selectAllVoxels();
@@ -819,7 +917,7 @@ export class EditorController{
     rotateVoxelObjectByX(){
         if(!this.initialized) return;
         const scene = this.scene!;
-        let voxelObject = scene.getSelectedVoxelObject();
+        let voxelObject = scene.getActiveVoxelObject();
         if(!voxelObject) return;
 
         voxelObject.selectAllVoxels();
@@ -831,7 +929,7 @@ export class EditorController{
     rotateVoxelObjectByY(){
         if(!this.initialized) return;
         const scene = this.scene!;
-        let voxelObject = scene.getSelectedVoxelObject();
+        let voxelObject = scene.getActiveVoxelObject();
         if(!voxelObject) return;
 
         voxelObject.selectAllVoxels();
@@ -843,7 +941,7 @@ export class EditorController{
     rotateVoxelObjectByZ(){
         if(!this.initialized) return;
         const scene = this.scene!;
-        let voxelObject = scene.getSelectedVoxelObject();
+        let voxelObject = scene.getActiveVoxelObject();
         if(!voxelObject) return;
 
         voxelObject.selectAllVoxels();
@@ -851,5 +949,7 @@ export class EditorController{
         voxelObject.resetSelect();
         this.renderScene!();
     }
+
+    
     
 }

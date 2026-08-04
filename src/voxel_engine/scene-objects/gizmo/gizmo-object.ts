@@ -4,6 +4,8 @@ import type { Mesh } from "../../../render_engine/meshes/Mesh";
 import type { RenderableObject } from "../../../render_engine/renderableObjects/renderableObject";
 import { SceneObject, type ScreenOverlayTransform, type WorldObjectTransform } from "../sceneObject";
 
+export type GizmoType = "world" | "screen";
+
 export class Gizmo extends SceneObject{
     screenTransform: ScreenOverlayTransform | null = {
         anchor: new Vector2(0,0),
@@ -15,8 +17,8 @@ export class Gizmo extends SceneObject{
         scale: new Vector3(1,1,1),
         rotation: new Vector3(1,1,1),
     }
-    gizmoType: "world" | "screen" = "world";
-    disabled: boolean = false;
+    
+    gizmoType: GizmoType = "world";
     mesh: Mesh | null = null;
     gizmoRo: RenderableObject | null = null;
 

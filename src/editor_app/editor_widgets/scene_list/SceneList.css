@@ -1,0 +1,143 @@
+.SceneListWidget{
+    border: 0.5px solid ;
+}
+
+.SceneListWidget button{
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent;
+    border: none;
+}
+
+.SceneListWidget button:hover{
+    cursor: pointer;
+}
+
+.SceneListHeader{
+    display: flex;
+    flex-direction: row;
+}
+
+.SceneListSearchInput{
+    flex: 1 1 auto;   
+    min-width: 0;     
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin: 0;
+}
+
+.SceneListFilterWrapper{
+    position: relative;
+    display: inline-block;
+}
+
+.SceneListFilterButton{
+    width: 100%;
+    height: 100%;
+    flex: 0 0 auto;   
+    margin: none;
+}
+
+.SceneListFilter{
+    position: absolute;
+    top: 0px;
+    right: 0px;
+    top: 100%;
+    
+    background-color: var(--line-color-2);
+    border: 1px solid var(--line-color-1);
+    padding: 2px 6px;
+    white-space: nowrap;
+    font-size: var(--font-xs);
+}
+
+.SceneListFilterRow{
+    display: flex;
+    flex-direction: row;
+}
+
+.SceneListFilterRowText{
+    flex: 1 1 auto; 
+    min-width: 0;  
+    display: flex;
+    justify-content: left;
+    padding-right: 10px;
+}
+
+.SceneListFilterRowInput{
+    flex: 0 0 auto;
+}
+
+.SceneListFilterRowCheckbox:hover{
+    cursor: pointer;
+}
+
+
+.SceneListWidget .SceneListBody svg{
+    width: 16px;
+    height: 16px;
+}
+
+.SceneListBody{
+    display: flex;
+    flex-direction: column;
+        background-color: var(--line-color-2);
+    padding: 5px;
+}
+
+.SceneListItem{
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin: 2px 0px 2px 0px;
+}
+
+.SceneListItem > div {
+    flex: 0 0 auto;   
+    margin: 0px 2px 0px 2px;
+}
+
+.SceneListItem > button {
+    flex: 0 0 auto;   
+    margin: 0px 2px 0px 2px;
+    padding: 0px;
+}
+
+.SceneListItem > p {
+    flex: 1 1 auto;   
+    min-width: 0;     
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin: 0;
+}
+
+.SceneListItem svg {
+    display: block;
+}
+
+.SceneListItem p{
+    margin: 0;
+    display: flex;
+    align-items: center;
+    font-size: small;
+    height: 16px;
+}
+
+.SceneListMakeActiveButton svg{
+    box-shadow: 1px 1px 2px black;
+}
+
+.SceneListFooter{
+    display: flex;
+    flex-direction: row;
+}
+
+.SceneListFooter svg{
+    width: 20px;
+    height: 20px;
+}
+

@@ -1,0 +1,22 @@
+.Tooltip{
+    position: relative;
+}
+
+.TooltipText{
+    position: fixed;
+    transform: translate(-50%, 100%);
+    background-color: var(--line-color-2);
+    border: 1px solid var(--line-color-1);
+    padding: 2px 6px;
+    white-space: nowrap;
+    font-size: var(--font-xs);
+    pointer-events: none;
+}
+
+.Tooltip:hover .TooltipText{
+    opacity: 1;
+}
+
+.Tooltip:not(:hover) .TooltipText {
+    transition-delay: 0s; 
+}

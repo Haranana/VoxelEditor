@@ -58,9 +58,7 @@ export class VoxelObject extends SceneObject{
         scale: new Vector3(1,1,1),
         rotation: new Vector3(0,0,0),
     }
-
-    disabled: boolean = false;
-
+    
     //dictates hard borders of voxel object
     readonly maxSize: Vector3 = new Vector3(256,256,256);
 

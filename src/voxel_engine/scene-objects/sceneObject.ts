@@ -17,6 +17,7 @@ export abstract class SceneObject {
     
     sceneId: number | null = null;
     name: string;
+    enabled: boolean = true;
 
     constructor(name = "object") {
         this.name = name;

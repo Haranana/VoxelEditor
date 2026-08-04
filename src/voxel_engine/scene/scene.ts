@@ -1,12 +1,14 @@
 import { Camera } from "../scene-objects/camera/camera";
 import { SceneObject } from "../scene-objects/sceneObject";
 import { VoxelObject } from "../scene-objects/voxel/voxel-object";
+import { VoxelEngineEvent } from "../events/event"
+import { Gizmo } from "../scene-objects/gizmo/gizmo-object";
 
 export type SelectedVoxelObjectRenderOptions = {
     borderGrid: boolean,
     borderOutline: boolean,    
     voxelObject: boolean,
-    voxelObjectWireframe: boolean,
+    voxelObjectGrid: boolean,
 }
 
 export type SceneGizmosRenderOptions = {
@@ -23,7 +25,7 @@ export class Scene{
         borderGrid: true,
         borderOutline: true,    
         voxelObject: true,
-        voxelObjectWireframe: true,
+        voxelObjectGrid: true,
     }
 
     sceneGizmosRenderOptions: SceneGizmosRenderOptions = {
@@ -33,10 +35,40 @@ export class Scene{
         objectRotateGizmo: false,
     }
     
-    #selectedSceneObjectId: number | null = null;
-    #selectedVoxelObjectId: number | null = null;
+    //#selectedSceneObjectId: number | null = null;
+    #activeVoxelObjectId: number | null = null;
     #activeCameraId: number | null = null; 
     #nextSceneObjectId: number = 0;
+
+    #notifyOfObjectEnabledChange(){
+        this.objectEnabledChangeEvent.emit()
+    }
+    objectEnabledChangeEvent: VoxelEngineEvent<void> = new VoxelEngineEvent();
+
+    #notifyOfObjectListChanged(){
+        this.objectListChangedEvent.emit();
+    }
+    objectListChangedEvent: VoxelEngineEvent<void> = new VoxelEngineEvent();
+
+    #notifyOfObjectAdded(){
+        this.objectAddedEvent.emit();
+    }
+    objectAddedEvent: VoxelEngineEvent<void> = new VoxelEngineEvent();
+
+    #notifyOfObjectRemoved(){
+        this.objectRemovedEvent.emit();
+    }
+    objectRemovedEvent: VoxelEngineEvent<void> = new VoxelEngineEvent();
+
+    #notifyOfChangedActiveVo(){
+        this.activeVoChanged.emit();
+    }
+    activeVoChanged: VoxelEngineEvent<void> = new VoxelEngineEvent();
+
+    #notifyOfChangedActiveCamera(){
+        this.activeCameraChanged.emit();
+    }
+    activeCameraChanged: VoxelEngineEvent<void> = new VoxelEngineEvent();
 
     toggleSelectedObjectBorderGrid(){
         this.seletedVoxelObjectRenderOptions.borderGrid = !this.seletedVoxelObjectRenderOptions.borderGrid;
@@ -46,12 +78,12 @@ export class Scene{
         this.seletedVoxelObjectRenderOptions.borderOutline = !this.seletedVoxelObjectRenderOptions.borderOutline;
     }
 
-    toggleSelectedObjectVisibility(){
+    toggleSelectedObjectEnabled(){
         this.seletedVoxelObjectRenderOptions.voxelObject = !this.seletedVoxelObjectRenderOptions.voxelObject;
     }
 
     toggleSelectedObjectWireframe(){
-        this.seletedVoxelObjectRenderOptions.voxelObjectWireframe = !this.seletedVoxelObjectRenderOptions.voxelObjectWireframe;
+        this.seletedVoxelObjectRenderOptions.voxelObjectGrid = !this.seletedVoxelObjectRenderOptions.voxelObjectGrid;
     }
 
     toggleCameraControllGizmo(){
@@ -80,9 +112,9 @@ export class Scene{
         return null;
     }
 
-    getSelectedVoxelObject(): VoxelObject | null {
-        if(this.#selectedVoxelObjectId != null){
-            const objectWithSelectedObjectId : SceneObject | undefined = this.objects.get(this.#selectedVoxelObjectId);
+    getActiveVoxelObject(): VoxelObject | null {
+        if(this.#activeVoxelObjectId != null){
+            const objectWithSelectedObjectId : SceneObject | undefined = this.objects.get(this.#activeVoxelObjectId);
             if(objectWithSelectedObjectId instanceof VoxelObject){
                 return objectWithSelectedObjectId;
             }            
@@ -90,6 +122,7 @@ export class Scene{
         return null;
     }
 
+    /*
     getSelectedSceneObject(): SceneObject | null{
         if(this.#selectedSceneObjectId != null){
             const objectWithSelectedObjectId : SceneObject | undefined = this.objects.get(this.#selectedSceneObjectId);
@@ -99,37 +132,50 @@ export class Scene{
         }
         return null;
     }
+    */
 
     setActiveCameraId(newId: number) : boolean{
         if(this.objects.get(newId) instanceof Camera){
+            const oldId = this.#activeCameraId;
             this.#activeCameraId = newId;
+            if(oldId!==newId) this.#notifyOfChangedActiveCamera();            
             return true;
         }
         return false;
     }
 
-    setSelectedVoxelObjectId(newId: number) : boolean{
+    setActiveVoxelObjectId(newId: number) : boolean{
         if(this.objects.get(newId) instanceof VoxelObject){
-            this.#selectedVoxelObjectId = newId;
+            const oldId = this.#activeVoxelObjectId;
+            this.#activeVoxelObjectId = newId;
+            if(oldId!==newId) this.#notifyOfChangedActiveVo();
             return true;
         }
         return false;
     }
 
+    /*
     setSelectedSceneObjectId(newId: number) : boolean{
         if(this.objects.has(newId)){
+            const oldId = this.#selectedVoxelObjectId;
             this.#selectedSceneObjectId = newId;
+            if(oldId!==newId) this.#notifyOfChangedSelectedSo();
             return true;
         }
         return false;
     }
+    */
 
-    getObjectsOfType<T extends SceneObject>(objType: new (...args: any[]) => T): T[]{
+    getObjectsOfType<T extends SceneObject>(objType: abstract new (...args: any[]) => T): T[]{
         const out: T[] = [];
         this.objects.forEach((obj)=>{
             if(obj instanceof objType) out.push(obj);
         });
         return out;
+    }
+
+    getObjectById(sceneId: number) : SceneObject | undefined{
+        return this.objects.get(sceneId);
     }
 
     //adds object to the scene and appoints scene id to it
@@ -140,9 +186,23 @@ export class Scene{
         newObject.sceneId = this.#nextSceneObjectId;
         this.#nextSceneObjectId++;
 
-        if(newObject instanceof VoxelObject && this.#selectedVoxelObjectId == null ) this.#selectedVoxelObjectId = newObject.sceneId;
-        if(newObject instanceof Camera && this.#activeCameraId == null) this.#activeCameraId = newObject.sceneId;
-        if(this.#selectedSceneObjectId == null) this.#selectedSceneObjectId = newObject.sceneId;
+        this.#notifyOfObjectAdded();
+        this.#notifyOfObjectListChanged();
+
+        if(newObject instanceof VoxelObject && this.#activeVoxelObjectId == null ){
+            this.#activeVoxelObjectId = newObject.sceneId;
+            this.#notifyOfChangedActiveVo();
+        }
+        if(newObject instanceof Camera && this.#activeCameraId == null){
+            this.#activeCameraId = newObject.sceneId;
+            this.#notifyOfChangedActiveCamera();
+        }
+        /*
+        if(this.#selectedSceneObjectId == null){
+            this.#selectedSceneObjectId = newObject.sceneId;
+            this.#notifyOfChangedSelectedSo();
+        }
+        */
         return true;
     }
 
@@ -151,10 +211,47 @@ export class Scene{
         if(!obj) return false;
         obj.sceneId = null;
         this.objects.delete(id);
+
+        this.#notifyOfObjectRemoved();
+        this.#notifyOfObjectListChanged();
         
-        if(this.#activeCameraId == id) this.#activeCameraId = null;
-        if(this.#selectedSceneObjectId == id) this.#selectedSceneObjectId = null;
-        if(this.#selectedVoxelObjectId == id) this.#selectedVoxelObjectId = null;
+        if(this.#activeCameraId == id){
+            this.#activeCameraId = null;
+            this.#notifyOfChangedActiveCamera();
+        }
+        /*
+        if(this.#selectedSceneObjectId == id){
+            this.#selectedSceneObjectId = null;    
+            this.#notifyOfChangedSelectedSo();        
+        }
+        */
+        if(this.#activeVoxelObjectId == id){
+            this.#activeVoxelObjectId = null;
+            this.#notifyOfChangedActiveVo();
+        }
         return true;
+    }
+
+    isVoxelObjectSelectedById(id: number): boolean{
+        return id === this.#activeVoxelObjectId;
+    }
+
+    isVoxelObjectSelected(vo: VoxelObject): boolean{
+        return vo.sceneId!=null && vo.sceneId===this.#activeVoxelObjectId;
+    }
+
+    isCameraActiveById(id: number): boolean{
+        return id === this.#activeCameraId;
+    }
+
+    isCameraActive(c: Camera): boolean{
+        return c.sceneId!=null && c.sceneId===this.#activeCameraId;
+    }
+    
+    toggleObjectEnabled(id: number): boolean{
+        const obj = this.objects.get(id);
+        if(!obj) return false;
+        obj.enabled = !obj.enabled;
+        return false;
     }
 }

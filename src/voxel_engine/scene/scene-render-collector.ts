@@ -13,13 +13,13 @@ export class SceneRenderCollector{
         
         const isSelectedVoxelObject = (obj: SceneObject) =>{
             if(!(obj instanceof VoxelObject)) return false;
-            if(!scene.getSelectedVoxelObject()) return false;
-            if(scene.getSelectedVoxelObject()!.sceneId!=obj.sceneId) return false;
+            if(!scene.getActiveVoxelObject()) return false;
+            if(scene.getActiveVoxelObject()!.sceneId!=obj.sceneId) return false;
             return true;
         }
 
         scene.getObjectsOfType(VoxelObject).forEach((obj)=>{              
-            if( isSelectedVoxelObject(obj) && !scene.seletedVoxelObjectRenderOptions.voxelObject){              
+            if( !isSelectedVoxelObject(obj) || !scene.seletedVoxelObjectRenderOptions.voxelObject){              
                     return;
             }      
             const objToAdd = obj.getObjectRo();
@@ -27,14 +27,14 @@ export class SceneRenderCollector{
             out.push(objToAdd);
         });
         
-        const selectedVo: VoxelObject | null = scene.getSelectedVoxelObject(); ;
+        const selectedVo: VoxelObject | null = scene.getActiveVoxelObject(); ;
         const selectedRo: RenderableObject | null = selectedVo? selectedVo.getObjectRo() : null;
 
         let loadedObjs = ""
 
         if(selectedVo && selectedRo){
 
-            if(scene.seletedVoxelObjectRenderOptions.voxelObjectWireframe){
+            if(scene.seletedVoxelObjectRenderOptions.voxelObjectGrid){
                 const newRenderableObject = selectedVo.getObjectGridRo();
                 
                 out.push(newRenderableObject);
