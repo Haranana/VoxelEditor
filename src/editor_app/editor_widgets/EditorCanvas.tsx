@@ -103,6 +103,12 @@ export default function EditorCanvas(props: EditorCanvasProps) {
         const canvas = props.canvasRef.current;
         if (!canvas) return;
 
+        const observer = new ResizeObserver(() => {
+            props.renderScene();
+        });
+
+        observer.observe(canvas);        
+
         canvas.addEventListener("wheel", handleWheel);
         return () => {
             canvas.removeEventListener("wheel", handleWheel);
