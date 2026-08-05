@@ -39,7 +39,6 @@ type SceneListFilter = {
 }
 
 function soPassesFilter(so: SceneObject, filter: SceneListFilter): boolean{
-    console.log(so.name);
     if(so instanceof LightSource && !filter.showLightSources){
         return false;
     }

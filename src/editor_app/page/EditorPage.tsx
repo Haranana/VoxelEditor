@@ -319,45 +319,45 @@ export default function EditorPage() {
   //scene rerender
   let rerenderOrderedRef = useRef<boolean>(false);
   const rerenderScene = useCallback(() => {
-  if (
-    rerenderOrderedRef.current ||
-    !rendererRef.current.initialized
-  ) return;
+    if (
+      rerenderOrderedRef.current ||
+      !rendererRef.current.initialized
+    ) return;
 
-  rerenderOrderedRef.current = true;
-  
-  requestAnimationFrame(() => {
-    const camera = sceneRef.current.getActiveCamera();
-    const scene = sceneRef.current;
-    if(!camera || !canvasRef.current){
-      return;
-    }
-    const resolution = new Vector2(canvasRef.current.width, canvasRef.current.height);
+    rerenderOrderedRef.current = true;
+    
+    requestAnimationFrame(() => {
+      const camera = sceneRef.current.getActiveCamera();
+      
+      const scene = sceneRef.current;
+      if(!camera || !canvasRef.current){
+        return;
+      }
+      const resolution = new Vector2(canvasRef.current.width, canvasRef.current.height);
 
-    const renderContext: RenderContext = {
-      device: null,
-      queue: null,
-      cameraContext: {
-        viewMatrix: camera.getCameraView(),
-        ndcProjection: camera.getProjectionMatrix(resolution),       
-      },
-      viewportContext: {
-        resolution,
-      },
-      timeContext:  null,
-      globalData: null,
-    }
-    rendererRef.current.renderScene(SceneRenderCollector.collect(scene, camera), renderContext);
-    rerenderOrderedRef.current = false;
-  });
-}, []);
+      const renderContext: RenderContext = {
+        device: null,
+        queue: null,
+        cameraContext: {
+          viewMatrix: camera.getCameraView(),
+          ndcProjection: camera.getProjectionMatrix(resolution),       
+        },
+        viewportContext: {
+          resolution,
+        },
+        timeContext:  null,
+        globalData: null,
+      }
+
+      rendererRef.current.renderScene(SceneRenderCollector.collect(scene, camera), renderContext);
+      rerenderOrderedRef.current = false;
+    });
+  }, []);
   
   const [isCameraPropertiesWidgetOpen, setIsCameraPropertiesWidgetOpen] = useState<boolean>(false);
   const cameraPropertiesWidget : React.ReactNode = <CameraPropertiesWidget
-    camera={sceneRef.current.getActiveCamera()}
     isOpen={isCameraPropertiesWidgetOpen}
     onOpenChange={setIsCameraPropertiesWidgetOpen}
-    cameraVersion={cameraPropertiesVersion}
   />
   
   const [isSelectToolsWidgetOpen, setIsSelectToolsWidgetOpen] = useState<boolean>(false);

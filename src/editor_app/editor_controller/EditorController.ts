@@ -39,7 +39,7 @@ export class EditorController{
 
     init(selectMode: RefObject<SelectMode>, editMode: RefObject<EditMode>, scene: Scene, renderScene: ()=>void){
         this.renderScene = renderScene;
-        this.startCameraMoveAnimationLoop();
+        this.#startCameraMoveAnimationLoop();
         this.selectModeRef = selectMode;
         this.selectModeRef = selectMode
         this.editModeRef = editMode;
@@ -90,64 +90,67 @@ export class EditorController{
     cameraYawMaxValue = 360;
 
     mouseWheelSensitivity = 0.25;
+    
+    onCameraModified : (()=>void) | null = null; //not sure whats that supposed to do, dont remember
 
-    onCameraModified : (()=>void) | null = null;
 
-    startCameraMoveAnimationLoop(){
-        const cameraMoveAnimationLoop = (time: number) => {            
-            if(!this.initialized) return;
-            const scene = this.scene!;
-            const camera = scene.getActiveCamera();
-            if(!camera) return;
+    #startCameraMoveAnimationLoop(){
+        const cameraMoveAnimationLoop = (time: number) => {         
+            if(this.initialized && this.scene && this.scene.getActiveCamera() ){  
+                const scene = this.scene!;
+                const camera = scene.getActiveCamera();
+                
+                if(!camera) return;
 
-            const pitchChangeRate = 90;
-            const yawChangeRate = 90;
-            const last = this.lastTime ?? time;
-            const deltaTime = (time - last) / 1000;
-            this.lastTime = time;
-            
-            //let updatedCamera = { ...this.camera!};
-            let cameraModified = false;
+                const pitchChangeRate = 90;
+                const yawChangeRate = 90;
+                const last = this.lastTime ?? time;
+                const deltaTime = (time - last) / 1000;
+                this.lastTime = time;
+                
+                //let updatedCamera = { ...this.camera!};
+                let cameraModified = false;
 
-            if(this.pressedKeys.has("w")){
-                camera.pitch = clamp({value: camera.pitch + pitchChangeRate*deltaTime, min: -89, max: 89});
-                cameraModified = true;
+                if(this.pressedKeys.has("w")){
+                    camera.pitch = clamp({value: camera.pitch + pitchChangeRate*deltaTime, min: -89, max: 89});
+                    cameraModified = true;
+                }
+                if(this.pressedKeys.has("s")){
+                    camera.pitch = clamp({value: camera.pitch - pitchChangeRate*deltaTime, min: -89, max: 89});
+                    cameraModified = true;
+                }
+                if(this.pressedKeys.has("a")){
+                    camera.yaw = camera.yaw + yawChangeRate*deltaTime;
+                    cameraModified = true;
+                }
+                if(this.pressedKeys.has("d")){
+                    camera.yaw = camera.yaw - yawChangeRate*deltaTime;
+                    cameraModified = true;
+                }   
+
+                
+                const mouseSensitivity = 0.5;
+                const dx = this.cameraMoveSession.deltaX;
+                const dy = this.cameraMoveSession.deltaY;     
+
+                if (dx !== 0 || dy !== 0) {
+                    camera.yaw -= dx * mouseSensitivity;
+                    camera.pitch -=dy * mouseSensitivity;
+                    camera.pitch = clamp( {value: camera.pitch , min: -89, max: 89});
+                    this.cameraMoveSession.deltaX = 0;
+                    this.cameraMoveSession.deltaY = 0;
+
+                    cameraModified = true;
+                }
+
+                if(cameraModified){
+                    //console.log("[EditorController] camera modified: " + this.camera!.pitch + " : " + this.camera!.yaw);
+                    if(this.onCameraModified!=null) this.onCameraModified();
+                    this.renderScene!();   
+                }
             }
-            if(this.pressedKeys.has("s")){
-                camera.pitch = clamp({value: camera.pitch - pitchChangeRate*deltaTime, min: -89, max: 89});
-                cameraModified = true;
-            }
-            if(this.pressedKeys.has("a")){
-                camera.yaw = camera.yaw + yawChangeRate*deltaTime;
-                cameraModified = true;
-            }
-            if(this.pressedKeys.has("d")){
-                camera.yaw = camera.yaw - yawChangeRate*deltaTime;
-                cameraModified = true;
-            }   
-
-            const mouseSensitivity = 0.5;
-            const dx = this.cameraMoveSession.deltaX;
-            const dy = this.cameraMoveSession.deltaY;
-
-            if (dx !== 0 || dy !== 0) {
-                camera.yaw -= dx * mouseSensitivity;
-                camera.pitch -=dy * mouseSensitivity;
-                camera.pitch = clamp( {value: camera.pitch , min: -89, max: 89});
-                this.cameraMoveSession.deltaX = 0;
-                this.cameraMoveSession.deltaY = 0;
-
-                cameraModified = true;
-            }
-
-            if(cameraModified){
-                //console.log("[EditorController] camera modified: " + this.camera!.pitch + " : " + this.camera!.yaw);
-                if(this.onCameraModified!=null) this.onCameraModified();
-                this.renderScene!();   
-            }
-                    
             this.animationFrameId = requestAnimationFrame(cameraMoveAnimationLoop);
-        };
+        }
         this.animationFrameId = requestAnimationFrame(cameraMoveAnimationLoop);
     }
 
@@ -155,14 +158,15 @@ export class EditorController{
         return this.cameraMoveSession.lastX != null && this.cameraMoveSession.lastY != null;
     }
 
-    startCameraMoveSession(clickPos: Vector2){
+    startCameraMoveSession(clickPos: Vector2){        
         this.cameraMoveSession.lastX = clickPos.x;
         this.cameraMoveSession.lastY = clickPos.y;
     }
 
     updateCameraMoveSession(clickPos: Vector2){
         if(!this.hasCameraMoveSessionStarted()) return;
-
+        
+        
         const dx = clickPos.x - this.cameraMoveSession.lastX!;
         const dy = clickPos.y - this.cameraMoveSession.lastY!;
 
@@ -183,7 +187,7 @@ export class EditorController{
         };
     }
 
-        stopCameraMoveAnimationLoop(){
+    stopCameraMoveAnimationLoop(){
         if(this.animationFrameId!=null){
             cancelAnimationFrame(this.animationFrameId);
         }
@@ -446,6 +450,61 @@ export class EditorController{
         this.setCameraTargetZ(camera.target.z + delta);
     }
 
+    getCameraTarget(): Vector3 | null{
+        if(!this.initialized || !this.scene) return null;
+        const camera = this.scene.getActiveCamera(); 
+        if(!camera) return null;
+        return camera.target;
+    }
+
+    getCameraProjectionType(): ProjectionType | null{
+        if(!this.initialized || !this.scene) return null;
+        const camera = this.scene.getActiveCamera(); 
+        if(!camera) return null;
+        return camera.projectionType;
+    }    
+
+    getCameraFovY(): number | null{
+        if(!this.initialized || !this.scene) return null;
+        const camera = this.scene.getActiveCamera(); 
+        if(!camera) return null;
+        return camera.fovY;
+    }        
+
+    getCameraNear(): number | null{
+        if(!this.initialized || !this.scene) return null;
+        const camera = this.scene.getActiveCamera(); 
+        if(!camera) return null;
+        return camera.near;
+    }   
+    
+    getCameraFar(): number | null{
+        if(!this.initialized || !this.scene) return null;
+        const camera = this.scene.getActiveCamera(); 
+        if(!camera) return null;
+        return camera.far;
+    }    
+
+    getCameraDistance(): number | null{
+        if(!this.initialized || !this.scene) return null;
+        const camera = this.scene.getActiveCamera(); 
+        if(!camera) return null;
+        return camera.distance;
+    }   
+
+    getCameraPitch(): number | null{
+        if(!this.initialized || !this.scene) return null;
+        const camera = this.scene.getActiveCamera(); 
+        if(!camera) return null;
+        return camera.pitch;
+    }   
+    
+    getCameraYaw(): number | null{
+        if(!this.initialized || !this.scene) return null;
+        const camera = this.scene.getActiveCamera(); 
+        if(!camera) return null;
+        return camera.yaw;
+    }       
     //Select and Edit component
 
     selectSession: SelectSession = {
@@ -653,7 +712,6 @@ export class EditorController{
     setSceneActiveObject(sceneId: number){
         if(!this.initialized || !this.scene) return;
         const obj: SceneObject | undefined = this.scene.getObjectById(sceneId);
-        console.log("joooo!" + obj?.name);
         if(obj){
             if(obj instanceof VoxelObject){
                 this.scene.setActiveVoxelObjectId(sceneId);
@@ -675,7 +733,7 @@ export class EditorController{
 
     deleteSceneObject(sceneId: number){
         if(!this.initialized || !this.scene) return;
-        this.scene.removeObject(sceneId);        
+        this.scene.removeObject(sceneId);                
     }
 
     toggleSceneObjectEnabled(sceneId: number){
@@ -701,6 +759,7 @@ export class EditorController{
         if(!this.initialized || !this.scene) return;
         const c = factoryFunction(name);
         this.scene.addObject(c);
+        if(this.renderScene) this.renderScene(); //fixes things when only camera is added
     }
 
     //returns false if not initialized
@@ -818,7 +877,6 @@ export class EditorController{
     emptyVoxelObjectVoxels(){
         if(!this.initialized) return;
         const scene = this.scene!;
-        scene.objects.forEach((o)=>{console.log(o.name)})
         const voxelObject = scene.getActiveVoxelObject();
         if(!voxelObject) return;
 
@@ -828,7 +886,6 @@ export class EditorController{
         if(objectModified){
             this.renderScene!();
         }
-        scene.objects.forEach((o)=>{console.log(o.name)})
     }
 
     reverseVoxelObjectVoxels(){

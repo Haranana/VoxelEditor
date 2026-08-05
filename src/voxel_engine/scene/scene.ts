@@ -41,6 +41,7 @@ export class Scene{
     #nextSceneObjectId: number = 0;
 
     #notifyOfObjectEnabledChange(){
+        console.log("??")
         this.objectEnabledChangeEvent.emit()
     }
     objectEnabledChangeEvent: VoxelEngineEvent<void> = new VoxelEngineEvent();
@@ -252,6 +253,7 @@ export class Scene{
         const obj = this.objects.get(id);
         if(!obj) return false;
         obj.enabled = !obj.enabled;
-        return false;
+        this.#notifyOfObjectEnabledChange();
+        return true;
     }
 }

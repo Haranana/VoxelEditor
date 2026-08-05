@@ -19,7 +19,7 @@ export class SceneRenderCollector{
         }
 
         scene.getObjectsOfType(VoxelObject).forEach((obj)=>{              
-            if( !isSelectedVoxelObject(obj) || !scene.seletedVoxelObjectRenderOptions.voxelObject){              
+            if( !isSelectedVoxelObject(obj) || !scene.seletedVoxelObjectRenderOptions.voxelObject || !obj.enabled){              
                     return;
             }      
             const objToAdd = obj.getObjectRo();
@@ -34,12 +34,20 @@ export class SceneRenderCollector{
 
         if(selectedVo && selectedRo){
 
-            if(scene.seletedVoxelObjectRenderOptions.voxelObjectGrid){
-                const newRenderableObject = selectedVo.getObjectGridRo();
-                
-                out.push(newRenderableObject);
-            }
+            if(selectedVo.enabled){
+                if(scene.seletedVoxelObjectRenderOptions.voxelObjectGrid){
+                    const newRenderableObject = selectedVo.getObjectGridRo();
+                    
+                    out.push(newRenderableObject);
+                }
 
+                if(selectedVo.selectedVoxels.size>0){
+                    const selectedObjectSelectedArea = selectedVo.getSelectedAreaRo();
+                    
+                    out.push(selectedObjectSelectedArea);
+                }
+            }     
+                   
             if(scene.seletedVoxelObjectRenderOptions.borderGrid){
                 const newRenderableObject = selectedVo.getBorderGridRo();
                 
@@ -52,11 +60,7 @@ export class SceneRenderCollector{
                 out.push(newRenderableObject);
             }
 
-            if(selectedVo.selectedVoxels.size>0){
-                const selectedObjectSelectedArea = selectedVo.getSelectedAreaRo();
-                
-                out.push(selectedObjectSelectedArea);
-            }
+
 
             if(scene.sceneGizmosRenderOptions.cameraControllGizmo){
                 const newRenderableObject = SceneGizmos.getCameraControllGizmoRo(camera);
