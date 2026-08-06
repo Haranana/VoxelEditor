@@ -147,7 +147,7 @@ export default function EditorPage() {
   );
 
   const [leftPanelWidth, setLeftPanelWidth] = useState(200);
-  const [rightPanelWidth, setRightPanelWidth] = useState(200);
+  const [rightPanelWidth, setRightPanelWidth] = useState(300);
   const [topPanelHeight, setTopPanelHeight] = useState(50);
   const [bottomPanelHeight, setBottomPanelHeight] = useState(50);
 
@@ -360,7 +360,7 @@ export default function EditorPage() {
     onOpenChange={setIsCameraPropertiesWidgetOpen}
   />
   
-  const [isSelectToolsWidgetOpen, setIsSelectToolsWidgetOpen] = useState<boolean>(false);
+  const [isSelectToolsWidgetOpen, setIsSelectToolsWidgetOpen] = useState<boolean>(true);
   const selectToolsButton : ActionButtonData[] = [
     {
       id: "voxelSelectButton",
@@ -394,7 +394,7 @@ export default function EditorPage() {
   />
 
   
-  const [isEditToolsWidgetOpen, setIsEditToolsWidgetOpen] = useState<boolean>(false);
+  const [isEditToolsWidgetOpen, setIsEditToolsWidgetOpen] = useState<boolean>(true);
   const editToolsButton : ActionButtonData[] = [
     {
       id: "AddEditButton",
@@ -484,7 +484,7 @@ export default function EditorPage() {
   function onColorPaletteVersion(){
     setScenePropertiesVersion(prev=>prev+1);
   }
-  const [isColorPaletteOpen, setIscolorPaletteOpen] = useState<boolean>(false);
+  const [isColorPaletteOpen, setIscolorPaletteOpen] = useState<boolean>(true);
   const colorPaletteWidget: React.ReactNode = <ColorPaletteWidget
         isOpen={isColorPaletteOpen}
         onOpenChange={setIscolorPaletteOpen}
@@ -507,9 +507,6 @@ export default function EditorPage() {
           <div className="EditorBodyHorizontal" ref={bodyHorizontalRef}>
             <div className="EditorBodyLeft">
               <ResizableContainer
-                children={
-                  null
-                }
                 width={leftPanelWidth}
                 height={null}
                 onWidthChange={onLeftPanelWidthChange}
@@ -518,7 +515,13 @@ export default function EditorPage() {
                 hasLeftHandle={false}
                 hasBottomHandle={false}
                 hasTopHandle={false}
-              />
+              >
+                <div className="ResizableContainerChildWrapper">
+                {colorPaletteWidget}
+                {selectToolsWidget}
+                {editToolsWidget}
+                </div>
+              </ResizableContainer>
             </div>
 
             <div className="EditorBodyVertical" ref={bodyVerticalRef}>
@@ -576,10 +579,7 @@ export default function EditorPage() {
                 {sceneListWidget}
                 {/*{objectPropertiesWidget}*/}
                 {cameraPropertiesWidget}
-                {selectToolsWidget}
-                {editToolsWidget}
-                {scenePropertiesWidget}
-                {colorPaletteWidget}
+                {scenePropertiesWidget}                
                 {editVoxelObjectWidget}
                 </div>
               </ResizableContainer>

@@ -1,9 +1,9 @@
-import { reactColorTypeToRgb, rgbToReactColorType, rgbToVector3, useColorPalettesStore, type ColorPalette, type ColorRGB } from "../state/ColorPalettes"
+import { ColorPalettes, reactColorTypeToRgb, rgbToReactColorType, rgbToVector3, type ColorRGB } from "../state/ColorPalettes"
 import "./ColorPaletteWidget.css"
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/16/solid";
 import { PhotoshopPicker} from 'react-color'
 import { ExpandableRow } from "./ExpandableRow";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { ControllerContext } from "../editor_controller/ControllerContext";
 
 export type ColorPaletteWidgetProps = {
@@ -15,16 +15,16 @@ export type ColorPaletteWidgetProps = {
 export function ColorPaletteWidget(props: ColorPaletteWidgetProps){
     const TriggerIcon = props.isOpen? ChevronDownIcon : ChevronRightIcon;
     const controller = useContext(ControllerContext)!;
-    const colorPalletes : ColorPalette[] = useColorPalettesStore().colorPalletes;
-    const setPalleteColor = useColorPalettesStore().setColor;
-    const palettesAmount: number = colorPalletes.length;
-    const [chosenPaletteId, setChosenPaletteId] = useState<number>(0);
+    const colorPalletesRef = useRef<ColorPalettes>(new ColorPalettes());
+    //const colorPalletes : ColorPalette[] = useColorPalettesStore().colorPalletes;
+    //const setPalleteColor = useColorPalettesStore().setColor;
+    //const palettesAmount: number = colorPalletes.length;
+    //const [chosenPaletteId, setChosenPaletteId] = useState<number>(0);
     const [chosenColorId, setChosenColorId] = useState<number>(0);
     const [isEditColorWindowOpen, setEditColorWindowOpen] = useState<boolean>(false);
-    const [colorChangeWindowColor, setColorChangeWindowColor] = useState<ColorRGB>(colorPalletes[chosenPaletteId][chosenColorId])
-
+    const [colorChangeWindowColor, setColorChangeWindowColor] = useState<ColorRGB>(colorPalletesRef.current.getColor(chosenColorId) ?? colorPalletesRef.current.getColor(0)!)
     useEffect(()=>{
-       controller.setCurrentColor(rgbToVector3(colorPalletes[chosenPaletteId][chosenColorId]))
+       controller.setCurrentColor(rgbToVector3(colorPalletesRef.current.getColor(chosenColorId) ?? colorPalletesRef.current.getColor(0)! ));
     },[])
 
     return <ExpandableRow
@@ -35,25 +35,15 @@ export function ColorPaletteWidget(props: ColorPaletteWidgetProps){
             isOpen={props.isOpen}
             onOpenChange={props.onOpenChange}>
                 <div className="ColorPaletteWidget">
-                    <div className="ColorPalettesIndexList">
-                    {
-                        Array.from({length: palettesAmount} , (_, i: number)=>
-                        <div className={`ColorPaletteIndexButton ${i===chosenPaletteId? "ChosenColorPaletteIndexButton" : ""}`} 
-                        key={i} onClick={()=>setChosenPaletteId(i)}>
-                            {i+1} 
-                        </div>
-                        )
-                    }
-                    </div>
                     <div className="ColorPaletteGrid">
                     {
-                        Array.from(colorPalletes[chosenPaletteId], (c: ColorRGB, i)=>{
+                        Array.from(colorPalletesRef.current.getFullPalette(), (c: ColorRGB, i)=>{
                             return <div className={`ColorPaletteCell ${chosenColorId===i? "ChosenColorPaletteCell" : ""}`} 
                             onClick={(_)=>{
                                 setChosenColorId(i); 
-                                const newCurrentColor = rgbToVector3(colorPalletes[chosenPaletteId][i]);
+                                const newCurrentColor = rgbToVector3(colorPalletesRef.current.getColor(i)!);
                                 controller.setCurrentColor(newCurrentColor);
-                                setColorChangeWindowColor(colorPalletes[chosenPaletteId][i]);
+                                setColorChangeWindowColor(colorPalletesRef.current.getColor(i)!);
                             }}
                             key={i}
                             style={{background: `rgba(${c.R},${c.G},${c.B})`}}></div>
@@ -70,7 +60,7 @@ export function ColorPaletteWidget(props: ColorPaletteWidgetProps){
                         <PhotoshopPicker className="EditColorWindow" 
                         onChangeComplete={(_)=>{}}
                         onAccept={(_)=>{
-                            setPalleteColor(chosenPaletteId, chosenColorId, (colorChangeWindowColor));
+                            colorPalletesRef.current.setCustomColor(chosenColorId, (colorChangeWindowColor));
                             controller.setCurrentColor(rgbToVector3(colorChangeWindowColor));
                             setEditColorWindowOpen(false)}
                         } 
@@ -79,7 +69,7 @@ export function ColorPaletteWidget(props: ColorPaletteWidgetProps){
                         }
                         onCancel={(_)=>{
                             setEditColorWindowOpen(false); 
-                            setColorChangeWindowColor(colorPalletes[chosenPaletteId][chosenColorId])}
+                            setColorChangeWindowColor(colorPalletesRef.current.getColor(chosenColorId)!)}
                         }
                         color={rgbToReactColorType(colorChangeWindowColor)}></PhotoshopPicker> 
                         : ""

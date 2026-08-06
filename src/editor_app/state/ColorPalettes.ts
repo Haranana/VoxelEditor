@@ -129,9 +129,9 @@ export function reactColorTypeToRgb(c: RGBColor): ColorRGB{
 export type ColorPalette = ColorRGB[];
 
 export type ColorPalettesStore = {
-  colorPalletes: ColorPalette[],
-  setColorPallete: (palettes: ColorPalette[])=>void,
-  setColor: (pallete: number, id: number, newColor: ColorRGB)=>void;
+  colorPalettes: ColorPalette[],
+  setColorPalette: (palettes: ColorPalette[])=>void,
+  setColor: (Palette: number, id: number, newColor: ColorRGB)=>void;
 };
 
 export function getDefaultColorPalettes(): ColorPalette[] {
@@ -192,11 +192,11 @@ export function getDefaultColorPalettes(): ColorPalette[] {
 export const useColorPalettesStore = create<ColorPalettesStore>()(
   persist(
     (set) => ({
-        colorPalletes: getDefaultColorPalettes(),
-        setColorPallete: (palettes) => set({colorPalletes: palettes }),
+        colorPalettes: getDefaultColorPalettes(),
+        setColorPalette: (palettes) => set({colorPalettes: palettes }),
         setColor: (paletteIndex, colorIndex, newColor) =>
             set((state) => ({
-                colorPalletes: state.colorPalletes.map((palette, pIdx) =>
+                colorPalettes: state.colorPalettes.map((palette, pIdx) =>
                 pIdx === paletteIndex
                     ? palette.map((color, cIdx) =>
                         cIdx === colorIndex ? newColor : color
@@ -208,3 +208,110 @@ export const useColorPalettesStore = create<ColorPalettesStore>()(
     { name: "palettes-store" }
   )
 );
+
+export class ColorPalettes{    
+    readonly paletteSize = 32;
+    readonly palettesAmount = 2; //basic and custom
+    #palettes : ColorPalette[] = this.#loadPalettes(); 
+
+    #loadPalettes(): ColorPalette[]{
+        return [this.#getBasicPalette(), this.#getCustomPalette()];
+    }
+
+    #getBasicPalette(): ColorPalette{
+    return [
+            { R: 0,   G: 0,   B: 0   }, // Black
+            { R: 64,  G: 64,  B: 64  },
+            { R: 128, G: 128, B: 128 },
+            { R: 192, G: 192, B: 192 },
+            { R: 255, G: 255, B: 255 }, // White
+
+            { R: 255, G: 0,   B: 0   }, // Red
+            { R: 192, G: 0,   B: 0   },
+            { R: 255, G: 128, B: 128 },
+
+            { R: 255, G: 128, B: 0   }, // Orange
+            { R: 192, G: 96,  B: 0   },
+
+            { R: 255, G: 255, B: 0   }, // Yellow
+            { R: 192, G: 192, B: 0   },
+
+            { R: 128, G: 255, B: 0   }, // Lime
+            { R: 96,  G: 192, B: 0   },
+
+            { R: 0,   G: 255, B: 0   }, // Green
+            { R: 0,   G: 192, B: 0   },
+
+            { R: 0,   G: 255, B: 128 }, // Spring Green
+            { R: 0,   G: 192, B: 96  },
+
+            { R: 0,   G: 255, B: 255 }, // Cyan
+            { R: 0,   G: 192, B: 192 },
+
+            { R: 0,   G: 128, B: 255 }, // Sky Blue
+            { R: 0,   G: 96,  B: 192 },
+
+            { R: 0,   G: 0,   B: 255 }, // Blue
+            { R: 0,   G: 0,   B: 192 },
+
+            { R: 128, G: 0,   B: 255 }, // Violet
+            { R: 96,  G: 0,   B: 192 },
+
+            { R: 255, G: 0,   B: 255 }, // Magenta
+            { R: 192, G: 0,   B: 192 },
+
+            { R: 255, G: 0,   B: 128 }, // Pink
+            { R: 192, G: 0,   B: 96  },
+
+            { R: 139, G: 69,  B: 19  }, // Brown
+            { R: 245, G: 222, B: 179 }, // Beige
+        ];        
+    }
+
+    #getCustomPalette(): ColorPalette{
+        const json : string | null = localStorage.getItem("customPalette");
+        if(!json){
+            return this.#getDefaultCustomPalette();
+        }
+
+        try {
+            return JSON.parse(json) as ColorPalette;
+        }
+        catch {
+            return this.#getDefaultCustomPalette();
+        }
+    }
+
+    #getDefaultCustomPalette(): ColorPalette{
+        const out : ColorPalette = [];
+        for(let i=0; i<this.paletteSize; i++){
+            out.push(
+                { R: 255, G: 255, B: 255 }
+            );
+        }
+        return out;
+    }
+
+    getBasicPalette(): ColorPalette{
+        return this.#palettes[0];
+    }
+
+    getCustomPalette(): ColorPalette{
+        return this.#palettes[1];
+    }
+
+    getFullPalette(): ColorPalette{
+        return this.#palettes[0].concat(this.#palettes[1]);
+    }
+
+    getColor(colorId: number) : ColorRGB | null{
+        if(colorId >= this.paletteSize * this.palettesAmount || colorId < 0) return null;
+        const palette = this.getFullPalette();
+        return palette[colorId] ?? null;
+    }
+
+    //colorId here refers to id of full joined base and custom palette, not only custom
+    setCustomColor(colorId: number, newColor: ColorRGB){
+        this.getCustomPalette
+    }
+}
