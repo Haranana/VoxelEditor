@@ -146,7 +146,7 @@ export default function EditorPage() {
     []
   );
 
-  const [leftPanelWidth, setLeftPanelWidth] = useState(200);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(180);
   const [rightPanelWidth, setRightPanelWidth] = useState(300);
   const [topPanelHeight, setTopPanelHeight] = useState(50);
   const [bottomPanelHeight, setBottomPanelHeight] = useState(50);

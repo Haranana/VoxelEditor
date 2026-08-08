@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import type { RGBColor } from "react-color";
 import { Vector4 } from "../../math/vector4.type";
 import { Vector3 } from "../../math/vector3.type";
+import { VoxelEngineEvent } from "../../voxel_engine/events/event";
 
 export type ColorRGB = {
     R: number,
@@ -128,98 +129,90 @@ export function reactColorTypeToRgb(c: RGBColor): ColorRGB{
 
 export type ColorPalette = ColorRGB[];
 
-export type ColorPalettesStore = {
-  colorPalettes: ColorPalette[],
-  setColorPalette: (palettes: ColorPalette[])=>void,
-  setColor: (Palette: number, id: number, newColor: ColorRGB)=>void;
-};
-
-export function getDefaultColorPalettes(): ColorPalette[] {
-    return [        
-        [
-            {R:10,G:10,B:10},{R:20,G:20,B:20},{R:30,G:30,B:30},{R:40,G:40,B:40},
-            {R:55,G:55,B:55},{R:70,G:70,B:70},{R:90,G:90,B:90},{R:120,G:120,B:120},
-            {R:150,G:150,B:150},{R:180,G:180,B:180},{R:210,G:210,B:210},{R:240,G:240,B:240},
-            {R:60,G:10,B:10},{R:120,G:20,B:20},{R:180,G:30,B:30},{R:255,G:60,B:60},
-            {R:10,G:60,B:10},{R:20,G:120,B:20},{R:30,G:180,B:30},{R:60,G:255,B:60},
-            {R:10,G:10,B:60},{R:20,G:20,B:120},{R:30,G:30,B:180},{R:60,G:60,B:255},
-            {R:255,G:200,B:0},{R:255,G:150,B:0},{R:0,G:200,B:200},{R:200,G:0,B:200},
-            {R:255,G:255,B:0},{R:0,G:255,B:255},{R:255,G:0,B:255},{R:255,G:120,B:0}
-        ],        
-        [
-            {R:255,G:255,B:255},{R:245,G:245,B:245},{R:230,G:230,B:230},{R:210,G:210,B:210},
-            {R:190,G:190,B:190},{R:170,G:170,B:170},{R:150,G:150,B:150},{R:120,G:120,B:120},
-            {R:90,G:90,B:90},{R:70,G:70,B:70},{R:50,G:50,B:50},{R:30,G:30,B:30},
-            {R:255,G:100,B:100},{R:255,G:150,B:150},{R:200,G:50,B:50},{R:150,G:0,B:0},
-            {R:100,G:255,B:100},{R:150,G:255,B:150},{R:50,G:200,B:50},{R:0,G:150,B:0},
-            {R:100,G:100,B:255},{R:150,G:150,B:255},{R:50,G:50,B:200},{R:0,G:0,B:150},
-            {R:255,G:220,B:120},{R:255,G:200,B:80},{R:200,G:160,B:40},{R:150,G:120,B:0},
-            {R:120,G:255,B:255},{R:80,G:220,B:220},{R:40,G:180,B:180},{R:0,G:140,B:140}
-        ],
-        [
-            {R:15,G:15,B:25},{R:25,G:25,B:40},{R:40,G:40,B:60},{R:60,G:60,B:90},
-            {R:80,G:80,B:120},{R:100,G:100,B:150},{R:130,G:130,B:180},{R:160,G:160,B:210},
-            {R:200,G:200,B:230},{R:220,G:220,B:240},{R:240,G:240,B:250},{R:255,G:255,B:255},
-            {R:30,G:0,B:50},{R:60,G:0,B:100},{R:90,G:0,B:150},{R:140,G:0,B:200},
-            {R:0,G:50,B:100},{R:0,G:100,B:150},{R:0,G:150,B:200},{R:0,G:200,B:255},
-            {R:50,G:0,B:0},{R:100,G:0,B:0},{R:150,G:0,B:0},{R:200,G:0,B:0},
-            {R:50,G:50,B:0},{R:100,G:100,B:0},{R:150,G:150,B:0},{R:200,G:200,B:0},
-            {R:0,G:50,B:50},{R:0,G:100,B:100},{R:0,G:150,B:150},{R:0,G:200,B:200}
-        ],
-        [
-            {R:20,G:30,B:20},{R:40,G:60,B:40},{R:60,G:90,B:60},{R:80,G:120,B:80},
-            {R:100,G:150,B:100},{R:120,G:180,B:120},{R:150,G:200,B:150},{R:180,G:220,B:180},
-            {R:210,G:235,B:210},{R:230,G:245,B:230},{R:245,G:250,B:245},{R:255,G:255,B:255},
-            {R:60,G:30,B:0},{R:100,G:50,B:0},{R:140,G:70,B:0},{R:180,G:90,B:0},
-            {R:30,G:60,B:0},{R:50,G:100,B:0},{R:70,G:140,B:0},{R:90,G:180,B:0},
-            {R:0,G:40,B:60},{R:0,G:80,B:120},{R:0,G:120,B:180},{R:0,G:160,B:220},
-            {R:60,G:0,B:40},{R:100,G:0,B:80},{R:140,G:0,B:120},{R:180,G:0,B:160},
-            {R:100,G:80,B:40},{R:140,G:110,B:60},{R:180,G:140,B:80},{R:210,G:170,B:110}
-        ],
-        [
-            {R:0,G:0,B:0},{R:32,G:32,B:32},{R:64,G:64,B:64},{R:96,G:96,B:96},
-            {R:128,G:128,B:128},{R:160,G:160,B:160},{R:192,G:192,B:192},{R:224,G:224,B:224},
-            {R:255,G:255,B:255},{R:255,G:0,B:0},{R:0,G:255,B:0},{R:0,G:0,B:255},
-            {R:255,G:255,B:0},{R:0,G:255,B:255},{R:255,G:0,B:255},{R:255,G:128,B:0},
-            {R:128,G:255,B:0},{R:0,G:255,B:128},{R:0,G:128,B:255},{R:128,G:0,B:255},
-            {R:255,G:0,B:128},{R:128,G:0,B:0},{R:0,G:128,B:0},{R:0,G:0,B:128},
-            {R:128,G:128,B:0},{R:0,G:128,B:128},{R:128,G:0,B:128},{R:200,G:100,B:50},
-            {R:50,G:200,B:100},{R:100,G:50,B:200},{R:200,G:50,B:100},{R:50,G:100,B:200}
-        ],
-    ]
-}
-
-export const useColorPalettesStore = create<ColorPalettesStore>()(
-  persist(
-    (set) => ({
-        colorPalettes: getDefaultColorPalettes(),
-        setColorPalette: (palettes) => set({colorPalettes: palettes }),
-        setColor: (paletteIndex, colorIndex, newColor) =>
-            set((state) => ({
-                colorPalettes: state.colorPalettes.map((palette, pIdx) =>
-                pIdx === paletteIndex
-                    ? palette.map((color, cIdx) =>
-                        cIdx === colorIndex ? newColor : color
-                    )
-                    : palette
-                ),
-        })),
-    }),
-    { name: "palettes-store" }
-  )
-);
-
 export class ColorPalettes{    
-    readonly paletteSize = 32;
-    readonly palettesAmount = 2; //basic and custom
-    #palettes : ColorPalette[] = this.#loadPalettes(); 
+    readonly maxPaletteSize = 512;
+    paletteSize = 60;
+    #palette : ColorPalette = this.#loadPalettes(); 
+    paletteChangedEvent: VoxelEngineEvent<void> = new VoxelEngineEvent();
 
-    #loadPalettes(): ColorPalette[]{
-        return [this.#getBasicPalette(), this.#getCustomPalette()];
+    #notifyOnPaletteChanged(){
+        this.paletteChangedEvent.emit();
     }
 
-    #getBasicPalette(): ColorPalette{
-    return [
+    #loadPalettes(): ColorPalette{
+    const json : string | null = localStorage.getItem("customPalette");
+        if(!json){
+            return this.#getDefaultPalette();
+        }
+        try {
+            return JSON.parse(json) as ColorPalette;
+        }
+        catch {
+            return this.#getDefaultPalette();
+        }
+    }
+
+    loadDefaultPalette(){
+        this.#palette = this.#getDefaultPalette();
+        this.#notifyOnPaletteChanged();
+    }
+
+    async getPaletteBlob(): Promise<Blob>{
+        const paletteToArray = (p: ColorPalette): Uint8ClampedArray<ArrayBuffer> => {
+            const out = new Uint8ClampedArray(p.length * 4);
+            let offset = 0;
+            p.forEach(c=>{
+                out[offset] = c.R;
+                out[offset+1] = c.G;
+                out[offset+2] = c.B;
+                out[offset+3] = 255;
+                offset+=4
+            })
+            return out;
+        }
+
+        //const colorsArray: Uint8ClampedArray = paletteToArray(this.#palette);
+        const canvas = document.createElement("canvas");
+        canvas.width = this.#palette.length;
+        canvas.height = 1;
+        const ctx = canvas.getContext("2d")!;
+        const imageData = new ImageData(
+            paletteToArray(this.#palette),
+            canvas.width,
+            canvas.height
+        );
+        ctx.putImageData(imageData, 0, 0);
+        const promise = new Promise<Blob>((resolve, reject) => (
+            canvas.toBlob((blob)=>{return blob? resolve(blob) : reject(new Error("couldn't create blob of palette"))},"image/png")
+        ));
+        return promise;
+    }
+
+    async loadFromBitmap(bitmap: ImageBitmap){
+        const canvas = document.createElement("canvas");
+        canvas.width = bitmap.width;
+        canvas.height = bitmap.height;
+
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(bitmap, 0, 0);
+
+        const imageData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
+        
+        const newPaletteSize = Math.min(imageData.data.length/4, this.maxPaletteSize);
+        const newPalette: ColorPalette = [];
+        for(let i=0; i<4*newPaletteSize; i+=4){
+            const R = imageData.data[i];
+            const G = imageData.data[i+1];
+            const B = imageData.data[i+2];
+            newPalette.push({R,G,B});
+        }
+        this.paletteSize = newPaletteSize;
+        this.#palette = newPalette;
+        this.#notifyOnPaletteChanged();
+    }
+
+    #getDefaultPalette(): ColorPalette{
+        const basicColors = [
             { R: 0,   G: 0,   B: 0   }, // Black
             { R: 64,  G: 64,  B: 64  },
             { R: 128, G: 128, B: 128 },
@@ -232,6 +225,9 @@ export class ColorPalettes{
 
             { R: 255, G: 128, B: 0   }, // Orange
             { R: 192, G: 96,  B: 0   },
+
+            { R: 139, G: 69,  B: 19  }, // Brown
+            { R: 245, G: 222, B: 179 }, // Beige
 
             { R: 255, G: 255, B: 0   }, // Yellow
             { R: 192, G: 192, B: 0   },
@@ -259,59 +255,37 @@ export class ColorPalettes{
 
             { R: 255, G: 0,   B: 255 }, // Magenta
             { R: 192, G: 0,   B: 192 },
-
-            { R: 255, G: 0,   B: 128 }, // Pink
-            { R: 192, G: 0,   B: 96  },
-
-            { R: 139, G: 69,  B: 19  }, // Brown
-            { R: 245, G: 222, B: 179 }, // Beige
         ];        
-    }
 
-    #getCustomPalette(): ColorPalette{
-        const json : string | null = localStorage.getItem("customPalette");
-        if(!json){
-            return this.#getDefaultCustomPalette();
-        }
-
-        try {
-            return JSON.parse(json) as ColorPalette;
-        }
-        catch {
-            return this.#getDefaultCustomPalette();
-        }
-    }
-
-    #getDefaultCustomPalette(): ColorPalette{
-        const out : ColorPalette = [];
-        for(let i=0; i<this.paletteSize; i++){
-            out.push(
+        const emptyColors = [];
+        for(let i=0; i<this.paletteSize/2; i++){
+            emptyColors.push(
                 { R: 255, G: 255, B: 255 }
             );
         }
-        return out;
+
+        return basicColors.concat(emptyColors);
     }
 
-    getBasicPalette(): ColorPalette{
-        return this.#palettes[0];
+
+    getPalette(): ColorPalette{
+        return this.#palette;
     }
 
-    getCustomPalette(): ColorPalette{
-        return this.#palettes[1];
-    }
-
-    getFullPalette(): ColorPalette{
-        return this.#palettes[0].concat(this.#palettes[1]);
-    }
 
     getColor(colorId: number) : ColorRGB | null{
-        if(colorId >= this.paletteSize * this.palettesAmount || colorId < 0) return null;
-        const palette = this.getFullPalette();
+        if(colorId >= this.paletteSize || colorId < 0) return null;
+        const palette = this.getPalette();
         return palette[colorId] ?? null;
     }
 
-    //colorId here refers to id of full joined base and custom palette, not only custom
     setCustomColor(colorId: number, newColor: ColorRGB){
-        this.getCustomPalette
+        if(colorId >= this.paletteSize || colorId < 0) return;
+        const oldColor = this.#palette[colorId];
+        if(oldColor !== newColor ){
+            this.#notifyOnPaletteChanged();
+        }
+        this.#palette[colorId] = newColor;
+        
     }
 }

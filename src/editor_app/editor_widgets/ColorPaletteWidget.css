@@ -1,5 +1,9 @@
 .ColorPaletteWidget{
     width: 100%;
+    border: 0.5px solid ;
+    max-height: 50%;
+    display: flex;
+    flex-direction: column;
 }
 
 .ColorPalettesIndexList{
@@ -21,16 +25,20 @@
 }
 
 .ColorPaletteGrid {
-    margin: 10px 0px 10px 0px;
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  grid-auto-rows: 1fr;
-  gap: 1px;
+  display: flex;
+  flex: 1;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--line-color-2);
+    overflow-y:auto
 }
 
 .ColorPaletteCell{
+    width: 30px;
     border: 1px solid gray;
     aspect-ratio: 1/1;
+    margin: 1px;
 }
 
 .ColorPaletteCell:hover{
@@ -45,15 +53,40 @@
 .ColorPaletteOptions{
     display: flex;
     flex-direction: row;
-    justify-content: space-evenly;
+    justify-content: right;
+}
+
+.ColorPaletteOptions svg{
+    width: 20px;
+    height: 20px;
+}
+
+.ColorPaletteOptionsButton{
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent;
+    border: none;
+}
+
+.ColorPaletteOptionsButton:hover{
+    cursor: pointer;
 }
 
 .EditColorWindow{
-      position: fixed;
+  position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+  background-color: var(--line-color-1) !important;
   
-  /* opcjonalnie */
   z-index: 1000;
+}
+
+.EditColorWindow > div:first-child{   
+    background-color: var(--line-color-2) !important;
+    background-image: none !important;
+    color: white !important;
+    font-size: var(--font-m) !important;  
 }
