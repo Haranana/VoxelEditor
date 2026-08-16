@@ -2,15 +2,14 @@
 type Listener<T> = ((data: T) => void)
 
 export class VoxelEngineEvent<T> {
-    
-    private listeners: Listener<T>[] = [];
 
-    //returns unsubscribe function
+    private listeners = new Set<Listener<T>>();
+
     subscribe(listener: Listener<T>): () => void {
-        this.listeners.push(listener);
+        this.listeners.add(listener);
 
         return () => {
-            this.listeners = this.listeners.filter(l => l !== listener);
+            this.listeners.delete(listener);
         };
     }
 

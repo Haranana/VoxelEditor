@@ -6,6 +6,8 @@ import { copyVoxel, type Voxel, type VoxelArray } from "./voxel";
 import { getEmptyVoxelArray } from "./voxel-array-generator";
 import { RenderableObjectManager } from "../renderable-object-manager";
 import { SceneObject, type WorldObjectTransform } from "../sceneObject";
+import type { Color } from "react-color";
+import { VoxelEngineEvent } from "../../events/event";
 
 export type FaceDirection = 
 | "PosX"
@@ -100,24 +102,28 @@ export class VoxelObject extends SceneObject{
     #notifyOfSelectedAreaChange(){
         this.#selectedAreaRo.mesh = null;
         this.#setSelectedAreaRoToRebuild();
+        this.selectedAreaChangeEvent.emit();
     }
+    selectedAreaChangeEvent: VoxelEngineEvent<void> = new VoxelEngineEvent();
 
-
-    #notifyOfMeshChange(){
+    #notifyOfVoxelsChange(){
         this.#objectRo.mesh = null;
         this.#objectGridRo.mesh = null;
         this.#setObjectRoToRebuild();
         this.#setObjectGridRoToRebuild(); 
+        this.voxelsChangeEvent.emit();
     }
+    voxelsChangeEvent: VoxelEngineEvent<void> = new VoxelEngineEvent();
 
-    
     #notifyOfTransformChange(){
         this.#setObjectRoToRebuild();
         this.#setObjectGridRoToRebuild();
         this.#setSelectedAreaRoToRebuild();
         this.#setBorderOutlineRoToRebuild();
         this.#setBorderGridToRebuild();
+        this.transformChangeEvent.emit();
     }
+    transformChangeEvent: VoxelEngineEvent<void> = new VoxelEngineEvent();
 
     #notifyOfSizeChange(){
         this.#borderGridRo.mesh = null;
@@ -125,6 +131,7 @@ export class VoxelObject extends SceneObject{
         this.#setBorderOutlineRoToRebuild();
         this.#setBorderGridToRebuild();
     }
+    sizeChangeEvent: VoxelEngineEvent<void> = new VoxelEngineEvent();
 
     #objectRo: RenderableObject;
     #objectRoDirtyFlag: boolean = false;
@@ -162,6 +169,10 @@ export class VoxelObject extends SceneObject{
     #rebuildObjectGrid(){
         RenderableObjectManager.rebuildVoGridRo(this, this.#objectGridRo);
     }
+
+    //if currently selectedAreaRo is a result of selectMode.Color it stores this color for sake of optimization
+    #selectedColor: Vector4 | null = null;
+    #selectedByColorVoxels: Set<Vector3> | null = null
 
     #selectedAreaRo: RenderableObject;
     #selectedAreaRoDirty: boolean = false;
@@ -253,8 +264,10 @@ export class VoxelObject extends SceneObject{
 
     setVoxel(pos: Vector3, newVoxel: Voxel){
         try{
-            this.voxels[pos.x][pos.y][pos.z] = newVoxel;
-            this.#notifyOfMeshChange();
+            this.voxels[pos.x][pos.y][pos
+    
+                .z] = newVoxel;
+            this.#notifyOfVoxelsChange();
             return true;
         }catch(e: any){
             return false;
@@ -267,7 +280,8 @@ export class VoxelObject extends SceneObject{
         const sizeModified = this.size!==size;
         this.size = size;
 
-        this.#notifyOfMeshChange();
+
+        this.#notifyOfVoxelsChange();
         if(sizeModified){
             this.#notifyOfSizeChange();
         }
@@ -276,8 +290,10 @@ export class VoxelObject extends SceneObject{
 
     removeVoxel(pos: Vector3){
         try{
-            this.voxels[pos.x][pos.y][pos.z] = null;
-            this.#notifyOfMeshChange();
+            this.voxels[pos.x][pos.y][pos
+    
+                .z] = null;
+            this.#notifyOfVoxelsChange();
             return true;
         }catch(e: any){
             return false;
@@ -292,6 +308,10 @@ export class VoxelObject extends SceneObject{
             this.selectedVoxels.clear();
             this.#notifyOfSelectedAreaChange();
         }
+
+        this.#selectedByColorVoxels = null;
+        this.#selectedColor = null;
+
         return clearedVoxels;
     }
 
@@ -313,6 +333,21 @@ export class VoxelObject extends SceneObject{
         }else{
             return false;
         }
+    }
+
+    //resets Selected  voxels
+    selectVoxelArray(voxels: Vector3[]): boolean{
+        let out = false;
+        this.resetSelect();
+        voxels.forEach(v=>{
+            if(this.voxelExists(v)) {
+                this.selectedVoxels.add(v.toString());
+                out = true;
+            }
+        });
+        
+        this.#notifyOfSelectedAreaChange();
+        return out;
     }
 
     //adds voxels of the same face as starting voxel of given coordinates
@@ -366,7 +401,7 @@ export class VoxelObject extends SceneObject{
         }
     }
 
-    #voxelNeighborsCoords(v: Vector3, dir: FaceDirection): Vector3[]{
+    #voxelDirNeighborsCoords(v: Vector3, dir: FaceDirection): Vector3[]{
         if(dir == "PosX" || dir=="NegX"){
             return [
                 new Vector3(v.x,v.y+1,v.z),
@@ -391,6 +426,24 @@ export class VoxelObject extends SceneObject{
         }
     }
 
+    #voxelNeighborsCoords(v: Vector3): Vector3[]{        
+            return [
+                new Vector3(v.x,v.y+1,v.z),
+                new Vector3(v.x,v.y-1,v.z),
+                new Vector3(v.x,v.y,v.z+1),
+                new Vector3(v.x,v.y,v.z-1),                                
+                new Vector3(v.x+1,v.y,v.z),
+                new Vector3(v.x-1,v.y,v.z),
+                new Vector3(v.x,v.y,v.z+1),
+                new Vector3(v.x,v.y,v.z-1),                                        
+                new Vector3(v.x+1,v.y,v.z),
+                new Vector3(v.x-1,v.y,v.z),
+                new Vector3(v.x,v.y+1,v.z),
+                new Vector3(v.x,v.y-1,v.z),                
+            ]
+    }
+    
+
     #selectFaceRecursion(v: Vector3, dir: FaceDirection, emptyVoxels: boolean){
         //console.log(`[selectFaceRecursion] iteration: ${v} -`)
         const possiblyBlockingVoxelCoords = this.#blockingVoxelCoords(v , dir);
@@ -408,7 +461,7 @@ export class VoxelObject extends SceneObject{
         const selectedVoxel = v;
         this.selectedVoxels.add(selectedVoxel.toString());
 
-        this.#voxelNeighborsCoords(v, dir).forEach((vs)=>{
+        this.#voxelDirNeighborsCoords(v, dir).forEach((vs)=>{
             this.#selectFaceRecursion(vs, dir, emptyVoxels);
         });
     }
@@ -441,6 +494,77 @@ export class VoxelObject extends SceneObject{
             }
         }
         //this.voxelsModified = true;
+        return true;
+    }
+
+
+    selectConnected(v: Vector3): boolean{
+        if(!this.voxelExists(v)) {
+            return false;
+        }
+        this.resetSelect();
+        if(this.isVoxelNonEmpty(v)) this.#selectConntectedRecursion(v);
+        this.#notifyOfSelectedAreaChange();   
+        return true;
+    }
+
+    #selectConntectedRecursion(v: Vector3){
+        this.selectedVoxels.add(v.toString());
+        this.#voxelNeighborsCoords(v).forEach((vs)=>{
+            if(!this.selectedVoxels.has(vs.toString()) && this.voxelExists(vs) && this.isVoxelNonEmpty(vs)){
+                this.#selectConntectedRecursion(vs);
+            }
+        });                                                                           
+    }
+
+    selectByColor(v: Vector3): boolean{
+        if(!this.voxelExists(v)) {
+            return false;
+        }
+
+        const voxel = this.getVoxel(v);
+        if(voxel){
+            const c = voxel.color;        
+            let cacheVoxels = false;
+            if(this.#selectedColor && this.#selectedColor.equals(c) && this.#selectedByColorVoxels){
+                this.resetSelect();    
+                this.selectedVoxels
+                return true;            
+            }else{
+                this.#selectedByColorVoxels = new Set();
+                cacheVoxels = true;
+                this.#selectedColor = c;
+            }
+        
+
+        this.resetSelect();
+        
+
+            for(let x = 0; x < this.size.x; x++){
+                for(let y = 0; y < this.size.y; y++){
+                    for(let z = 0; z < this.size.z; z++){
+                        //console.log(`[selectByColor] loop 1 ${x},${y},${z}`);
+                        const vId = new Vector3(x,y,z);
+                        //console.log(`[selectByColor] loop 2`);
+                        const v = this.getVoxel(vId);
+                        //console.log(`[selectByColor] loop 3`);
+                        if(v && v.color.equals(c)){
+                            this.selectedVoxels.add(vId.toString());
+                            if(cacheVoxels){
+                                this.selectByColor
+                            }
+                        }
+                    }
+                }
+            }
+        }else{
+            this.resetSelect();
+        }
+
+        //console.log(`[selectByColor] after loop`);
+        
+
+        this.#notifyOfSelectedAreaChange();
         return true;
     }
 
@@ -569,7 +693,8 @@ export class VoxelObject extends SceneObject{
             modifiedVoxels++;
         });
         this.voxels = outVoxels;
-        this.#notifyOfMeshChange();
+
+        this.#notifyOfVoxelsChange();
         return modifiedVoxels;
     }
 
@@ -589,7 +714,8 @@ export class VoxelObject extends SceneObject{
             modifiedVoxels++;
         });
         this.voxels = outVoxels;
-        this.#notifyOfMeshChange();
+
+        this.#notifyOfVoxelsChange();
         return modifiedVoxels;  
     }
 
@@ -609,7 +735,8 @@ export class VoxelObject extends SceneObject{
             modifiedVoxels++;
         });
         this.voxels = outVoxels;
-        this.#notifyOfMeshChange();
+
+        this.#notifyOfVoxelsChange();
         return modifiedVoxels;
     }
 
@@ -629,7 +756,8 @@ export class VoxelObject extends SceneObject{
                 }   
             }   
         }
-        this.#notifyOfMeshChange();
+
+        this.#notifyOfVoxelsChange();
         return modifiedVoxels;
     }
 
@@ -649,7 +777,8 @@ export class VoxelObject extends SceneObject{
                 }   
             }   
         }
-        this.#notifyOfMeshChange();
+
+        this.#notifyOfVoxelsChange();
         return modifiedVoxels;
     }
 
@@ -669,7 +798,8 @@ export class VoxelObject extends SceneObject{
                 }   
             }   
         }
-        this.#notifyOfMeshChange();
+
+        this.#notifyOfVoxelsChange();
         return modifiedVoxels;
     }
 
@@ -698,7 +828,9 @@ export class VoxelObject extends SceneObject{
             }
         });
         if(modifiedVoxels>0){
-            this.#notifyOfMeshChange();
+
+
+            this.#notifyOfVoxelsChange();
         }
         return modifiedVoxels;
     }
@@ -749,7 +881,9 @@ export class VoxelObject extends SceneObject{
             this.voxels = newVoxels;
             this.selectedVoxels = newSelectedVoxels;
 
-            this.#notifyOfMeshChange();
+
+
+            this.#notifyOfVoxelsChange();
             this.#notifyOfSizeChange();
         }
         return this.size;
@@ -763,7 +897,7 @@ export class VoxelObject extends SceneObject{
             )
         );
         out.#voxelSize = this.#voxelSize;
-        out.#notifyOfMeshChange();
+        out.#notifyOfVoxelsChange();
         out.#notifyOfSizeChange();      
         out.selectedVoxelColor = this.selectedVoxelColor.copy();
         return out;
@@ -793,11 +927,27 @@ export class VoxelObject extends SceneObject{
 
     setVoxelSize(n: number){
         this.#voxelSize = n;
-        this.#notifyOfMeshChange();
+
+        this.#notifyOfVoxelsChange();
         this.#notifyOfSizeChange();
     }
 
     getVoxelSize(){
         return this.#voxelSize
+    }
+
+    getAllNonEmptyVoxels(): Voxel[]{
+        const out = [];
+        for(let x = 0; x < this.size.x; x++){
+            for(let y = 0; y < this.size.y; y++){
+                for(let z = 0; z < this.size.z; z++){
+                    const v = this.getVoxel(new Vector3(x,y,z));
+                    if(v){
+                        out.push(v);
+                    }
+                }
+            }
+        }
+        return out;
     }
 }

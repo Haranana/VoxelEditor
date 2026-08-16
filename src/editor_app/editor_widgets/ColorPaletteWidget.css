@@ -1,7 +1,7 @@
 .ColorPaletteWidget{
     width: 100%;
     border: 0.5px solid ;
-    max-height: 50%;
+    max-height: 80%;
     display: flex;
     flex-direction: column;
 }
@@ -35,7 +35,7 @@
 }
 
 .ColorPaletteCell{
-    width: 30px;
+    width: 20px;
     border: 1px solid gray;
     aspect-ratio: 1/1;
     margin: 1px;

@@ -1,0 +1,30 @@
+.SelectToolsWidget > .ExpandableRowChildrenWrapper{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.SelectToolsWidget > .ExpandableRowChildrenWrapper >{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.SelectToolsWidget > .ExpandableRowChildrenWrapper > *{
+    margin: 10px 0px 10px 0px;
+}
+
+.SelectModeWrapper{
+    display: flex;
+    flex-direction: row;
+}
+
+.SelectedVoxelsCount{
+    font-size: var(--font-s);
+    margin: 0;
+}
+
+.SelectModeText{
+    font-size: var(--font-s);
+    margin: 0px 10px 0px 0px;
+}

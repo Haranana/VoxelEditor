@@ -1,11 +1,10 @@
 import type { RefObject } from "react";
 import { Vector3 } from "../../math/vector3.type";
-import type { EditMode, SelectMode } from "../page/EditorPage";
 import type { Scene } from "../../voxel_engine/scene/scene";
 import { clamp, mod } from "../../math/utils";
 import type { Vector2 } from "../../math/vector2.type";
 import { Camera, type ProjectionType } from "../../voxel_engine/scene-objects/camera/camera";
-import { getVoxelFromObject } from "../../voxel_engine/voxel-ray-caster";
+import { getVoxelFromObject, marqueeSelectRectangle } from "../../voxel_engine/voxel-ray-caster";
 import { Matrices4 } from "../../math/matrices";
 import { faceDirectionToVector, vectorToFaceDirection, VoxelObject } from "../../voxel_engine/scene-objects/voxel/voxel-object";
 import { Vector4 } from "../../math/vector4.type";
@@ -15,9 +14,14 @@ import { getBasicSampleVoxelObject } from "../../voxel_engine/scene-objects/voxe
 import { getSampleCamera } from "../../voxel_engine/scene-objects/camera/sample-cameras";
 
 
-type SelectSession = {
+type BoxSelectSession = {
     startCoords: Vector3 | null,
     endCoords: Vector3 | null,
+}
+
+type MarqueeSelectSession = {
+    startCoords: Vector2 | null,
+    endCoords: Vector2 | null,
 }
 
 type CameraMoveSession = {
@@ -27,22 +31,33 @@ type CameraMoveSession = {
     deltaY: number,
 }
 
+export type SelectMode = 
+| "Voxel"
+| "Cube"
+| "Face"
+| "Color"
+| "Connected"
+| "Marquee"
+
+export type EditMode = 
+| "Add"
+| "Paint"
+| "Remove"
+| "Move"
+| "Select"
+
 export class EditorController{
-    selectModeRef: RefObject<SelectMode> | null = null;
-    //selectMode: SelectMode | null = null;
-    editModeRef: RefObject<EditMode> | null = null;
+    selectMode: SelectMode  = "Voxel";
+    editMode: EditMode  = "Add";
     scene: Scene | null = null;
     renderScene: (()=>void) | null = null;
     initialized: boolean = false;
 
     constructor(){}
 
-    init(selectMode: RefObject<SelectMode>, editMode: RefObject<EditMode>, scene: Scene, renderScene: ()=>void){
+    init(scene: Scene, renderScene: ()=>void){
         this.renderScene = renderScene;
         this.#startCameraMoveAnimationLoop();
-        this.selectModeRef = selectMode;
-        this.selectModeRef = selectMode
-        this.editModeRef = editMode;
         this.scene = scene;
 
         this.initialized = true;
@@ -507,13 +522,22 @@ export class EditorController{
     }       
     //Select and Edit component
 
-    selectSession: SelectSession = {
+    boxSelectSession: BoxSelectSession = {
         startCoords: null,
         endCoords: null,
     }
 
-    hasSelectSessionStarted(){
-        return this.selectSession.startCoords!=null;
+    marqueeSelectSession: MarqueeSelectSession = {
+        startCoords: null,
+        endCoords: null,
+    }
+
+    hasBoxSelectSessionStarted(){
+        return this.boxSelectSession.startCoords!=null;
+    }
+
+    hasMarqueeSelectSessionStarted(){
+        return this.marqueeSelectSession.startCoords!=null
     }
 
     resetSelectSession(){
@@ -522,9 +546,13 @@ export class EditorController{
         if(!selectedObject) return;
 
         const selectAreaModified = selectedObject.resetSelect();
-        this.selectSession = {
+        this.boxSelectSession = {
             startCoords: null,
             endCoords: null,
+        }
+        this.marqueeSelectSession = {
+            startCoords: null,
+            endCoords: null,            
         }
         if(selectAreaModified){
             this.renderScene!();
@@ -536,33 +564,37 @@ export class EditorController{
         const scene = this.scene!;
         const voxelObject = scene.getActiveVoxelObject();
         const camera = scene.getActiveCamera();
-        if(!voxelObject || !camera) return;
+        if(!voxelObject || !camera) return;        
 
-        const editMode = this.editModeRef!.current;
-        const selectMode = this.selectModeRef!.current;
-
-        const lastEmpty = editMode === "Add";
+        const lastEmpty = this.editMode === "Add";
         const hitOnExit = true;
+        const mvp = camera.getProjectionMatrix(canvasSize).multMatrix(Matrices4.transform(voxelObject.getObjectRo().worldTransform!)).multMatrix(camera.getCameraView());
         const rayCastResults = getVoxelFromObject(camera, pointerPos, voxelObject, canvasSize, Matrices4.transform(voxelObject.getObjectRo().worldTransform!), camera.getProjectionMatrix(canvasSize), camera.getCameraView(), lastEmpty , hitOnExit);
         if(!rayCastResults) return;
         const hitVoxel : Vector3 = rayCastResults.voxelCoords;
 
         let voxelObjectChanged = false;
         let selectedAreaChanged = false;
-        if(selectMode=="Voxel" || selectMode=="Face"){
-                if(editMode=="Add"){
+        if(this.selectMode =="Voxel" || this.selectMode=="Face" || this.selectMode=="Connected" || this.selectMode=="Color"){
+                if(this.editMode=="Add"){
                     voxelObjectChanged = voxelObject.addSelectedVoxels(this.currentColor)!=0;
                     selectedAreaChanged = voxelObject.resetSelect()!=0;
-                }else if(editMode=="Paint"){
+                }else if(this.editMode=="Paint"){
                     voxelObjectChanged = voxelObject.paintSelectedVoxels(this.currentColor)!=0;
                     selectedAreaChanged = voxelObject.resetSelect()!=0;
-                }else if(editMode=="Remove"){
+                }else if(this.editMode=="Remove"){
                     voxelObjectChanged = voxelObject.removeSelectedVoxels()!=0;
                     selectedAreaChanged = voxelObject.resetSelect()!=0;
                 }
-        }else if(selectMode=="Cube"){
-            this.selectSession.startCoords = hitVoxel;  
+        }else if(this.selectMode=="Cube"){
+            this.boxSelectSession.startCoords = hitVoxel;  
                 selectedAreaChanged = voxelObject.selectVoxel(hitVoxel);
+        }else if(this.selectMode=="Marquee"){
+            this.marqueeSelectSession.startCoords = pointerPos;
+            
+            selectedAreaChanged = voxelObject.selectVoxelArray(marqueeSelectRectangle(
+                pointerPos,pointerPos,voxelObject,canvasSize,mvp
+            ));
         }
 
         if(voxelObjectChanged || selectedAreaChanged){
@@ -577,10 +609,7 @@ export class EditorController{
         const camera = scene.getActiveCamera();
         if(!voxelObject || !camera) return;
 
-        const editMode = this.editModeRef!.current;
-        const selectMode = this.selectModeRef!.current;
-
-        const lastEmpty = editMode === "Add";
+        const lastEmpty = this.editMode === "Add";
         const hitOnExit = true;   
         
         const rayCastResults = getVoxelFromObject(
@@ -599,46 +628,64 @@ export class EditorController{
 
         const hitVoxel : Vector3 = rayCastResults.voxelCoords;
         const hitDirection: Vector3 = faceDirectionToVector(rayCastResults.hitDirection);
+        //console.log(`[controller -> handleCanvasPointerMove] voxelObjectTransform[${voxelObject.getObjectRo().worldTransform!.translation}]`)
+        const mvp = camera.getProjectionMatrix(canvasSize).multMatrix(Matrices4.transform(voxelObject.getObjectRo().worldTransform!)).multMatrix(camera.getCameraView());
 
         let selectedAreaChanged = false;
         let voxelObjectChanged = false;
-
-        if(this.hasSelectSessionStarted()){
-            //console.log("[controller] session in move")
-            if(editMode == "Add"){
-                if(selectMode=="Voxel"){
+        if(this.hasMarqueeSelectSessionStarted()){
+            if(this.editMode=="Remove"){
+                
+                selectedAreaChanged = voxelObject.selectVoxelArray(marqueeSelectRectangle(
+                    this.marqueeSelectSession.startCoords!,pointerPos,voxelObject,canvasSize,mvp
+                ));
+                //voxelObjectChanged = voxelObject.removeSelectedVoxels() != 0;
+            }else if(this.editMode=="Paint"){
+                                
+                selectedAreaChanged = voxelObject.selectVoxelArray(marqueeSelectRectangle(
+                    this.marqueeSelectSession.startCoords!,pointerPos,voxelObject,canvasSize,mvp
+                ));
+            }
+        }
+        else if(this.hasBoxSelectSessionStarted()){            
+            if(this.editMode == "Add"){
+                if(this.selectMode=="Voxel"){
                     voxelObject.selectVoxel(hitVoxel);
                     voxelObjectChanged = voxelObject.addSelectedVoxels(this.currentColor) != 0;
-                }else if(selectMode=="Cube"){
-                    selectedAreaChanged = voxelObject.selectCube(this.selectSession.startCoords!, hitVoxel);
+                }else if(this.selectMode=="Cube"){
+                    selectedAreaChanged = voxelObject.selectCube(this.boxSelectSession.startCoords!, hitVoxel);
                 }
-            }else if(editMode=="Remove"){
-                if(selectMode=="Voxel"){
+            }else if(this.editMode=="Remove"){
+                if(this.selectMode=="Voxel"){
                     voxelObject.selectVoxel(hitVoxel);
                     voxelObjectChanged = voxelObject.removeSelectedVoxels() != 0;
-                }else if(selectMode=="Cube"){
-                    selectedAreaChanged = voxelObject.selectCube(this.selectSession.startCoords!, hitVoxel);
+                }else if(this.selectMode=="Cube"){
+                    selectedAreaChanged = voxelObject.selectCube(this.boxSelectSession.startCoords!, hitVoxel);
                 }
-            }else if(editMode=="Paint"){
-                if(selectMode=="Voxel"){
+            }else if(this.editMode=="Paint"){
+                if(this.selectMode=="Voxel"){
                     voxelObject.selectVoxel(hitVoxel);
                     voxelObjectChanged = voxelObject.paintSelectedVoxels(this.currentColor) != 0;
-                }else if(selectMode=="Cube"){
-                    selectedAreaChanged = voxelObject.selectCube(this.selectSession.startCoords!, hitVoxel);
+                }else if(this.selectMode=="Cube"){
+                    selectedAreaChanged = voxelObject.selectCube(this.boxSelectSession.startCoords!, hitVoxel);
                 }
             }
         }else{
-            if(editMode == "Add"){
-                if(selectMode=="Voxel" || selectMode=="Cube"){
+            if(this.editMode == "Add"){
+                if(this.selectMode=="Voxel" || this.selectMode=="Cube"){
                     selectedAreaChanged = voxelObject.selectVoxel(hitVoxel);
-                }else if(selectMode=="Face"){
+                }else if(this.selectMode=="Face"){
                     selectedAreaChanged = voxelObject.selectFace(hitVoxel , vectorToFaceDirection(hitDirection), true);
                 }
-            }else if(editMode=="Remove" || editMode=="Paint"){
-                if(selectMode=="Voxel" || selectMode=="Cube"){
+            }else if(this.editMode=="Remove" || this.editMode=="Paint"){
+                if(this.selectMode=="Voxel" || this.selectMode=="Cube"){
                     selectedAreaChanged = voxelObject.selectVoxel(hitVoxel);
-                }else if(selectMode=="Face"){
+                }else if(this.selectMode=="Face"){
                     selectedAreaChanged = voxelObject.selectFace(hitVoxel , vectorToFaceDirection(hitDirection));
+                }else if(this.selectMode=="Color"){
+                    selectedAreaChanged = voxelObject.selectByColor(hitVoxel);
+                }else if(this.selectMode=="Connected"){
+                    selectedAreaChanged = voxelObject.selectConnected(hitVoxel);   
                 }
             }else{
                 //higlightCausedChange = props.selectedObject.highlightVoxel(hitVoxel);
@@ -657,37 +704,44 @@ export class EditorController{
         const camera = scene.getActiveCamera();
         if(!voxelObject || !camera) return;
 
-        //console.log(this.editMode + " : " + this.selectMode);
         if(this.hasCameraMoveSessionStarted()){
             this.resetSelectSession();
-        }
+        }       
 
-        const editMode = this.editModeRef!.current;
-        const selectMode = this.selectModeRef!.current;
-
-        const lastEmpty = this.editModeRef!.current === "Add";
+        const lastEmpty = this.editMode === "Add";
         const hitOnExit = true;   
         const rayCastResults = getVoxelFromObject(camera, pointerPos, voxelObject, canvasSize, Matrices4.transform(voxelObject.getObjectRo().worldTransform!), camera.getProjectionMatrix(canvasSize), camera.getCameraView(), lastEmpty , hitOnExit);
         if(!rayCastResults) return;
 
         const hitVoxel : Vector3 = rayCastResults.voxelCoords;
 
-        if(this.hasSelectSessionStarted()){
-            this.selectSession.endCoords = hitVoxel;
-            if(selectMode=="Cube"){
-                if(editMode=="Add"){
+        if(this.hasBoxSelectSessionStarted()){
+            this.boxSelectSession.endCoords = hitVoxel;
+            if(this.selectMode=="Cube"){
+                if(this.editMode=="Add"){
                     voxelObject.addSelectedVoxels(this.currentColor);
-                }else if(editMode=="Paint"){
+                }else if(this.editMode=="Paint"){
                     voxelObject.paintSelectedVoxels(this.currentColor);
-                }else if(editMode=="Remove"){
+                }else if(this.editMode=="Remove"){
+                    console.log("Removing " + voxelObject.selectedVoxels.size + " voxels")
                     voxelObject.removeSelectedVoxels();
                 }
             }
             this.resetSelectSession();
         }
-
+        if(this.hasMarqueeSelectSessionStarted()){
+                if(this.editMode=="Paint"){
+                    voxelObject.paintSelectedVoxels(this.currentColor);
+                }else if(this.editMode=="Remove"){
+                    voxelObject.removeSelectedVoxels();
+                }
+            this.resetSelectSession();
+        }
+        
         voxelObject.resetSelect();
+        this.handleCanvasPointerMove(pointerPos, canvasSize);
         this.renderScene!();        
+
     }
 
     //scene
@@ -774,6 +828,8 @@ export class EditorController{
         return this.scene.isVoxelObjectSelectedById(sceneId);        
     }    
 
+    // if at any point change of scene will be possible this should be modified
+    // so that it automatically subscribes to a new scene
     subscribeObjectEnabledChangeSceneEvent(listener: ()=>void){
         if(!this.initialized || !this.scene) return;
         this.scene.objectEnabledChangeEvent.subscribe(listener);
@@ -802,6 +858,26 @@ export class EditorController{
     subscribeActiveCameraChangedSceneEvent(listener: ()=>void){
         if(!this.initialized || !this.scene) return;
         this.scene.activeCameraChanged.subscribe(listener);
+    }
+
+    subscribeActiveVoSelectedAreaChangedSceneEvent(listener: ()=>void){
+        if(!this.initialized || !this.scene) return;
+        this.scene.activeVoSelectedAreaChangeEvent.subscribe(listener);        
+    }
+
+    subscribeActiveVoVoxelsChangedSceneEvent(listener: ()=>void){
+        if(!this.initialized || !this.scene) return;
+        this.scene.activeVoVoxelsChangeEvent.subscribe(listener);        
+    }
+
+    subscribeActiveVoTransformChangedSceneEvent(listener: ()=>void){
+        if(!this.initialized || !this.scene) return;
+        this.scene.activeVoTransformChangeEvent.subscribe(listener);        
+    }
+
+    subscribeActiveVoSizeChangedSceneEvent(listener: ()=>void){
+        if(!this.initialized || !this.scene) return;
+        this.scene.activeVoSizeChangeEvent.subscribe(listener);        
     }
 
     //color
@@ -1007,6 +1083,33 @@ export class EditorController{
         this.renderScene!();
     }
 
+    getVoxelObjectSelectedVoxelsCount(){
+        if(!this.initialized) return;
+        const scene = this.scene!;
+        let voxelObject = scene.getActiveVoxelObject();
+        if(!voxelObject) return;
+
+        return voxelObject.selectedVoxels.size;
+    }
+
+
+
+
+    // Select and edit modes
     
-    
+    getEditMode(): EditMode{
+        return this.editMode;
+    }
+
+    setEditMode(editMode: EditMode){
+        this.editMode = editMode;
+    }
+
+    getSelectMode(): SelectMode{
+        return this.selectMode;
+    }
+
+    setSelectMode(selectMode: SelectMode){
+        this.selectMode = selectMode;
+    }    
 }

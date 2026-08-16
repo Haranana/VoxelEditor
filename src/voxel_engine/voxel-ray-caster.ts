@@ -1,23 +1,13 @@
 
 import type { Matrix4 } from "../math/matrix4.type";
-import type { Vector2 } from "../math/vector2.type";
+import { Vector2 } from "../math/vector2.type";
 import { Vector3 } from "../math/vector3.type";
 import { Vector4 } from "../math/vector4.type";
 import type { Camera } from "./scene-objects/camera/camera";
 import { faceDirectionToVector, type FaceDirection, type VoxelObject } from "./scene-objects/voxel/voxel-object";
-
-class Ray{
-    direction: Vector3;
-    origin: Vector3;
-    constructor(origin: Vector3, direction: Vector3){
-        this.origin = origin;
-        this.direction = direction;
-    }
-
-    get(t: number) : Vector3{
-        return this.origin.addVector(this.direction.multByScalar(t));
-    }
-}
+import { Ray } from "../math/geometry/ray";
+import { Plane } from "../math/geometry/plane";
+import { planeAABBIntersection } from "./intersection_tests/voxel-tests";
 
 /*
 casts ray from given coordinates (in Model space) onto given voxel object and returns id of first-non empty voxel
@@ -215,4 +205,182 @@ export function getVoxelFromObject(_: Camera,
     }
 
     return null;
+}
+
+/*
+    todo: near and far planes in PlaneAABB intersection tests should be voxel object border
+    instead of actual near nad far planes of the scene
+*/
+
+export function marqueeSelectRectangle(
+                            rectStart: Vector2,
+                            rectEnd: Vector2, 
+                            obj: VoxelObject,
+                            canvasSize: Vector2,
+                            mvp: Matrix4)
+    : Vector3[]{
+    const out: Vector3[] = [];
+
+    console.log(`[marquee] arguments: rectStart[${rectStart}] | rectEnd[${rectEnd}] | obj.name[${obj.name}] | canvasSize[${canvasSize}] | mvp[${mvp}]`)
+    
+    const leftBottomSs = new Vector2( Math.min(rectStart.x, rectEnd.x) , Math.max(rectStart.y, rectEnd.y) );
+    const rightBottomSs = new Vector2( Math.max(rectStart.x, rectEnd.x) , Math.max(rectStart.y, rectEnd.y) );
+    const rightTopSs = new Vector2( Math.max(rectStart.x, rectEnd.x) , Math.min(rectStart.y, rectEnd.y) );
+    const leftTopSs = new Vector2( Math.min(rectStart.x, rectEnd.x) , Math.min(rectStart.y, rectEnd.y) );
+    
+    const screenSpaceToNdc = (p: Vector2, z: number, canvasSize: Vector2 ) => {
+        return new Vector4( (2*p.x)/canvasSize.x-1 , 1-(2*p.y)/canvasSize.y,z, 1);
+    }
+
+    const leftBottomNearNdc = screenSpaceToNdc(leftBottomSs, 0, canvasSize);
+    const rightBottomNearNdc = screenSpaceToNdc(rightBottomSs, 0, canvasSize);
+    const rightTopNearNdc = screenSpaceToNdc(rightTopSs, 0,canvasSize);
+    const leftTopNearNdc = screenSpaceToNdc(leftTopSs, 0,canvasSize);
+
+    const leftBottomFarNdc = screenSpaceToNdc(leftBottomSs, 1, canvasSize);
+    const rightBottomFarNdc = screenSpaceToNdc(rightBottomSs, 1, canvasSize);
+    const rightTopFarNdc = screenSpaceToNdc(rightTopSs, 1,canvasSize);
+    const leftTopFarNdc = screenSpaceToNdc(leftTopSs, 1,canvasSize);
+
+    const mvpInversion = mvp.getInversion();
+
+    const leftBottomNearMs = mvpInversion.multVector(leftBottomNearNdc).homogeneousDivide();
+    const rightBottomNearMs = mvpInversion.multVector(rightBottomNearNdc).homogeneousDivide();
+    const rightTopNearMs = mvpInversion.multVector(rightTopNearNdc).homogeneousDivide();
+    const leftTopNearMs = mvpInversion.multVector(leftTopNearNdc).homogeneousDivide();
+
+    const leftBottomFarMs = mvpInversion.multVector(leftBottomFarNdc).homogeneousDivide();
+    const rightBottomFarMs = mvpInversion.multVector(rightBottomFarNdc).homogeneousDivide();
+    const rightTopFarMs = mvpInversion.multVector(rightTopFarNdc).homogeneousDivide();
+    const leftTopFarMs = mvpInversion.multVector(leftTopFarNdc).homogeneousDivide();    
+
+    console.log(`[marquee] model space frustrum vertices: 
+        leftBottomNearMs[${leftBottomNearMs}] | rightBottomNearMs[${rightBottomNearMs}]
+        rightTopNearMs[${rightTopNearMs}] | leftTopNearMs[${leftTopNearMs}]
+        leftBottomFarMs[${leftBottomFarMs}] | rightBottomFarMs[${rightBottomFarMs}]
+        rightTopFarMs[${rightTopFarMs}] | leftTopFarMs[${leftTopFarMs}]`)
+    //creating frustum planes
+
+    const frustumMiddle: Vector3 = leftBottomNearMs.addVector(rightTopFarMs).multByScalar(0.5);
+    
+    //near
+    const rightBottomToRightTopNear = rightTopNearMs.subVector(rightBottomNearMs);
+    const rightBottomToLeftBottomNear: Vector3 = leftBottomNearMs.subVector(rightBottomNearMs);
+    const nearPlaneNormal = rightBottomToRightTopNear.crossProduct(rightBottomToLeftBottomNear).normalize();
+    const nearPlane = new Plane(nearPlaneNormal, rightBottomNearMs);
+    const middleToNearPlane = nearPlane.distanceTo(frustumMiddle);
+    if(middleToNearPlane>0){
+        console.log(`[marquee] middleToNearPlane >0 => inversing normal!`); 
+        console.log(`[marquee] before[${nearPlane.getNormal()}]`)
+            nearPlane.inverseNormal();
+        console.log(`[marquee] after[${nearPlane.getNormal()}]`)                    
+    }
+
+    //far
+    const rightBottomToRightTopFar = rightTopFarMs.subVector(rightBottomFarMs);
+    const rightBottomToLeftBottomFar: Vector3 = leftBottomFarMs.subVector(rightBottomFarMs);
+    const farPlaneNormal = rightBottomToRightTopFar.crossProduct(rightBottomToLeftBottomFar).normalize();
+    const farPlane = new Plane(farPlaneNormal, rightBottomFarMs);
+    const middleToFarPlane = farPlane.distanceTo(frustumMiddle);
+    if(middleToFarPlane>0){
+        farPlane.inverseNormal();
+    }    
+
+    //right
+    const rightBottomFarToNear = rightBottomNearMs.subVector(rightBottomFarMs);
+    const rightPlaneNormal = rightBottomToRightTopFar.crossProduct(rightBottomFarToNear).normalize();  
+    const rightPlane = new Plane(rightPlaneNormal, rightBottomFarMs);
+    const middleToRightPlane = rightPlane.distanceTo(frustumMiddle);
+    if(middleToRightPlane>0){
+        rightPlane.inverseNormal();
+    }
+
+    //left
+    const leftBottomFarToNear = leftBottomNearMs.subVector(leftBottomFarMs);
+    const leftBottomToLeftTopFar = leftTopFarMs.subVector(leftBottomFarMs);
+    const leftPlaneNormal = leftBottomFarToNear.crossProduct(leftBottomToLeftTopFar).normalize();
+    const leftPlane = new Plane(leftPlaneNormal, leftBottomFarMs);
+    const middleToLeftPlane = leftPlane.distanceTo(frustumMiddle);
+    if(middleToLeftPlane>0){
+        leftPlane.inverseNormal();
+    }
+
+    //top
+    const leftTopNearToFar = leftTopFarMs.subVector(leftTopNearMs);
+    const leftTopToRightTopNear = rightTopNearMs.subVector(leftTopNearMs);
+    const topPlaneNormal = leftTopNearToFar.crossProduct(leftTopToRightTopNear).normalize();
+    const topPlane = new Plane(topPlaneNormal, leftTopNearMs);
+    const middleToTopPlane = topPlane.distanceTo(frustumMiddle);
+    if(middleToTopPlane>0){
+        topPlane.inverseNormal();
+    }
+
+    //bottom
+    const leftBottomNearToFar = leftBottomFarMs.subVector(leftBottomNearMs);
+    const leftBottomToRightBottomNear = rightBottomNearMs.subVector(leftBottomNearMs);
+    const bottomPlaneNormal = leftBottomNearToFar.crossProduct(leftBottomToRightBottomNear).normalize();
+    const bottomPlane = new Plane(bottomPlaneNormal, leftBottomNearMs);
+    const middleToBottomPlane = bottomPlane.distanceTo(frustumMiddle);
+    if(middleToBottomPlane>0){
+        bottomPlane.inverseNormal();
+    }
+
+        console.log(`[marquee] planes data: 
+    farPlane[n: ${farPlane.getNormal()} | p: [${farPlane.getPoint()}] | 
+    nearPlane[n: ${nearPlane.getNormal()} | p: [${nearPlane.getPoint()}] | 
+    bottomPlane[n: ${bottomPlane.getNormal()} | p: [${bottomPlane.getPoint()}] | 
+    topPlane[n: ${topPlane.getNormal()} | p: [${topPlane.getPoint()}] | `)
+
+    //returns true if voxel intersects or is in frustum, false if it's outside
+    const isInFrustum = (v: Vector3)=>{
+
+        const voxelSize = obj.getVoxelSize();
+        const voxelMin = new Vector3(
+            (v.x - obj.size.x / 2) * voxelSize,
+            (v.y - obj.size.y / 2) * voxelSize,
+            (v.z - obj.size.z / 2) * voxelSize
+        );
+
+        const voxelMax = voxelMin.addScalar(voxelSize);
+        
+        if(v.equals(new Vector3(10,10,10))){
+        console.log(`[marquee] sample vortex data (pos: (10,10,10)): 
+        voxelSize[${voxelSize}] | voxelMin[${voxelMin}]
+        voxelMax[${voxelMax}] `)}
+        
+        if(planeAABBIntersection(voxelMin, voxelMax, leftPlane) === "outside"){
+            return false;
+        }
+        if(planeAABBIntersection(voxelMin, voxelMax, rightPlane) === "outside"){
+            return false;
+        }
+        if(planeAABBIntersection(voxelMin, voxelMax, topPlane) === "outside"){
+            return false;
+        }
+        if(planeAABBIntersection(voxelMin, voxelMax, bottomPlane) === "outside"){
+            return false;
+        }
+        if(planeAABBIntersection(voxelMin, voxelMax, farPlane) === "outside" ){
+            return false;
+        }
+        if(planeAABBIntersection(voxelMin, voxelMax, nearPlane) === "outside"){
+            return false;
+        }                                        
+        return true;
+    }
+
+
+    for(let x = 0; x < obj.size.x; x++){
+        for(let y = 0; y < obj.size.y; y++){
+            for(let z = 0; z < obj.size.z; z++){
+                const v = new Vector3(x,y,z);
+                if(obj.voxelExists(v) && isInFrustum(v)){
+                    out.push(v);
+                }
+            }        
+        }        
+    }
+
+    console.log(`[marquee] voxels found in frustrum: ${out.length}  `)
+    return out;
 }

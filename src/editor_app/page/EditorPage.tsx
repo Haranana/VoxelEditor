@@ -12,7 +12,7 @@ import { Vector2 } from "../../math/vector2.type";
 import { SceneRenderCollector } from "../../voxel_engine/scene/scene-render-collector";
 import CameraPropertiesWidget from "../editor_widgets/CameraPropertiesWidget";
 import { ActionButtonsPanel, type ActionButtonData } from "../editor_widgets/ActionButtonsPanel";
-import { SelectToolsWidget } from "../editor_widgets/SelectToolsWidget";
+import { SelectToolsWidget } from "../editor_widgets/select_tools/SelectToolsWidget";
 import { EditToolsWidget } from "../editor_widgets/EditToolsWidget";
 import ScenePropertiesWidget from "../editor_widgets/ScenePropertiesWidget";
 import { ColorPaletteWidget } from "../editor_widgets/ColorPaletteWidget";
@@ -22,44 +22,15 @@ import EditorCanvas from "../editor_widgets/EditorCanvas";
 import { SceneListWidget } from "../editor_widgets/scene_list/SceneListWidget";
 import { getSampleCamera } from "../../voxel_engine/scene-objects/camera/sample-cameras";
 
-
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
-
-export type SelectMode = 
-| "Voxel"
-| "Cube"
-| "Face"
-
-export type EditMode = 
-| "Add"
-| "Paint"
-| "Remove"
-| "Move"
-| "None"
 
 export default function EditorPage() {
 
   const controller = useContext(ControllerContext)!;
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const currentSelectionTypeRef = useRef<SelectMode>("Voxel");
-  const currentEditTypeRef = useRef<EditMode>("Add");
   const sceneRef = useRef<Scene>(new Scene());
-  /*
-  const renderSceneOptionsRef = useRef<RenderScen>({
-    borderGrid: true,
-    borderOutline: true,    
-    voxelObject: false,
-    voxelObjectWireframe: true,
-  });*/
-  /*
-  const renderGizmosOptionsRef = useRef<RenderGizmosOptions>({
-    cameraControllGizmo: true,
-    objectMoveGizmo: true,
-    objectResizeGizmo: true,
-    objectRotateGizmo: true,
-  });*/
   const rendererRef = useRef<Renderer>(new Renderer());
 
   //states for updating widgets when controller changes data
@@ -93,7 +64,7 @@ export default function EditorPage() {
   useEffect(()=>{
     if(!sceneRef.current.getActiveCamera()) return;
     
-    controller.init(currentSelectionTypeRef, currentEditTypeRef, sceneRef.current, rerenderScene);
+    controller.init(sceneRef.current, rerenderScene);
     controller.onCameraModified = onCameraUpdated;
   },[]);
   
@@ -365,21 +336,39 @@ export default function EditorPage() {
     {
       id: "voxelSelectButton",
       label: "voxel",
-      onClick: () => {currentSelectionTypeRef.current = "Voxel"; onSelectToolsUpdated()},
-      disabled: currentSelectionTypeRef.current==="Voxel",
+      onClick: () => {controller.setSelectMode("Voxel"); onSelectToolsUpdated()},
+      disabled: (controller.getSelectMode() === "Voxel"),
     },
     {
       id: "cubeSelectButton",
       label: "cube",
-      onClick: () => {currentSelectionTypeRef.current = "Cube"; onSelectToolsUpdated()},
-      disabled: currentSelectionTypeRef.current==="Cube",
+      onClick: () => {controller.setSelectMode("Cube"); onSelectToolsUpdated()},
+      disabled: controller.getSelectMode()==="Cube",
     },
     {
       id: "faceSelectButton",
       label: "face",
-      onClick: () => {currentSelectionTypeRef.current = "Face"; onSelectToolsUpdated()},
-      disabled: currentSelectionTypeRef.current==="Face",
+      onClick: () => {controller.setSelectMode("Face"); onSelectToolsUpdated()},
+      disabled: controller.getSelectMode() === "Face",
     },
+    {
+      id: "colorSelectButton",
+      label: "color",
+      onClick: () => {controller.setSelectMode("Color"); onSelectToolsUpdated()},
+      disabled: controller.getSelectMode() === "Color",
+    },
+      {
+      id: "connectedSelectButton",
+      label: "connected",
+      onClick: () => {controller.setSelectMode("Connected"); onSelectToolsUpdated()},
+      disabled: controller.getSelectMode() === "Connected",
+    },
+{
+      id: "marqueeSelectButton",
+      label: "marquee",
+      onClick: () => {controller.setSelectMode("Marquee"); onSelectToolsUpdated()},
+      disabled: controller.getSelectMode() === "Marquee",
+    },    
   ];
 
   const selectToolsButtons : React.ReactNode = <ActionButtonsPanel
@@ -390,7 +379,7 @@ export default function EditorPage() {
     buttonPanel = {selectToolsButtons}
     isOpen = {isSelectToolsWidgetOpen}
     onOpenChange={setIsSelectToolsWidgetOpen}
-    selectToolsVersion = {selectToolsPropertiesVersion}
+    onValueChange = {()=>setSelectToolsPropertiesVersion((prev)=>(prev+1))}
   />
 
   
@@ -399,32 +388,32 @@ export default function EditorPage() {
     {
       id: "AddEditButton",
       label: "add",
-      onClick: () => {currentEditTypeRef.current="Add"; onEditToolsUpdated()},
-      disabled: currentEditTypeRef.current==="Add",
+      onClick: () => {controller.setEditMode("Add"); onEditToolsUpdated()},
+      disabled: controller.getEditMode()==="Add",
     },
     {
       id: "RemoveEditButton",
       label: "remove",
-      onClick: () => {currentEditTypeRef.current = "Remove"; onEditToolsUpdated()},
-      disabled: currentEditTypeRef.current==="Remove",
+      onClick: () => {controller.setEditMode("Remove"); onEditToolsUpdated()},
+      disabled: controller.getEditMode()==="Remove",
     },
     {
       id: "PaintEditButton",
       label: "paint",
-      onClick: () => {currentEditTypeRef.current = "Paint"; onEditToolsUpdated()},
-      disabled: currentEditTypeRef.current==="Paint",
+      onClick: () => {controller.setEditMode("Paint"); onEditToolsUpdated()},
+      disabled: controller.getEditMode()==="Paint",
     },
     {
       id: "MoveEditButton",
       label: "move",
-      onClick: () => {currentEditTypeRef.current = "Move"; onEditToolsUpdated()},
-      disabled: currentEditTypeRef.current==="Move",
+      onClick: () => {controller.setEditMode("Move"); onEditToolsUpdated()},
+      disabled: controller.getEditMode()==="Move",
     },
     {
-      id: "NoneEditButton",
-      label: "None",
-      onClick: () => {currentEditTypeRef.current = "None"; onEditToolsUpdated()},
-      disabled: currentEditTypeRef.current==="None",
+      id: "SelectEditButton",
+      label: "Select",
+      onClick: () => {controller.setEditMode("Select"); onEditToolsUpdated()},
+      disabled: controller.getEditMode()==="Select",
     },
   ];
 

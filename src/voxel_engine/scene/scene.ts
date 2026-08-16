@@ -41,7 +41,6 @@ export class Scene{
     #nextSceneObjectId: number = 0;
 
     #notifyOfObjectEnabledChange(){
-        console.log("??")
         this.objectEnabledChangeEvent.emit()
     }
     objectEnabledChangeEvent: VoxelEngineEvent<void> = new VoxelEngineEvent();
@@ -62,6 +61,40 @@ export class Scene{
     objectRemovedEvent: VoxelEngineEvent<void> = new VoxelEngineEvent();
 
     #notifyOfChangedActiveVo(){
+        //unsubscribe from last active object events
+        if(this.#unsubscribeActiveVoSelectedAreaChangeEvent){
+            this.#unsubscribeActiveVoSelectedAreaChangeEvent();
+            this.#unsubscribeActiveVoSelectedAreaChangeEvent = null;
+        }
+        if(this.#unsubscribeActiveVoVoxelsChanged){
+            this.#unsubscribeActiveVoVoxelsChanged();
+            this.#unsubscribeActiveVoVoxelsChanged = null;
+        }
+        if(this.#unsubscribeActiveVoTransformChangeEvent){
+            this.#unsubscribeActiveVoTransformChangeEvent();
+            this.#unsubscribeActiveVoTransformChangeEvent = null;
+        }
+        if(this.#unsubscribeActiveVoSizeChangeEvent){
+            this.#unsubscribeActiveVoSizeChangeEvent();
+            this.#unsubscribeActiveVoSizeChangeEvent = null;
+        }                        
+
+        //if there's new active object subscribe to its events
+        const activeVo = this.getActiveVoxelObject();
+        if(activeVo){
+            this.#unsubscribeActiveVoSelectedAreaChangeEvent = 
+            activeVo.selectedAreaChangeEvent.subscribe(this.#notifyOfActiveVoSelectedAreaChanged);
+
+            this.#unsubscribeActiveVoVoxelsChanged = 
+            activeVo.voxelsChangeEvent.subscribe(this.#notifyOfActiveVoVoxelsChanged);
+            
+            this.#unsubscribeActiveVoTransformChangeEvent = 
+            activeVo.transformChangeEvent.subscribe(this.#notifyOfActiveVoTransformChanged);
+            
+            this.#unsubscribeActiveVoSizeChangeEvent = 
+            activeVo.sizeChangeEvent.subscribe(this.#notifyOfActiveVoSizeChanged);            
+        }
+
         this.activeVoChanged.emit();
     }
     activeVoChanged: VoxelEngineEvent<void> = new VoxelEngineEvent();
@@ -70,6 +103,31 @@ export class Scene{
         this.activeCameraChanged.emit();
     }
     activeCameraChanged: VoxelEngineEvent<void> = new VoxelEngineEvent();
+
+    #notifyOfActiveVoSelectedAreaChanged = () => {
+        this.activeVoSelectedAreaChangeEvent.emit();
+    }
+    activeVoSelectedAreaChangeEvent: VoxelEngineEvent<void> = new VoxelEngineEvent();
+    #unsubscribeActiveVoSelectedAreaChangeEvent: (()=>void) | null = null;
+
+    #notifyOfActiveVoVoxelsChanged = () => {
+        this.activeVoVoxelsChangeEvent.emit();
+    }
+    activeVoVoxelsChangeEvent: VoxelEngineEvent<void> = new VoxelEngineEvent();
+    #unsubscribeActiveVoVoxelsChanged: (()=>void) | null = null;
+
+    #notifyOfActiveVoTransformChanged = () => {
+        this.activeVoTransformChangeEvent.emit();
+    }
+    activeVoTransformChangeEvent: VoxelEngineEvent<void> = new VoxelEngineEvent();
+    #unsubscribeActiveVoTransformChangeEvent: (()=>void) | null = null;
+
+    #notifyOfActiveVoSizeChanged = () => {
+        this.activeVoSizeChangeEvent.emit();
+    }
+    activeVoSizeChangeEvent: VoxelEngineEvent<void> = new VoxelEngineEvent();
+    #unsubscribeActiveVoSizeChangeEvent: (()=>void) | null = null;
+
 
     toggleSelectedObjectBorderGrid(){
         this.seletedVoxelObjectRenderOptions.borderGrid = !this.seletedVoxelObjectRenderOptions.borderGrid;

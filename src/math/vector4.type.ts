@@ -1,3 +1,5 @@
+import { Vector3 } from "./vector3.type";
+
 export class Vector4 {
 
     x: number = 0.0;
@@ -62,6 +64,10 @@ export class Vector4 {
 
     divideByScalar(n: number): Vector4 {
         return new Vector4(this.x / n, this.y / n, this.z / n, this.w / n);
+    }
+
+    homogeneousDivide(): Vector3{
+        return new Vector3(this.x/this.w, this.y/this.w, this.z/this.w);
     }
 
     toString() {
