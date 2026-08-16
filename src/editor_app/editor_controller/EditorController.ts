@@ -572,7 +572,7 @@ export class EditorController{
         }        
     }
 
-    clearSelectedArea(){
+    selectNoneVoxels(){
         if(!this.initialized || !this.scene) return;
         const activeVo = this.scene.getActiveVoxelObject();
         if(!activeVo) return;
@@ -582,6 +582,30 @@ export class EditorController{
         if(selectedAreaChanged) {
             this.renderScene!();
         }          
+    }
+
+    selectEmptyVoxels(){
+        if(!this.initialized || !this.scene) return;
+        const activeVo = this.scene.getActiveVoxelObject();
+        if(!activeVo) return;
+
+        const selectedAreaChanged = activeVo.selectEmptyVoxels();
+
+        if(selectedAreaChanged) {
+            this.renderScene!();
+        }       
+    }
+
+    selectNonEmptyVoxels(){
+        if(!this.initialized || !this.scene) return;
+        const activeVo = this.scene.getActiveVoxelObject();
+        if(!activeVo) return;
+
+        const selectedAreaChanged = activeVo.selectNonEmptyVoxels();
+
+        if(selectedAreaChanged) {
+            this.renderScene!();
+        }               
     }
 
     resetSelectSession(){

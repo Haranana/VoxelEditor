@@ -46,11 +46,17 @@ export function SelectToolsWidget(props: SelectToolsWidgetProps){
                 <option value="Connected">Connected</option>
                 <option value="Marquee">Marquee</option>
             </select>
-        </span>        
-        <span className="SelectToolsButtons">
-            <button className="SelectAllButton" onClick={()=>controller.selectAllVoxels()}>All</button>
-            <button className="SelectClearButton" onClick={()=>controller.clearSelectedArea()}>Clear</button>
-        </span> 
+        </span>       
+        <div className="QuickSelectPanel">
+                <p className="QuickSelectTitle">Quick Select</p>
+                <span className="QuickSelectButtons">
+                    <button className="SelectAllButton" onClick={()=>controller.selectAllVoxels()}>All</button>
+                    <button className="SelectNoButton" onClick={()=>controller.selectNoneVoxels()}>None</button>           
+                    <button className="SelectEmptyButton" onClick={()=>controller.selectEmptyVoxels()}>Empty</button>         
+                    <button className="SelectNonEmptyButton" onClick={()=>controller.selectNonEmptyVoxels()}>Filled</button>
+                </span> 
+        </div> 
+
         <p className="SelectedVoxelsCount">
             Selected Voxels: {controller.getVoxelObjectSelectedVoxelsCount()}
         </p>
