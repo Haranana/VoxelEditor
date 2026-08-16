@@ -12,6 +12,7 @@ import { generateCylinderVoxelArray, generatePyramidVoxelArray, generateSphereVo
 import type { SceneObject } from "../../voxel_engine/scene-objects/sceneObject";
 import { getBasicSampleVoxelObject } from "../../voxel_engine/scene-objects/voxel/sample-voxel-objects";
 import { getSampleCamera } from "../../voxel_engine/scene-objects/camera/sample-cameras";
+import { VoxelEngineEvent } from "../../voxel_engine/events/event";
 
 
 type BoxSelectSession = {
@@ -45,6 +46,25 @@ export type EditMode =
 | "Remove"
 | "Move"
 | "Select"
+| "PickColor"
+
+export const selectToEditCompatibility = new Map<SelectMode, Set<EditMode>>([
+    ["Voxel", new Set(["Add", "Paint", "Remove", "Move", "Select", "PickColor"])],
+    ["Face", new Set(["Add", "Paint", "Remove", "Move", "Select"])],
+    ["Cube", new Set(["Add", "Paint", "Remove", "Move", "Select"])],
+    ["Color", new Set(["Paint", "Remove", "Move", "Select"])],
+    ["Connected", new Set(["Paint", "Remove", "Move", "Select"])],
+    ["Marquee", new Set(["Paint", "Remove", "Move", "Select"])],
+]);
+
+export const editToSelectCompatibility = new Map<EditMode, Set<SelectMode>>([
+    ["Add", new Set(["Voxel", "Face", "Cube"])],
+    ["Paint", new Set(["Voxel", "Face", "Cube", "Color", "Connected", "Marquee"])],
+    ["Remove", new Set(["Voxel", "Face", "Cube", "Color", "Connected", "Marquee"])],
+    ["Move", new Set(["Voxel", "Face", "Cube", "Color", "Connected", "Marquee"])],
+    ["Select", new Set(["Voxel", "Face", "Cube", "Color", "Connected", "Marquee"])],
+    ["PickColor", new Set(["Voxel"])],
+]);
 
 export class EditorController{
     selectMode: SelectMode  = "Voxel";
@@ -538,6 +558,30 @@ export class EditorController{
 
     hasMarqueeSelectSessionStarted(){
         return this.marqueeSelectSession.startCoords!=null
+    }
+
+    selectAllVoxels(){
+        if(!this.initialized || !this.scene) return;
+        const activeVo = this.scene.getActiveVoxelObject();
+        if(!activeVo) return;
+
+        const selectedAreaChanged = activeVo.selectAllVoxels();
+
+        if(selectedAreaChanged) {
+            this.renderScene!();
+        }        
+    }
+
+    clearSelectedArea(){
+        if(!this.initialized || !this.scene) return;
+        const activeVo = this.scene.getActiveVoxelObject();
+        if(!activeVo) return;
+
+        const selectedAreaChanged = activeVo.resetSelect();
+
+        if(selectedAreaChanged) {
+            this.renderScene!();
+        }          
     }
 
     resetSelectSession(){
@@ -1112,20 +1156,43 @@ export class EditorController{
 
 
     // Select and edit modes
+
+    notifyOfEditModeChange(){
+        this.editModeChangedEvent.emit();
+    }
+    editModeChangedEvent: VoxelEngineEvent<void> = new VoxelEngineEvent();
+
     
     getEditMode(): EditMode{
         return this.editMode;
     }
 
     setEditMode(editMode: EditMode){
-        this.editMode = editMode;
+        const oldEditMode: EditMode = this.editMode;
+        if(selectToEditCompatibility.get(this.selectMode)?.has(editMode)){
+            this.editMode = editMode;
+            if(editMode!==oldEditMode) this.notifyOfEditModeChange();
+        }
     }
+
+    notifyOfSelectModeChange(){
+        this.selectModeChangedEvent.emit();
+    }
+    selectModeChangedEvent: VoxelEngineEvent<void> = new VoxelEngineEvent();
 
     getSelectMode(): SelectMode{
         return this.selectMode;
     }
 
+    //expects that each select mode has at least one compatible edit mode
     setSelectMode(selectMode: SelectMode){
-        this.selectMode = selectMode;
+        const oldSelectMode: SelectMode = this.selectMode;
+        if(!editToSelectCompatibility.get(this.editMode)?.has(selectMode)){
+            this.setEditMode(selectToEditCompatibility.get(selectMode)!.values().next().value!);            
+        }
+        this.selectMode = selectMode
+        if(oldSelectMode!==selectMode){
+            this.notifyOfSelectModeChange();
+        }
     }    
 }

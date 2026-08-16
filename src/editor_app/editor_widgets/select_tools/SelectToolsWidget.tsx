@@ -6,7 +6,6 @@ import type { SelectMode } from "../../editor_controller/EditorController";
 import './SelectTools.css'
 
 export type SelectToolsWidgetProps = {
-    buttonPanel: React.ReactNode;
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     onValueChange: ()=>void;
@@ -47,7 +46,11 @@ export function SelectToolsWidget(props: SelectToolsWidgetProps){
                 <option value="Connected">Connected</option>
                 <option value="Marquee">Marquee</option>
             </select>
-        </span>         
+        </span>        
+        <span className="SelectToolsButtons">
+            <button className="SelectAllButton" onClick={()=>controller.selectAllVoxels()}>All</button>
+            <button className="SelectClearButton" onClick={()=>controller.clearSelectedArea()}>Clear</button>
+        </span> 
         <p className="SelectedVoxelsCount">
             Selected Voxels: {controller.getVoxelObjectSelectedVoxelsCount()}
         </p>

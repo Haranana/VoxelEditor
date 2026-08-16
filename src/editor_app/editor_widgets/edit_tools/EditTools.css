@@ -1,0 +1,45 @@
+.EditToolsButtonsWrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.EditToolsButtons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(40px, max-content));
+    max-width: 150px;
+    justify-content: start;
+}
+
+.EditToolsButtons button{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: transparent;
+    border: none;
+    margin: 5px 5px 5px 5px;
+    padding: 5px 5px 5px 5px;
+    border: 1px solid white;
+}
+
+.EditToolsButtons .CurrentEditModeButton{
+border: 1px solid var(--color-accent);
+}
+
+.EditToolsButtons button:disabled{
+    border: 1px solid darkgray;
+}
+
+.EditToolsButtons button:hover:not(:disabled){
+    cursor: pointer;
+}
+
+.EditToolsButtons svg{
+    width: 20px;
+    height: 20px;
+}
+
+.EditToolsWidget .TooltipText{
+    transform: translate(-50%, 100%);
+    font-size: var(--font-xl);
+}

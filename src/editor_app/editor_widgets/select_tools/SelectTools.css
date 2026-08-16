@@ -4,6 +4,10 @@
     justify-content: center;
 }
 
+.SelectToolsWidget button:hover{
+    cursor: pointer;
+}
+
 .SelectToolsWidget > .ExpandableRowChildrenWrapper >{
     display: flex;
     flex-direction: column;
@@ -19,8 +23,27 @@
     flex-direction: row;
 }
 
+.SelectToolsButtons{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    width: 100%;
+}
+
+.SelectToolsButtons button{
+    max-width: 60px;
+}
+
+.SelectAllButton{
+    width: 40%;
+}
+
+.SelectClearButton{
+    width: 40%;
+}
+
 .SelectedVoxelsCount{
-    font-size: var(--font-s);
+    font-size: var(--font-xs);
     margin: 0;
 }
 

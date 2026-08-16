@@ -13,7 +13,7 @@ import { SceneRenderCollector } from "../../voxel_engine/scene/scene-render-coll
 import CameraPropertiesWidget from "../editor_widgets/CameraPropertiesWidget";
 import { ActionButtonsPanel, type ActionButtonData } from "../editor_widgets/ActionButtonsPanel";
 import { SelectToolsWidget } from "../editor_widgets/select_tools/SelectToolsWidget";
-import { EditToolsWidget } from "../editor_widgets/EditToolsWidget";
+import { EditToolsWidget } from "../editor_widgets/edit_tools/EditToolsWidget";
 import ScenePropertiesWidget from "../editor_widgets/ScenePropertiesWidget";
 import { ColorPaletteWidget } from "../editor_widgets/ColorPaletteWidget";
 import { EditVoxelObjectWidget } from "../editor_widgets/EditVoxelObjectWidget";
@@ -117,7 +117,7 @@ export default function EditorPage() {
     []
   );
 
-  const [leftPanelWidth, setLeftPanelWidth] = useState(180);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(150);
   const [rightPanelWidth, setRightPanelWidth] = useState(300);
   const [topPanelHeight, setTopPanelHeight] = useState(50);
   const [bottomPanelHeight, setBottomPanelHeight] = useState(50);
@@ -332,6 +332,7 @@ export default function EditorPage() {
   />
   
   const [isSelectToolsWidgetOpen, setIsSelectToolsWidgetOpen] = useState<boolean>(true);
+  /*
   const selectToolsButton : ActionButtonData[] = [
     {
       id: "voxelSelectButton",
@@ -373,10 +374,9 @@ export default function EditorPage() {
 
   const selectToolsButtons : React.ReactNode = <ActionButtonsPanel
     buttons={selectToolsButton}
-  />
+  />*/
 
   const selectToolsWidget : React.ReactNode = <SelectToolsWidget
-    buttonPanel = {selectToolsButtons}
     isOpen = {isSelectToolsWidgetOpen}
     onOpenChange={setIsSelectToolsWidgetOpen}
     onValueChange = {()=>setSelectToolsPropertiesVersion((prev)=>(prev+1))}
@@ -384,48 +384,10 @@ export default function EditorPage() {
 
   
   const [isEditToolsWidgetOpen, setIsEditToolsWidgetOpen] = useState<boolean>(true);
-  const editToolsButton : ActionButtonData[] = [
-    {
-      id: "AddEditButton",
-      label: "add",
-      onClick: () => {controller.setEditMode("Add"); onEditToolsUpdated()},
-      disabled: controller.getEditMode()==="Add",
-    },
-    {
-      id: "RemoveEditButton",
-      label: "remove",
-      onClick: () => {controller.setEditMode("Remove"); onEditToolsUpdated()},
-      disabled: controller.getEditMode()==="Remove",
-    },
-    {
-      id: "PaintEditButton",
-      label: "paint",
-      onClick: () => {controller.setEditMode("Paint"); onEditToolsUpdated()},
-      disabled: controller.getEditMode()==="Paint",
-    },
-    {
-      id: "MoveEditButton",
-      label: "move",
-      onClick: () => {controller.setEditMode("Move"); onEditToolsUpdated()},
-      disabled: controller.getEditMode()==="Move",
-    },
-    {
-      id: "SelectEditButton",
-      label: "Select",
-      onClick: () => {controller.setEditMode("Select"); onEditToolsUpdated()},
-      disabled: controller.getEditMode()==="Select",
-    },
-  ];
-
-  const editToolsButtons : React.ReactNode = <ActionButtonsPanel
-    buttons={editToolsButton}
-  />
-
   const editToolsWidget : React.ReactNode = <EditToolsWidget
-    buttonPanel = {editToolsButtons}
     isOpen = {isEditToolsWidgetOpen}
     onOpenChange={setIsEditToolsWidgetOpen}
-    editToolVersion={editToolsPropertiesVersion}
+    onValueChange={()=>setEditToolsPropertiesVersion(prev=>(prev+1))}
   />
 
   //Scene properties
