@@ -18,7 +18,7 @@ if lastEmpty argument is true function returns last empty voxel before hit, othe
 if hitOnExit argument is true upon exiting bounding box without hitting any voxel the function will return last empty voxel hit,
 otherwise it will return null
 */
-export function getVoxelFromObject(_: Camera, 
+export function getFirstVoxelOnRay(_: Camera, 
                             pointSs: Vector2, 
                             obj: VoxelObject,
                             canvasSize: Vector2,
@@ -207,21 +207,168 @@ export function getVoxelFromObject(_: Camera,
     return null;
 }
 
+
+export function getVoxelsOnRay(                    
+    pointSs: Vector2, 
+    obj: VoxelObject,
+    canvasSize: Vector2,
+    mvp: Matrix4,           
+    onlyNonEmptyVoxels: boolean = true): Vector3[]{
+  
+    const out: Vector3[] = [];
+    const EPS = 1e-6;
+        
+    const mvpInversion = mvp.getInversion();
+
+    const xNdc = (2 * pointSs.x) / canvasSize.x - 1;
+    const yNdc = 1 - (2 * pointSs.y) / canvasSize.y;
+
+    const pointNearMs : Vector3 = mvpInversion.multVector(new Vector4(xNdc, yNdc, 0, 1)).homogeneousDivide();
+    const pointFarMs: Vector3 = mvpInversion.multVector(new Vector4(xNdc, yNdc, 1, 1)).homogeneousDivide();   
+
+    const rayDirection: Vector3 = pointFarMs.subVector(pointNearMs).normalize();
+    const rayOrigin: Vector3 = pointNearMs;
+    const voxelSize: number = obj.getVoxelSize(); 
+    const ray: Ray = new Ray(rayOrigin, rayDirection);
+
+    let currentRayT: number = 0;
+    if(obj.getVoxelFromModelSpacePoint(ray.get(currentRayT))){
+        out.push(obj.pointCoordinatesToVoxelId(ray.get(currentRayT)));        
+    }
+
+    const xSign : number = ray.direction.x == 0? 0 : ray.direction.x < 0? -1 : 1;
+    const ySign : number = ray.direction.y == 0? 0 : ray.direction.y < 0? -1 : 1;
+    const zSign : number = ray.direction.z == 0? 0 : ray.direction.z < 0? -1 : 1;
+
+    const sign : Vector3 = new Vector3(
+        xSign, ySign, zSign
+    );
+
+    //returns values of the first x,y,z of the next cell
+    //assumes that voxelSize > 1 distance unit
+    //returns null if sign for this dimension is 0
+    const getNextVoxelX = (curX: number, xSign: number) : number | null =>{
+       if(xSign==0) return null;
+       const cell = Math.floor(curX/voxelSize);
+       const nextBoundary = xSign > 0? (cell+1)*voxelSize : cell*voxelSize;
+       return nextBoundary;
+    }
+
+    const getNextVoxelY = (curY: number, ySign: number) : number | null =>{
+        if(ySign==0) return null;
+        const cell = Math.floor(curY/voxelSize);
+        const nextBoundary = ySign > 0? (cell+1)*voxelSize : cell*voxelSize;
+        return nextBoundary;
+    }
+
+    const getNextVoxelZ = (curZ: number, zSign: number) : number | null=>{
+        if(zSign==0) return null;
+        const cell = Math.floor(curZ/voxelSize);
+        const nextBoundary = zSign > 0? (cell+1)*voxelSize : cell*voxelSize;
+        return nextBoundary;
+    }
+
+    //returns t for the next instance when ray reaches new cell
+    const getNextT = (ray: Ray, t: number, sign : Vector3) : {minDelta: number, dir: FaceDirection}=>{
+        const curRayValue = ray.get(t)
+        const nextVoxelX : number | null = getNextVoxelX(curRayValue.x , sign.x);
+        const nextVoxelY : number | null = getNextVoxelY(curRayValue.y, sign.y);
+        const nextVoxelZ: number | null = getNextVoxelZ(curRayValue.z , sign.z);
+
+        let smallestDelta: number | null = null;
+        let hitDimension : "X" | "Y" | "Z"  = "X";
+        if(nextVoxelX!=null){
+            const diff = nextVoxelX - curRayValue.x;
+            const deltaT = diff/rayDirection.x;
+            if(smallestDelta == null || smallestDelta > deltaT){
+                smallestDelta = deltaT;
+                hitDimension = "X";
+            }                        
+        }
+        if(nextVoxelY!=null){
+            const diff = nextVoxelY - curRayValue.y;
+            const deltaT = diff/rayDirection.y;
+            if(smallestDelta == null || smallestDelta > deltaT) {
+                smallestDelta = deltaT;
+                hitDimension = "Y";
+            }            
+        }
+        if(nextVoxelZ!=null){
+            const diff = nextVoxelZ - curRayValue.z;
+            const deltaT = diff/rayDirection.z;
+            if(smallestDelta == null || smallestDelta > deltaT){
+                smallestDelta = deltaT;                
+                hitDimension = "Z";
+            } 
+        }        
+        
+        let dir : FaceDirection;
+        if(hitDimension === "X"){
+            if(sign.x > 0){
+                dir = "NegX";
+            }else{
+                dir = "PosX";
+            }
+        }else if(hitDimension === "Y"){
+            if(sign.y > 0){
+                dir = "NegY";
+            }else{
+                dir = "PosY";
+            }
+        }else{
+            if(sign.z > 0){
+                dir = "NegZ";
+            }else{
+                dir = "PosZ";
+            }
+        }
+        return {minDelta: smallestDelta!, dir};
+    }
+    
+    //later it will be modified to calculate only in bounding box
+    //loop condition is temporary as safety
+    //let enteredBoundingBox = false;
+    let LastEmptyVoxel : Vector3 | null = null; 
+    while( Math.abs(ray.get(currentRayT).z) < 10000){
+        const nextVoxelBoundary  = getNextT(ray, currentRayT, sign);
+        currentRayT += (nextVoxelBoundary.minDelta + EPS);
+        const rayValue = ray.get(currentRayT)
+        const voxelId = obj.pointCoordinatesToVoxelId(rayValue);
+
+        if(obj.voxelExists(voxelId) && obj.isVoxelNonEmpty(voxelId)){ //is in bb and hit non-empty voxel                        
+            if(obj.voxelExists(voxelId) && onlyNonEmptyVoxels? obj.isVoxelNonEmpty(voxelId) : true){
+                out.push(voxelId);
+            }
+        }else if(obj.voxelExists(voxelId)){ //is in bb and hit empty voxel
+            LastEmptyVoxel = voxelId.copy();
+            if(!onlyNonEmptyVoxels){
+                out.push(voxelId);
+            }            
+        }else if(LastEmptyVoxel!=null){ //was in boundingBox but exited it
+           break;
+        }else{ //yet to enter bb
+            continue;
+        }
+    }
+
+    return out;
+}
+
 /*
     todo: near and far planes in PlaneAABB intersection tests should be voxel object border
     instead of actual near nad far planes of the scene
 */
-
 export function marqueeSelectRectangle(
                             rectStart: Vector2,
                             rectEnd: Vector2, 
                             obj: VoxelObject,
                             canvasSize: Vector2,
-                            mvp: Matrix4)
+                            mvp: Matrix4,
+                            onlyNonEmptyVoxels: boolean = false)
     : Vector3[]{
     const out: Vector3[] = [];
 
-    console.log(`[marquee] arguments: rectStart[${rectStart}] | rectEnd[${rectEnd}] | obj.name[${obj.name}] | canvasSize[${canvasSize}] | mvp[${mvp}]`)
+    //console.log(`[marquee] arguments: rectStart[${rectStart}] | rectEnd[${rectEnd}] | obj.name[${obj.name}] | canvasSize[${canvasSize}] | mvp[${mvp}]`)
     
     const leftBottomSs = new Vector2( Math.min(rectStart.x, rectEnd.x) , Math.max(rectStart.y, rectEnd.y) );
     const rightBottomSs = new Vector2( Math.max(rectStart.x, rectEnd.x) , Math.max(rectStart.y, rectEnd.y) );
@@ -254,11 +401,13 @@ export function marqueeSelectRectangle(
     const rightTopFarMs = mvpInversion.multVector(rightTopFarNdc).homogeneousDivide();
     const leftTopFarMs = mvpInversion.multVector(leftTopFarNdc).homogeneousDivide();    
 
+    /*
     console.log(`[marquee] model space frustrum vertices: 
         leftBottomNearMs[${leftBottomNearMs}] | rightBottomNearMs[${rightBottomNearMs}]
         rightTopNearMs[${rightTopNearMs}] | leftTopNearMs[${leftTopNearMs}]
         leftBottomFarMs[${leftBottomFarMs}] | rightBottomFarMs[${rightBottomFarMs}]
         rightTopFarMs[${rightTopFarMs}] | leftTopFarMs[${leftTopFarMs}]`)
+    */
     //creating frustum planes
 
     const frustumMiddle: Vector3 = leftBottomNearMs.addVector(rightTopFarMs).multByScalar(0.5);
@@ -270,10 +419,10 @@ export function marqueeSelectRectangle(
     const nearPlane = new Plane(nearPlaneNormal, rightBottomNearMs);
     const middleToNearPlane = nearPlane.distanceTo(frustumMiddle);
     if(middleToNearPlane>0){
-        console.log(`[marquee] middleToNearPlane >0 => inversing normal!`); 
-        console.log(`[marquee] before[${nearPlane.getNormal()}]`)
+        //console.log(`[marquee] middleToNearPlane >0 => inversing normal!`); 
+        //console.log(`[marquee] before[${nearPlane.getNormal()}]`)
             nearPlane.inverseNormal();
-        console.log(`[marquee] after[${nearPlane.getNormal()}]`)                    
+        //console.log(`[marquee] after[${nearPlane.getNormal()}]`)                    
     }
 
     //far
@@ -325,11 +474,13 @@ export function marqueeSelectRectangle(
         bottomPlane.inverseNormal();
     }
 
+    /*
         console.log(`[marquee] planes data: 
     farPlane[n: ${farPlane.getNormal()} | p: [${farPlane.getPoint()}] | 
     nearPlane[n: ${nearPlane.getNormal()} | p: [${nearPlane.getPoint()}] | 
     bottomPlane[n: ${bottomPlane.getNormal()} | p: [${bottomPlane.getPoint()}] | 
     topPlane[n: ${topPlane.getNormal()} | p: [${topPlane.getPoint()}] | `)
+    */
 
     //returns true if voxel intersects or is in frustum, false if it's outside
     const isInFrustum = (v: Vector3)=>{
@@ -342,11 +493,12 @@ export function marqueeSelectRectangle(
         );
 
         const voxelMax = voxelMin.addScalar(voxelSize);
-        
+        /*
         if(v.equals(new Vector3(10,10,10))){
         console.log(`[marquee] sample vortex data (pos: (10,10,10)): 
         voxelSize[${voxelSize}] | voxelMin[${voxelMin}]
         voxelMax[${voxelMax}] `)}
+        */
         
         if(planeAABBIntersection(voxelMin, voxelMax, leftPlane) === "outside"){
             return false;
@@ -374,13 +526,13 @@ export function marqueeSelectRectangle(
         for(let y = 0; y < obj.size.y; y++){
             for(let z = 0; z < obj.size.z; z++){
                 const v = new Vector3(x,y,z);
-                if(obj.voxelExists(v) && isInFrustum(v)){
+                if(obj.voxelExists(v) && (onlyNonEmptyVoxels? obj.isVoxelNonEmpty(v) : true) && isInFrustum(v)){
                     out.push(v);
                 }
             }        
         }        
     }
 
-    console.log(`[marquee] voxels found in frustrum: ${out.length}  `)
+    //console.log(`[marquee] voxels found in frustrum: ${out.length}  `)
     return out;
 }

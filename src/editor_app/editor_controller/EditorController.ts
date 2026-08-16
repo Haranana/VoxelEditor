@@ -2,9 +2,9 @@ import type { RefObject } from "react";
 import { Vector3 } from "../../math/vector3.type";
 import type { Scene } from "../../voxel_engine/scene/scene";
 import { clamp, mod } from "../../math/utils";
-import type { Vector2 } from "../../math/vector2.type";
+import { Vector2 } from "../../math/vector2.type";
 import { Camera, type ProjectionType } from "../../voxel_engine/scene-objects/camera/camera";
-import { getVoxelFromObject, marqueeSelectRectangle } from "../../voxel_engine/voxel-ray-caster";
+import { getFirstVoxelOnRay, getVoxelsOnRay, marqueeSelectRectangle } from "../../voxel_engine/voxel-ray-caster";
 import { Matrices4 } from "../../math/matrices";
 import { faceDirectionToVector, vectorToFaceDirection, VoxelObject } from "../../voxel_engine/scene-objects/voxel/voxel-object";
 import { Vector4 } from "../../math/vector4.type";
@@ -569,7 +569,7 @@ export class EditorController{
         const lastEmpty = this.editMode === "Add";
         const hitOnExit = true;
         const mvp = camera.getProjectionMatrix(canvasSize).multMatrix(Matrices4.transform(voxelObject.getObjectRo().worldTransform!)).multMatrix(camera.getCameraView());
-        const rayCastResults = getVoxelFromObject(camera, pointerPos, voxelObject, canvasSize, Matrices4.transform(voxelObject.getObjectRo().worldTransform!), camera.getProjectionMatrix(canvasSize), camera.getCameraView(), lastEmpty , hitOnExit);
+        const rayCastResults = getFirstVoxelOnRay(camera, pointerPos, voxelObject, canvasSize, Matrices4.transform(voxelObject.getObjectRo().worldTransform!), camera.getProjectionMatrix(canvasSize), camera.getCameraView(), lastEmpty , hitOnExit);
         if(!rayCastResults) return;
         const hitVoxel : Vector3 = rayCastResults.voxelCoords;
 
@@ -591,10 +591,7 @@ export class EditorController{
                 selectedAreaChanged = voxelObject.selectVoxel(hitVoxel);
         }else if(this.selectMode=="Marquee"){
             this.marqueeSelectSession.startCoords = pointerPos;
-            
-            selectedAreaChanged = voxelObject.selectVoxelArray(marqueeSelectRectangle(
-                pointerPos,pointerPos,voxelObject,canvasSize,mvp
-            ));
+            selectedAreaChanged = voxelObject.selectVoxelArray(getVoxelsOnRay(pointerPos, voxelObject, canvasSize, mvp,true));
         }
 
         if(voxelObjectChanged || selectedAreaChanged){
@@ -612,7 +609,7 @@ export class EditorController{
         const lastEmpty = this.editMode === "Add";
         const hitOnExit = true;   
         
-        const rayCastResults = getVoxelFromObject(
+        const rayCastResults = getFirstVoxelOnRay(
             camera, 
             pointerPos, 
             voxelObject, canvasSize, 
@@ -633,18 +630,37 @@ export class EditorController{
 
         let selectedAreaChanged = false;
         let voxelObjectChanged = false;
+         
         if(this.hasMarqueeSelectSessionStarted()){
-            if(this.editMode=="Remove"){
-                
-                selectedAreaChanged = voxelObject.selectVoxelArray(marqueeSelectRectangle(
-                    this.marqueeSelectSession.startCoords!,pointerPos,voxelObject,canvasSize,mvp
-                ));
-                //voxelObjectChanged = voxelObject.removeSelectedVoxels() != 0;
-            }else if(this.editMode=="Paint"){
-                                
-                selectedAreaChanged = voxelObject.selectVoxelArray(marqueeSelectRectangle(
-                    this.marqueeSelectSession.startCoords!,pointerPos,voxelObject,canvasSize,mvp
-                ));
+            //for very small rectangles marqueeSelectRectangle does not work correctly
+            //so instead a single ray is used
+            //if only one dimension is too small some epsilon is added
+            const marqueeMinimalRect = new Vector2(1,1); 
+            const marqueeEpsilon = 1;
+            if(this.editMode=="Remove" || this.editMode=="Paint"){
+                const rectStart = this.marqueeSelectSession.startCoords!;
+                const rectEnd = pointerPos
+                if( Math.abs(rectEnd.x - rectStart.x)  < marqueeMinimalRect.x && Math.abs(rectEnd.y - rectStart.y)  < marqueeMinimalRect.y ){
+                    selectedAreaChanged = voxelObject.selectVoxelArray(getVoxelsOnRay(
+                        rectStart,voxelObject,canvasSize,mvp,true
+                    ));
+                }else if(Math.abs(rectEnd.x - rectStart.x)  < marqueeMinimalRect.x){
+                    const rectAndPlusEpsilon = new Vector2(rectEnd.x+marqueeEpsilon, rectEnd.y);
+                    selectedAreaChanged = voxelObject.selectVoxelArray(marqueeSelectRectangle(
+                        rectStart,rectAndPlusEpsilon,voxelObject,canvasSize,mvp,true
+                    ));
+                }else if(Math.abs(rectEnd.y - rectStart.y)  < marqueeMinimalRect.y){
+                    const rectAndPlusEpsilon = new Vector2(rectEnd.x, rectEnd.y + marqueeEpsilon);
+                    selectedAreaChanged = voxelObject.selectVoxelArray(marqueeSelectRectangle(
+                        rectStart,rectAndPlusEpsilon,voxelObject,canvasSize,mvp,true
+                    ));
+                }
+                else{
+                    selectedAreaChanged = voxelObject.selectVoxelArray(marqueeSelectRectangle(
+                        rectStart,rectEnd,voxelObject,canvasSize,mvp,true
+                    ));
+                }
+
             }
         }
         else if(this.hasBoxSelectSessionStarted()){            
@@ -710,7 +726,7 @@ export class EditorController{
 
         const lastEmpty = this.editMode === "Add";
         const hitOnExit = true;   
-        const rayCastResults = getVoxelFromObject(camera, pointerPos, voxelObject, canvasSize, Matrices4.transform(voxelObject.getObjectRo().worldTransform!), camera.getProjectionMatrix(canvasSize), camera.getCameraView(), lastEmpty , hitOnExit);
+        const rayCastResults = getFirstVoxelOnRay(camera, pointerPos, voxelObject, canvasSize, Matrices4.transform(voxelObject.getObjectRo().worldTransform!), camera.getProjectionMatrix(canvasSize), camera.getCameraView(), lastEmpty , hitOnExit);
         if(!rayCastResults) return;
 
         const hitVoxel : Vector3 = rayCastResults.voxelCoords;
