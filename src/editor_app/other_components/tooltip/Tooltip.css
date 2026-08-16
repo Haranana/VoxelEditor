@@ -1,8 +1,8 @@
-.Tooltip{
+.Tooltip {
     position: relative;
 }
 
-.TooltipText{
+.TooltipText {
     position: fixed;
     transform: translate(-50%, 100%);
     background-color: var(--line-color-2);
@@ -11,12 +11,17 @@
     white-space: nowrap;
     font-size: var(--font-xs);
     pointer-events: none;
+
+    visibility: hidden;
+
+    transition:
+        visibility 0s 0.5s;
 }
 
-.Tooltip:hover .TooltipText{
-    opacity: 1;
+.TooltipTextVisible {
+    visibility: visible;
 }
 
-.Tooltip:not(:hover) .TooltipText {
-    transition-delay: 0s; 
+.TooltipText:not(.TooltipTextVisible) {
+    transition-delay: 0s;
 }

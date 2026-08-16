@@ -37,7 +37,7 @@ export function EditToolsWidget(props: EditToolsWidgetProps){
     >
         <div className="EditToolsButtonsWrapper">
         <div className="EditToolsButtons">
-            <Tooltip text="Add">
+            <Tooltip text="Add" textClass="EditToolsTooltipText">
                 <button className={`AddEditButton${controller.getEditMode()==="Add"? " CurrentEditModeButton" : ""}`} 
                 onClick={() => {controller.setEditMode("Add"); props.onValueChange()}}
                 disabled ={
@@ -47,7 +47,7 @@ export function EditToolsWidget(props: EditToolsWidgetProps){
                 </button>    
             </Tooltip>
 
-            <Tooltip text="Remove">
+            <Tooltip text="Remove" textClass="EditToolsTooltipText">
                 <button
                     className={`RemoveEditButton${controller.getEditMode()==="Remove"? " CurrentEditModeButton" : ""}`} 
                     onClick={() => { controller.setEditMode("Remove"); props.onValueChange() }}
@@ -57,7 +57,7 @@ export function EditToolsWidget(props: EditToolsWidgetProps){
                 </button>    
             </Tooltip>
 
-            <Tooltip text="Paint">
+            <Tooltip text="Paint" textClass="EditToolsTooltipText">
                 <button
                     className={`PaintEditButton${controller.getEditMode()==="Paint"? " CurrentEditModeButton" : ""}`} 
                     onClick={() => { controller.setEditMode("Paint"); props.onValueChange() }}
@@ -67,7 +67,7 @@ export function EditToolsWidget(props: EditToolsWidgetProps){
                 </button>                
             </Tooltip>
 
-            <Tooltip text="Move">
+            <Tooltip text="Move" textClass="EditToolsTooltipText">
                 <button
                     className={`MoveEditButton${controller.getEditMode()==="Move"? " CurrentEditModeButton" : ""}`} 
                     onClick={() => { controller.setEditMode("Move"); props.onValueChange() }}
@@ -77,7 +77,7 @@ export function EditToolsWidget(props: EditToolsWidgetProps){
                 </button>
             </Tooltip>
 
-            <Tooltip text="Select">
+            <Tooltip text="Select" textClass="EditToolsTooltipText">
                 <button
                     className={`SelectEditButton${controller.getEditMode()==="Select"? " CurrentEditModeButton" : ""}`} 
                     onClick={() => { controller.setEditMode("Select"); props.onValueChange() }}
@@ -87,7 +87,7 @@ export function EditToolsWidget(props: EditToolsWidgetProps){
                 </button>
             </Tooltip>
 
-            <Tooltip text="Pick Color">
+            <Tooltip text="Pick Color" textClass="EditToolsTooltipText">
                 <button
                     className={`SelectEditButton${controller.getEditMode()==="PickColor"? " CurrentEditModeButton" : ""}`} 
                     onClick={() => { controller.setEditMode("PickColor"); 

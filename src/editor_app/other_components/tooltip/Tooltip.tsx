@@ -4,6 +4,7 @@ import "./Tooltip.css";
 
 export type TooltipProps = {
     text: string;
+    textClass?: string;
     children: React.ReactNode;
 };
 
@@ -30,17 +31,21 @@ export function Tooltip(props: TooltipProps) {
     }
 
     return (
-        <>
+        <div className="Tooltip">
             <span ref={ref} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
                 {props.children}
             </span>
 
-            {visible && createPortal(
-                    <div className="TooltipText" style={{ left: x, top: y}}>
-                        {props.text}
-                    </div>,
-                    document.body
-                )}
-        </>
+            {createPortal(
+                <div
+                    className={`TooltipText ${props.textClass? props.textClass : ""} ${visible ? "TooltipTextVisible" : ""}`}
+                    style={{ left: x, top: y }}
+                >
+                    {props.text}
+                </div>,
+                document.body
+            )}
+        </div>
+        
     );
 }

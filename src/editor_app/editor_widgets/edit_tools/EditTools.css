@@ -39,7 +39,6 @@ border: 1px solid var(--color-accent);
     height: 20px;
 }
 
-.EditToolsWidget .TooltipText{
-    transform: translate(-50%, 100%);
-    font-size: var(--font-xl);
+.TooltipText.EditToolsTooltipText.TooltipTextVisible{
+    transform: translate(-50%, 150%);
 }
