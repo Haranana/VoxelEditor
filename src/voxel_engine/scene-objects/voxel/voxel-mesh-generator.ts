@@ -5,6 +5,7 @@ import type { Mesh } from "../../../render_engine/meshes/Mesh";
 import { MeshBuilder, type MeshBuilderVertex } from "../../../render_engine/meshes/MeshBuilder";
 
 import type { VoxelObject } from "./voxel-object";
+import type { VoxelObjectSelectedArea } from "./voxel-object-selected-area";
 // collection of functions for creating Meshes of VoxelObject and its associated elements 
 
 export function generateVoMesh(vo: VoxelObject): Mesh{
@@ -332,7 +333,7 @@ export function generateVoBorderGridMesh(vo: VoxelObject): Mesh {
     return meshBuilder.build();
 }
 
-export function generateVoSelectedAreaMesh(vo: VoxelObject): Mesh {
+export function generateVoSelectedAreaMesh(vo: VoxelObject, selectedArea: VoxelObjectSelectedArea): Mesh {
 
     const meshBuilder = new MeshBuilder({
         topology: "triangle-list",
@@ -384,7 +385,7 @@ export function generateVoSelectedAreaMesh(vo: VoxelObject): Mesh {
         -vo.size.z / 2
     );
 
-    vo.selectedVoxels.forEach(voxelString => {
+    selectedArea.voxels.forEach(voxelString => {
 
         const voxelCoords = Vector3.fromString(voxelString);
 
@@ -399,7 +400,7 @@ export function generateVoSelectedAreaMesh(vo: VoxelObject): Mesh {
         );
 
         const voxelSize = vo.getVoxelSize();
-        const voxelColor = vo.selectedVoxelColor;
+        const voxelColor = selectedArea.color;
 
         const leftTopFrontPosition = voxelStartPosition.addVector(new Vector3(0,0,voxelSize));
         const rightTopFrontPosition = voxelStartPosition.addVector(new Vector3(voxelSize,0,voxelSize));
@@ -412,7 +413,7 @@ export function generateVoSelectedAreaMesh(vo: VoxelObject): Mesh {
         const leftBottomBackPosition = voxelStartPosition.addVector(new Vector3(0,voxelSize,0));
 
         const selected = (x:number,y:number,z:number)=>
-            vo.selectedVoxels.has(new Vector3(x,y,z).toString());
+            selectedArea.voxels.has(new Vector3(x,y,z).toString());
 
         const occupied = (x:number,y:number,z:number)=>
             vo.isVoxelNonEmpty(new Vector3(x,y,z));

@@ -41,11 +41,16 @@ export class SceneRenderCollector{
                     out.push(newRenderableObject);
                 }
 
-                if(selectedVo.selectedVoxels.size>0){
-                    const selectedObjectSelectedArea = selectedVo.getSelectedAreaRo();
+                if(selectedVo.staticSelectedArea.voxels.size>0){
                     
+                    const selectedObjectSelectedArea = selectedVo.getStaticSelectedAreaRo();
                     out.push(selectedObjectSelectedArea);
                 }
+                if(selectedVo.dynamicSelectedArea.voxels.size>0){
+                    const selectedObjectSelectedArea = selectedVo.getDynamicSelectedAreaRo();
+                    
+                    out.push(selectedObjectSelectedArea);
+                }                
             }     
                    
             if(scene.seletedVoxelObjectRenderOptions.borderGrid){

@@ -4,7 +4,7 @@ import { Shader } from "../../render_engine/shaders/shader";
 import { CameraShaderResources, ScreenObjectShaderResources, ViewportShaderResources, WorldObjectShaderResources } from "../../render_engine/shaders/shader-resource";
 import type { Gizmo } from "./gizmo/gizmo-object";
 import { generateVoBorderGridMesh, generateVoBorderOutlineMesh, generateVoGridMesh, generateVoMesh, generateVoSelectedAreaMesh} from "./voxel/voxel-mesh-generator";
-import type { VoxelObject } from "./voxel/voxel-object";
+import type { SelectedAreaType, VoxelObject } from "./voxel/voxel-object";
 
 // class with various static methods for creating and rebuilding RenderableObject of given SceneObject,
 //  such as VoxelObject or Gizmo
@@ -138,11 +138,12 @@ export class RenderableObjectManager{
         ro.screenTransform = null;
     }
 
-    static createVoSelectedAreaRo(vo: VoxelObject): RenderableObject{
+    static createVoSelectedAreaRo(vo: VoxelObject, areaType: SelectedAreaType): RenderableObject{
         const out: RenderableObject = new RenderableObject();
         const shader = new Shader(worldObjectShader(), "vertexShader", "fragmentShader", 
         [new ViewportShaderResources(0) ,new CameraShaderResources(1),new WorldObjectShaderResources(2)]);
-        out.mesh = generateVoSelectedAreaMesh(vo);
+        const selectedArea = vo.getSelectedArea(areaType);
+        out.mesh = generateVoSelectedAreaMesh(vo, selectedArea);
         out.material = {
             shader
         };
@@ -154,7 +155,7 @@ export class RenderableObjectManager{
         return out;
     }
 
-    static rebuildVoSelectedAreaRo(vo: VoxelObject, ro: RenderableObject): void{
+    static rebuildVoSelectedAreaRo(vo: VoxelObject, areaType: SelectedAreaType, ro: RenderableObject): void{
         ro.worldTransform = {...vo.transform};
         
         if(!ro.material || !ro.material.shader){            
@@ -163,8 +164,9 @@ export class RenderableObjectManager{
             ro.material = {shader};
         }
 
+        const selectedArea = vo.getSelectedArea(areaType);
         if(!ro.mesh){
-            ro.mesh = generateVoSelectedAreaMesh(vo);
+            ro.mesh = generateVoSelectedAreaMesh(vo, selectedArea);
         }
         ro.name = "selectedArea" + "(" + vo.name + ")" ;
         ro.collider = null; 

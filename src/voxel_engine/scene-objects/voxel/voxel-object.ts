@@ -8,6 +8,7 @@ import { RenderableObjectManager } from "../renderable-object-manager";
 import { SceneObject, type WorldObjectTransform } from "../sceneObject";
 import type { Color } from "react-color";
 import { VoxelEngineEvent } from "../../events/event";
+import { VoxelObjectSelectedArea } from "./voxel-object-selected-area";
 
 export type FaceDirection = 
 | "PosX"
@@ -50,6 +51,8 @@ export function vectorToFaceDirection(v: Vector3){
     }
 }
 
+export type SelectedAreaType = "static" | "dynamic";
+
 // (0,0,0) of model space should be middle of the object
 // for now without any chunk system or any other kind of optimization
 // any cell inside VoxelObject may have object of type Voxel or be null
@@ -80,7 +83,13 @@ export class VoxelObject extends SceneObject{
 
     //selected voxels are of type string to ensure uniqueness by value
     //use Vector3.toString() and Vector3.fromString() for conversion
-    selectedVoxels: Set<string> = new Set();
+    //selectedVoxels: Set<string> = new Set();
+
+    //refers to selected area which is placed only on actions and doesn't dissapear on cursor or camera move
+    staticSelectedArea = new VoxelObjectSelectedArea();
+
+    //refers to selected area used in selection sessions
+    dynamicSelectedArea = new VoxelObjectSelectedArea();
 
     constructor(name: string , size: Vector3){
         super(name);
@@ -93,15 +102,20 @@ export class VoxelObject extends SceneObject{
 
         this.#objectRo = RenderableObjectManager.createVoRo(this);
         this.#objectGridRo = RenderableObjectManager.createVoBorderGridRo(this);
-        this.#selectedAreaRo = RenderableObjectManager.createVoSelectedAreaRo(this);
+        this.#staticSelectedAreaRo = RenderableObjectManager.createVoSelectedAreaRo(this, "static");
+        this.#dynamicSelectedAreaRo = RenderableObjectManager.createVoSelectedAreaRo(this, "dynamic");
         this.#borderGridRo = RenderableObjectManager.createVoBorderGridRo(this);
         this.#borderOutlineRo = RenderableObjectManager.createVoBorderOutlineRo(this);
     }
 
     //managing renderable objects
+
+    //todo: probably should have different notifies for different selected areas
     #notifyOfSelectedAreaChange(){
-        this.#selectedAreaRo.mesh = null;
-        this.#setSelectedAreaRoToRebuild();
+        this.#staticSelectedAreaRo.mesh = null;
+        this.#dynamicSelectedAreaRo.mesh = null;
+        this.#setStaticSelectedAreaRoToRebuild();
+        this.#setDynamicSelectedAreaRoToRebuild();
         this.selectedAreaChangeEvent.emit();
     }
     selectedAreaChangeEvent: VoxelEngineEvent<void> = new VoxelEngineEvent();
@@ -118,7 +132,8 @@ export class VoxelObject extends SceneObject{
     #notifyOfTransformChange(){
         this.#setObjectRoToRebuild();
         this.#setObjectGridRoToRebuild();
-        this.#setSelectedAreaRoToRebuild();
+        this.#setStaticSelectedAreaRoToRebuild();
+        this.#setDynamicSelectedAreaRoToRebuild();
         this.#setBorderOutlineRoToRebuild();
         this.#setBorderGridToRebuild();
         this.transformChangeEvent.emit();
@@ -174,23 +189,41 @@ export class VoxelObject extends SceneObject{
     #selectedColor: Vector4 | null = null;
     #selectedByColorVoxels: Set<Vector3> | null = null
 
-    #selectedAreaRo: RenderableObject;
-    #selectedAreaRoDirty: boolean = false;
-    getSelectedAreaRo() : RenderableObject{
-        if(this.#shouldRebuildSelectedAreaRo()){
-            this.#rebuildSelectedAreaRo();
+    #staticSelectedAreaRo: RenderableObject;
+    #dynamicSelectedAreaRo: RenderableObject;
+    #staticSelectedAreaRoDirty: boolean = false;
+    #dynamicSelectedAreaRoDirty: boolean = false;
+    getStaticSelectedAreaRo() : RenderableObject{
+        if(this.#shouldRebuildStaticSelectedAreaRo()){
+            this.#rebuildStaticSelectedAreaRo();
         }
-        return this.#selectedAreaRo;
+        return this.#staticSelectedAreaRo;
     }
-    #shouldRebuildSelectedAreaRo(): boolean{
-        return this.#selectedAreaRoDirty
+    #shouldRebuildStaticSelectedAreaRo(): boolean{
+        return this.#dynamicSelectedAreaRoDirty
     }
-    #setSelectedAreaRoToRebuild(){
-        this.#selectedAreaRoDirty = true;
+    #setStaticSelectedAreaRoToRebuild(){
+        this.#dynamicSelectedAreaRoDirty = true;
     }
-    #rebuildSelectedAreaRo(){
-        RenderableObjectManager.rebuildVoSelectedAreaRo(this, this.#selectedAreaRo);
+    #rebuildStaticSelectedAreaRo(){
+        RenderableObjectManager.rebuildVoSelectedAreaRo(this, "static",this.#staticSelectedAreaRo);
     }
+
+    getDynamicSelectedAreaRo() : RenderableObject{
+        if(this.#shouldRebuildDynamicSelectedAreaRo()){
+            this.#rebuildDynamicSelectedAreaRo();
+        }
+        return this.#dynamicSelectedAreaRo;
+    }    
+    #shouldRebuildDynamicSelectedAreaRo(): boolean{
+        return this.#dynamicSelectedAreaRoDirty
+    }
+    #setDynamicSelectedAreaRoToRebuild(){
+        this.#dynamicSelectedAreaRoDirty = true;
+    }
+    #rebuildDynamicSelectedAreaRo(){
+        RenderableObjectManager.rebuildVoSelectedAreaRo(this, "dynamic", this.#dynamicSelectedAreaRo);
+    }    
 
     borderColor: Vector4 = new Vector4(160, 130, 210, 255);
 
@@ -300,12 +333,27 @@ export class VoxelObject extends SceneObject{
         }
     }
 
-    //clear set of selected voxels
+
+    //clears voxels set of all selected areas
+    //returns sum of sizes of selected voxels sets before clearing
+    resetAllSelects(){
+        return this.resetSelect("static") + this.resetSelect("dynamic");        
+    }
+
+    copyDynamicSelectedToStatic(){
+        this.staticSelectedArea.clearVoxelsSet();
+        const copiedVoxels: Vector3[] = [];
+        this.dynamicSelectedArea.voxels.forEach(v=>{
+            copiedVoxels.push(Vector3.fromString(v));
+        });
+        this.selectVoxelArray(copiedVoxels, "static");
+    }
+
+    //clear set of selected voxels of given selected area
     //returns size of selected voxels set before clearing
-    resetSelect(){
-        const clearedVoxels = this.selectedVoxels.size;
+    resetSelect(areaType: SelectedAreaType){
+        const clearedVoxels = this.getSelectedArea(areaType).clearVoxelsSet();
         if(clearedVoxels>0){
-            this.selectedVoxels.clear();
             this.#notifyOfSelectedAreaChange();
         }
 
@@ -318,52 +366,54 @@ export class VoxelObject extends SceneObject{
     //adds voxel of given coordinates to set of selected voxels
     //returns true if successfuly added
     //returns false if voxel doesn't exist or if voxel was already selected
-    selectVoxel(v: Vector3): boolean{
-        //console.log(`[selectVoxel] select request for ${v.toString()}`)
+    selectVoxel(v: Vector3, areaType: SelectedAreaType): boolean{
         if(this.voxelExists(v)){
-            const vStr = v.toString();
-            if(this.selectedVoxels.has(vStr)){
-                return false;
-            }
-            this.resetSelect();
-            this.selectedVoxels.add(v.toString());
-            this.#notifyOfSelectedAreaChange();
-            return true;
-            
+            if(areaType==="dynamic"){
+                this.resetSelect(areaType);
+            }            
+            const voxelSelected =  this.getSelectedArea(areaType).addVoxel(v);                        
+            if(voxelSelected) this.#notifyOfSelectedAreaChange();
+            console.log(voxelSelected);
+            return true;            
         }else{
+            console.log("AAAAAAA")
             return false;
         }
     }
 
-    //resets Selected  voxels
-    selectVoxelArray(voxels: Vector3[]): boolean{
-        let out = false;
-        this.resetSelect();
+    //adds array of voxels of given coordinates to set of selected voxels
+    //returns amount of voxels added    
+    selectVoxelArray(voxels: Vector3[], areaType: SelectedAreaType): boolean{
+        const existingVoxels: Vector3[] = [];
         voxels.forEach(v=>{
-            if(this.voxelExists(v)) {
-                this.selectedVoxels.add(v.toString());
-                out = true;
+            if(this.voxelExists(v)){
+                existingVoxels.push(v);
             }
-        });
-        
-        this.#notifyOfSelectedAreaChange();
-        return out;
+        })
+
+    
+        if(areaType==="dynamic"){
+            this.resetSelect(areaType);
+        }            
+        const voxelsSelected: number =  this.getSelectedArea(areaType).addVoxels(existingVoxels);                        
+        if(voxelsSelected>0) this.#notifyOfSelectedAreaChange();
+        return true;            
+       
     }
 
     //adds voxels of the same face as starting voxel of given coordinates
     //emptyVoxels = true : selects only empty voxels, otherwise only non-empty
     //returns true if successfuly added or if all voxels were already selected
     //returns false if starting voxel doesn't exist
-    selectFace(v: Vector3, dir: FaceDirection, emptyVoxels: boolean = false): boolean{
-        //console.log(`[selectFace] select face for ${v.toString()} | ${dir}`)
+    selectFace(v: Vector3, dir: FaceDirection, areaType: SelectedAreaType, emptyVoxels: boolean = false): boolean{
         if(!this.voxelExists(v)) {
             return false;
         }
-        this.resetSelect();
-        this.#selectFaceRecursion(v, dir, emptyVoxels);
-        //this.voxelsModified = true;
+        if(areaType==="dynamic"){
+            this.resetSelect(areaType);
+        }        
+        this.#selectFaceRecursion(v, dir, emptyVoxels, areaType);
         this.#notifyOfSelectedAreaChange();
-
         return true;
     }
 
@@ -443,13 +493,12 @@ export class VoxelObject extends SceneObject{
             ]
     }
     
-
-    #selectFaceRecursion(v: Vector3, dir: FaceDirection, emptyVoxels: boolean){
+    #selectFaceRecursion(v: Vector3, dir: FaceDirection, emptyVoxels: boolean, areaType: SelectedAreaType){
         //console.log(`[selectFaceRecursion] iteration: ${v} -`)
         const possiblyBlockingVoxelCoords = this.#blockingVoxelCoords(v , dir);
         const voxelBehind = this.#voxelBehindId(v,dir);
-        const shouldSkipThisVoxel = emptyVoxels? (!this.voxelExists(v) ||  this.isVoxelNonEmpty(v) || this.selectedVoxels.has(v.toString()) || (this.voxelExists(voxelBehind) && this.isVoxelEmpty(voxelBehind)))
-        : !this.voxelExists(v) || this.isVoxelEmpty(v) || this.selectedVoxels.has(v.toString());
+        const shouldSkipThisVoxel = emptyVoxels? (!this.voxelExists(v) ||  this.isVoxelNonEmpty(v) || this.getSelectedArea(areaType).hasVoxel(v) || (this.voxelExists(voxelBehind) && this.isVoxelEmpty(voxelBehind)))
+        : !this.voxelExists(v) || this.isVoxelEmpty(v) || this.getSelectedArea(areaType).hasVoxel(v);
 
         if(shouldSkipThisVoxel) return;
         //console.log(`[selectFaceRecursion] iteration: ${v} +`)
@@ -459,17 +508,20 @@ export class VoxelObject extends SceneObject{
         if(!isCurrentVoxelOnSurface) return;
 
         const selectedVoxel = v;
-        this.selectedVoxels.add(selectedVoxel.toString());
+        this.getSelectedArea(areaType).addVoxel(selectedVoxel)
 
         this.#voxelDirNeighborsCoords(v, dir).forEach((vs)=>{
-            this.#selectFaceRecursion(vs, dir, emptyVoxels);
+            this.#selectFaceRecursion(vs, dir, emptyVoxels, areaType);
         });
     }
 
-    selectCube(vStart: Vector3, vEnd: Vector3): boolean{
+    selectCube(vStart: Vector3, vEnd: Vector3, areaType: SelectedAreaType): boolean{
         if(!this.voxelExists(vStart)) return false;
-        this.resetSelect();
-        this.#notifyOfSelectedAreaChange();
+        if(areaType==="dynamic"){
+            this.resetSelect(areaType);
+        }
+
+        
         const clampedEnd = new Vector3(clamp({value: vEnd.x, min: 0 ,max: this.size.x-1 }), 
                                 clamp({value: vEnd.y, min: 0 ,max: this.size.y-1 }),
                                 clamp({value: vEnd.z, min: 0 ,max: this.size.z-1}));
@@ -479,77 +531,71 @@ export class VoxelObject extends SceneObject{
                                             Math.min(vStart.z, clampedEnd.z));
         const correctedVEnd = new Vector3(Math.max(vStart.x, clampedEnd.x),
                                             Math.max(vStart.y, clampedEnd.y),
-                                            Math.max(vStart.z, clampedEnd.z));    
+                                            Math.max(vStart.z, clampedEnd.z));      
                                             
-          /*                                  
-        const correctedVStart = vStart;
-        const correctedVEnd = clampedEnd;
-        */
+        const voxelsToSelect: Vector3[] = []                                        
 
         for(let x: number = correctedVStart.x; x <= correctedVEnd.x; x++){
             for(let y: number = correctedVStart.y; y <= correctedVEnd.y; y++){
                 for(let z: number = correctedVStart.z; z <= correctedVEnd.z; z++){
-                    this.selectedVoxels.add(new Vector3(x,y,z).toString());
+                    voxelsToSelect.push(new Vector3(x,y,z));
                 }
             }
         }
-        //this.voxelsModified = true;
+
+        const selectedVoxels = this.getSelectedArea(areaType).addVoxels(voxelsToSelect);
+        if(selectedVoxels>0) this.#notifyOfSelectedAreaChange();
         return true;
     }
 
-
-    selectConnected(v: Vector3): boolean{
+    selectConnected(v: Vector3, areaType: SelectedAreaType): boolean{
         if(!this.voxelExists(v)) {
             return false;
         }
-        this.resetSelect();
-        if(this.isVoxelNonEmpty(v)) this.#selectConntectedRecursion(v);
+        if(areaType==="dynamic"){
+            this.resetSelect(areaType);
+        }
+        if(this.isVoxelNonEmpty(v)) this.#selectConntectedRecursion(v, areaType);
         this.#notifyOfSelectedAreaChange();   
         return true;
     }
 
-    #selectConntectedRecursion(v: Vector3){
-        this.selectedVoxels.add(v.toString());
+    #selectConntectedRecursion(v: Vector3, areaType: SelectedAreaType){
+        this.getSelectedArea(areaType).addVoxel(v)
         this.#voxelNeighborsCoords(v).forEach((vs)=>{
-            if(!this.selectedVoxels.has(vs.toString()) && this.voxelExists(vs) && this.isVoxelNonEmpty(vs)){
-                this.#selectConntectedRecursion(vs);
+            if(!this.getSelectedArea(areaType).hasVoxel(vs) && this.voxelExists(vs) && this.isVoxelNonEmpty(vs)){
+                this.#selectConntectedRecursion(vs, areaType);
             }
         });                                                                           
     }
 
-    selectByColor(v: Vector3): boolean{
+    selectByColor(v: Vector3, areaType: SelectedAreaType): boolean{
         if(!this.voxelExists(v)) {
             return false;
         }
 
-        const voxel = this.getVoxel(v);
-        if(voxel){
-            const c = voxel.color;        
+        if(this.isVoxelNonEmpty(v)){
+            const c = this.getVoxel(v)!.color;        
             let cacheVoxels = false;
-            if(this.#selectedColor && this.#selectedColor.equals(c) && this.#selectedByColorVoxels){
-                this.resetSelect();    
-                this.selectedVoxels
+            //if previous selection was by color of the same color than load cached voxel set
+            if(this.#selectedColor && this.#selectedColor.equals(c) && this.#selectedByColorVoxels){ 
+                this.resetSelect(areaType);    
                 return true;            
-            }else{
+            }else{ //else prepare to cache newly made voxel set
                 this.#selectedByColorVoxels = new Set();
                 cacheVoxels = true;
                 this.#selectedColor = c;
             }
-        
-
-        this.resetSelect();
-        
-
+            
+            this.resetSelect(areaType);
+            
             for(let x = 0; x < this.size.x; x++){
                 for(let y = 0; y < this.size.y; y++){
                     for(let z = 0; z < this.size.z; z++){
-                        //console.log(`[selectByColor] loop 1 ${x},${y},${z}`);
                         const vId = new Vector3(x,y,z);
-                        //console.log(`[selectByColor] loop 2`);
-                        const v = this.getVoxel(vId);
-                        //console.log(`[selectByColor] loop 3`);
+                        const v = this.getVoxel(vId);                        
                         if(v && v.color.equals(c)){
-                            this.selectedVoxels.add(vId.toString());
+                            this.getSelectedArea(areaType).addVoxel(vId);
                             if(cacheVoxels){
                                 this.selectByColor
                             }
@@ -557,12 +603,9 @@ export class VoxelObject extends SceneObject{
                     }
                 }
             }
-        }else{
-            this.resetSelect();
+        }else{ //if pointed voxel doesn't exist  then reset it
+            this.resetSelect(areaType);
         }
-
-        //console.log(`[selectByColor] after loop`);
-        
 
         this.#notifyOfSelectedAreaChange();
         return true;
@@ -570,16 +613,17 @@ export class VoxelObject extends SceneObject{
 
     //reset selected voxels and selects every empty voxel in object
     //returns number of newly selected voxels
-    selectEmptyVoxels(): number{
-        this.resetSelect();
+    selectEmptyVoxels(areaType: SelectedAreaType): number{
+        this.resetSelect(areaType);
 
         let selectedVoxelsNumber = 0;
         for(let x: number = 0; x <= this.size.x; x++){
             for(let y: number = 0; y <= this.size.y; y++){
                 for(let z: number = 0; z <= this.size.z; z++){
-                    if(this.isVoxelEmpty(new Vector3(x,y,z))){
+                    const v = new Vector3(x,y,z);
+                    if(this.isVoxelEmpty(v)){
                         selectedVoxelsNumber++;     
-                        this.selectedVoxels.add(new Vector3(x,y,z).toString());    
+                        this.getSelectedArea(areaType).addVoxel(v);
                     }       
                 }
             }
@@ -591,14 +635,15 @@ export class VoxelObject extends SceneObject{
         return selectedVoxelsNumber;
     }
 
-    selectAllVoxels(): number{
+    selectAllVoxels(areaType: SelectedAreaType): number{
         let selectedVoxelsNumber = 0;
         for(let x: number = 0; x <= this.size.x; x++){
             for(let y: number = 0; y <= this.size.y; y++){
                 for(let z: number = 0; z <= this.size.z; z++){
-                    if(this.voxelExists(new Vector3(x,y,z))){
+                    const v = new Vector3(x,y,z);
+                    if(this.voxelExists(v)){
                         selectedVoxelsNumber++;     
-                        this.selectedVoxels.add(new Vector3(x,y,z).toString());    
+                        this.getSelectedArea(areaType).addVoxel(v);
                     }       
                 }
             }
@@ -610,16 +655,17 @@ export class VoxelObject extends SceneObject{
 
     //reset selected voxels and selects every non-empty voxel in object
     //returns number of newly selected voxels
-    selectNonEmptyVoxels(){
-        this.resetSelect();
+    selectNonEmptyVoxels(areaType: SelectedAreaType){
+        this.resetSelect(areaType);
 
         let selectedVoxelsNumber = 0;
         for(let x: number = 0; x <= this.size.x; x++){
             for(let y: number = 0; y <= this.size.y; y++){
                 for(let z: number = 0; z <= this.size.z; z++){
-                    if(this.isVoxelNonEmpty(new Vector3(x,y,z))){
+                    const v = new Vector3(x,y,z);
+                    if(this.isVoxelNonEmpty(v)){
                         selectedVoxelsNumber++;     
-                        this.selectedVoxels.add(new Vector3(x,y,z).toString());    
+                        this.getSelectedArea(areaType).addVoxel(v);  
                     }       
                 }
             }
@@ -633,9 +679,9 @@ export class VoxelObject extends SceneObject{
 
     //adds voxel to every coord stored in selectedVoxels if the voxel they point at is empty
     //returns number of added voxels
-    addSelectedVoxels(color: Vector4) : number{
+    addSelectedVoxels(color: Vector4, areaType: SelectedAreaType) : number{
         let addedVoxels: number = 0;
-        this.selectedVoxels.forEach(v=>{
+        this.getSelectedArea(areaType).voxels.forEach(v=>{
             const voxel = Vector3.fromString(v);
             if(this.isVoxelEmpty(voxel)){
                 this.setVoxel(voxel, {color});
@@ -648,9 +694,9 @@ export class VoxelObject extends SceneObject{
     //fills every empty voxel with voxel of given color
     //removes every non-empty voxel
     //returns number of modified voxels
-    reverseSelectedVoxels(color: Vector4): number{
+    reverseSelectedVoxels(color: Vector4, areaType: SelectedAreaType): number{
         let modifiedVoxels: number = 0;
-        this.selectedVoxels.forEach(v=>{
+        this.getSelectedArea(areaType).voxels.forEach(v=>{
             const voxel = Vector3.fromString(v);
             if(this.isVoxelEmpty(voxel)){
                 this.setVoxel(voxel, {color});
@@ -665,9 +711,9 @@ export class VoxelObject extends SceneObject{
 
     //nulls every voxel which id is stored in selectedVoxels
     //returns number of nulled voxels which were prevoiusly non-empty
-    removeSelectedVoxels() : number{
+    removeSelectedVoxels(areaType: SelectedAreaType) : number{
         let removedVoxels: number = 0;
-        this.selectedVoxels.forEach(v=>{
+        this.getSelectedArea(areaType).voxels.forEach(v=>{
             const voxel = Vector3.fromString(v);
             this.removeVoxel(voxel);
             removedVoxels++;
@@ -677,11 +723,11 @@ export class VoxelObject extends SceneObject{
 
     //rotations currently work only when full object is selected because they create fresh object and fill it only with rotated voxels
     //todo: FIX!
-    rotateSelectedVoxelsByX(): number{
+    rotateSelectedVoxelsByX(areaType: SelectedAreaType): number{
         let modifiedVoxels = 0;
         const maxY = this.size.y-1;
         const outVoxels = getEmptyVoxelArray(this.size);
-        this.selectedVoxels.forEach(v=>{
+        this.getSelectedArea(areaType).voxels.forEach(v=>{
             const voxelPosititon = Vector3.fromString(v);
             const voxel: Voxel | null = this.getVoxel(voxelPosititon);
             const newVoxelPosition = new Vector3(voxelPosititon.x, voxelPosititon.z, maxY - voxelPosititon.y);
@@ -698,11 +744,11 @@ export class VoxelObject extends SceneObject{
         return modifiedVoxels;
     }
 
-    rotateSelectedVoxelsByY(): number{
+    rotateSelectedVoxelsByY(areaType: SelectedAreaType): number{
         let modifiedVoxels = 0;
         const maxZ = this.size.z-1;
         const outVoxels = getEmptyVoxelArray(this.size);
-        this.selectedVoxels.forEach(v=>{
+        this.getSelectedArea(areaType).voxels.forEach(v=>{
             const voxelPosititon = Vector3.fromString(v);
             const voxel: Voxel | null = this.getVoxel(voxelPosititon);
             const newVoxelPosition = new Vector3(maxZ - voxelPosititon.z, voxelPosititon.y, voxelPosititon.x);
@@ -719,11 +765,11 @@ export class VoxelObject extends SceneObject{
         return modifiedVoxels;  
     }
 
-    rotateSelectedVoxelsByZ(): number{
+    rotateSelectedVoxelsByZ(areaType: SelectedAreaType): number{
         let modifiedVoxels = 0;
         const maxX = this.size.x-1;
         const outVoxels = getEmptyVoxelArray(this.size);
-        this.selectedVoxels.forEach(v=>{
+        this.getSelectedArea(areaType).voxels.forEach(v=>{
             const voxelPosititon = Vector3.fromString(v);
             const voxel: Voxel | null = this.getVoxel(voxelPosititon);
             const newVoxelPosition = new Vector3(voxelPosititon.y, maxX - voxelPosititon.x, voxelPosititon.z);
@@ -740,12 +786,12 @@ export class VoxelObject extends SceneObject{
         return modifiedVoxels;
     }
 
-    flipSelectedVoxelsByX(): number{
+    flipSelectedVoxelsByX(areaType: SelectedAreaType): number{
         let modifiedVoxels = 0;
         for(let x = 0; x < Math.floor(this.size.x/2); x++){
             for(let y = 0; y < this.size.y; y++){
                 for(let z = 0; z < this.size.z; z++){
-                    if(this.selectedVoxels.has(new Vector3(x,y,z).toString())){
+                    if(this.getSelectedArea(areaType).hasVoxel(new Vector3(x,y,z))){
                         const voxelPosition = new Vector3(x,y,z);
                         const flippedVoxelPosition = new Vector3(this.size.x - 1 - x ,y,z);
                         if(!voxelPosition.equals(flippedVoxelPosition)){
@@ -761,12 +807,12 @@ export class VoxelObject extends SceneObject{
         return modifiedVoxels;
     }
 
-    flipSelectedVoxelsByY(): number{
+    flipSelectedVoxelsByY(areaType: SelectedAreaType): number{
         let modifiedVoxels = 0;
         for(let x = 0; x < this.size.x; x++){
             for(let y = 0; y < Math.floor(this.size.y/2); y++){
                 for(let z = 0; z < this.size.z; z++){
-                    if(this.selectedVoxels.has(new Vector3(x,y,z).toString())){
+                    if(this.getSelectedArea(areaType).hasVoxel(new Vector3(x,y,z))){
                         const voxelPosition = new Vector3(x,y,z);
                         const flippedVoxelPosition = new Vector3(x ,this.size.y - 1 -y,z);
                         if(!voxelPosition.equals(flippedVoxelPosition)){
@@ -782,12 +828,12 @@ export class VoxelObject extends SceneObject{
         return modifiedVoxels;
     }
 
-    flipSelectedVoxelsByZ(): number{
+    flipSelectedVoxelsByZ(areaType: SelectedAreaType): number{
         let modifiedVoxels = 0;
         for(let x = 0; x < this.size.x; x++){
             for(let y = 0; y < this.size.y; y++){
                 for(let z = 0; z < Math.floor(this.size.z/2); z++){
-                    if(this.selectedVoxels.has(new Vector3(x,y,z).toString())){
+                    if(this.getSelectedArea(areaType).hasVoxel(new Vector3(x,y,z))){
                         const voxelPosition = new Vector3(x,y,z);
                         const flippedVoxelPosition = new Vector3(x ,y,this.size.z - 1 -z);
                         if(!voxelPosition.equals(flippedVoxelPosition)){
@@ -818,9 +864,9 @@ export class VoxelObject extends SceneObject{
 
     //changes color of every non-empty voxel which id is stored in selectedVoxels
     //returns number of modified voxels
-    paintSelectedVoxels(newColor: Vector4) : number{
+    paintSelectedVoxels(newColor: Vector4, areaType: SelectedAreaType) : number{
         let modifiedVoxels: number = 0;
-        this.selectedVoxels.forEach(v=>{
+        this.getSelectedArea(areaType).voxels.forEach(v=>{
             if(this.isVoxelNonEmpty(Vector3.fromString(v))){
                 const voxel = Vector3.fromString(v);
                 this.setVoxel(voxel, {color: newColor});
@@ -867,24 +913,27 @@ export class VoxelObject extends SceneObject{
                 }
             }
 
-            const newSelectedVoxels = new Set<string>();
-            this.selectedVoxels.forEach(vStr =>{
+            //static selected area stays, dynamic is refreshed
+            this.resetSelect("dynamic");
+            let selectedAreaChanged = false;
+            const newStaticSelectedVoxels = new Set<string>();
+            this.getSelectedArea("static").voxels.forEach(vStr =>{
                 const v = Vector3.fromString(vStr)
                 if(v.x < clampedNewSize.x && v.y < clampedNewSize.y && v.z < clampedNewSize.z){
-                    newSelectedVoxels.add(vStr);
+                    newStaticSelectedVoxels.add(vStr);
                 }else{
-                    this.#notifyOfSelectedAreaChange();
+                    selectedAreaChanged = true;
                 }
             })
 
             this.size = clampedNewSize;
             this.voxels = newVoxels;
-            this.selectedVoxels = newSelectedVoxels;
-
-
+            this.staticSelectedArea.voxels = newStaticSelectedVoxels;
+            
 
             this.#notifyOfVoxelsChange();
             this.#notifyOfSizeChange();
+            if(selectedAreaChanged) this.#notifyOfSelectedAreaChange();
         }
         return this.size;
     }
@@ -949,5 +998,19 @@ export class VoxelObject extends SceneObject{
             }
         }
         return out;
+    }
+
+    getSelectedArea(type: SelectedAreaType): VoxelObjectSelectedArea{
+        return type==="static"? this.staticSelectedArea : this.dynamicSelectedArea;
+    }
+
+    getSelectedVoxelsCount(): number{
+        const staticVoxelSet = this.staticSelectedArea.voxels;
+        const dynamicVoxelSet = this.dynamicSelectedArea.voxels;
+        const union = new Set(staticVoxelSet);
+        for (const value of dynamicVoxelSet) {
+            union.add(value);
+        }
+        return union.size;
     }
 }
