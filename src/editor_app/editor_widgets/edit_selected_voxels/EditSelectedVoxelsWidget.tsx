@@ -30,7 +30,7 @@ return <ExpandableRow
                 </div>
                 <div className="WidgetButtonsPanelWrapper">
                     <p className="WidgetButtonsPanelTitle">Flip</p>
-                    <div className="WidgetButtonsPanel">
+                    <div className="WidgetButtonsPanel WidgetVectorAxisButtonsPanel">
                     <button onClick={()=>controller.flipObjectSelectedAreaByX()}>X</button>
                     <button onClick={()=>controller.flipObjectSelectedAreaByY()}>Y</button>
                     <button onClick={()=>controller.flipObjectSelectedAreaByZ()}>Z</button>
@@ -38,7 +38,7 @@ return <ExpandableRow
                 </div>
                 <div className="WidgetButtonsPanelWrapper">
                     <p className="WidgetButtonsPanelTitle">Rotate</p>
-                    <div className="WidgetButtonsPanel">
+                    <div className="WidgetButtonsPanel WidgetVectorAxisButtonsPanel">
                     <button onClick={()=>controller.rotateObjectSelectedAreaByX()}>X</button>
                     <button onClick={()=>controller.rotateObjectSelectedAreaByY()}>Y</button>
                     <button onClick={()=>controller.rotateObjectSelectedAreaByZ()}>Z</button>

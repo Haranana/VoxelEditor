@@ -1,5 +1,10 @@
 .EditSelectedVoxelsWidget .WidgetButtonsPanelWrapper{
-margin: 10px 0px 10px 0px;
+    margin: 10px 0px 10px 0px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+
 }
 
 .EditSelectedVoxelsWidget .WidgetButtonsPanelTitle{
@@ -13,6 +18,11 @@ margin: 10px 0px 10px 0px;
     gap: 5px;
     max-width: 150px;
     justify-content: start;
+}
+
+.EditSelectedVoxelsWidget .WidgetButtonsPanel.WidgetVectorAxisButtonsPanel{
+    gap: 0px;
+    max-width: 150px;
 }
 
 .EditSelectedVoxelsWidget .WidgetButtonsPanel button{
@@ -34,4 +44,9 @@ margin: 10px 0px 10px 0px;
 .EditSelectedVoxelsWidget .WidgetButtonsPanel button:hover{
     background-color: rgba(255, 255, 255, 0.3);
     cursor: pointer;
+}
+
+.EditSelectedVoxelsWidget button{
+    white-space: nowrap;
+    overflow: hidden;
 }
