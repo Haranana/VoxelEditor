@@ -1030,6 +1030,44 @@ export class EditorController{
         this.changeVoxelObjectSizeByScalar(1/2);
     }
 
+
+    fillVoxelObjectSelectedArea(){
+        if(!this.initialized) return;
+        const scene = this.scene!;
+        const voxelObject = scene.getActiveVoxelObject();
+        if(!voxelObject) return;
+
+        const objectModified: boolean = voxelObject.fillSelectedAreaVoxels(this.currentColor, "static") > 0;
+        if(objectModified){
+            this.renderScene!();
+        }        
+    }
+
+    emptyVoxelObjectSelectedArea(){
+        if(!this.initialized) return;
+        const scene = this.scene!;
+        const voxelObject = scene.getActiveVoxelObject();
+        if(!voxelObject) return;
+        
+        const objectModified: boolean = voxelObject.emptySelectedAreaVoxels("static") > 0;
+        if(objectModified){
+            this.renderScene!();
+        }        
+    }    
+
+    reverseVoxelObjectSelectedArea(){
+        if(!this.initialized) return;
+        const scene = this.scene!;
+        const voxelObject = scene.getActiveVoxelObject();
+        if(!voxelObject) return;
+
+        const objectModified: boolean = voxelObject.reverseSelectedAreaVoxels(this.currentColor, "static") > 0;
+
+        if(objectModified){
+            this.renderScene!();
+        }        
+    }        
+
     fillVoxelObjectVoxels(){
         if(!this.initialized) return;
         const scene = this.scene!;
@@ -1104,6 +1142,66 @@ export class EditorController{
         voxelObject.setVoxels(generateCylinderVoxelArray(voxelObject.size, this.currentColor));
         this.renderScene!();
     }
+
+    flipObjectSelectedAreaByX(){
+        if(!this.initialized) return;
+        const scene = this.scene!;
+        let voxelObject = scene.getActiveVoxelObject();
+        if(!voxelObject) return;
+
+        voxelObject.flipSelectedVoxelsInSelectedAreaByX("static");
+        this.renderScene!();        
+    }
+
+    flipObjectSelectedAreaByY(){
+        if(!this.initialized) return;
+        const scene = this.scene!;
+        let voxelObject = scene.getActiveVoxelObject();
+        if(!voxelObject) return;
+
+        voxelObject.flipSelectedVoxelsInSelectedAreaByY("static");
+        this.renderScene!();        
+    }
+    
+    flipObjectSelectedAreaByZ(){
+        if(!this.initialized) return;
+        const scene = this.scene!;
+        let voxelObject = scene.getActiveVoxelObject();
+        if(!voxelObject) return;
+
+        voxelObject.flipSelectedVoxelsInSelectedAreaByZ("static");
+        this.renderScene!();        
+    }    
+
+    rotateObjectSelectedAreaByX(){
+        if(!this.initialized) return;
+        const scene = this.scene!;
+        let voxelObject = scene.getActiveVoxelObject();
+        if(!voxelObject) return;
+
+        voxelObject.rotateSelectedVoxelsInSelectedAreaByX("static");
+        this.renderScene!();        
+    }
+
+    rotateObjectSelectedAreaByY(){
+        if(!this.initialized) return;
+        const scene = this.scene!;
+        let voxelObject = scene.getActiveVoxelObject();
+        if(!voxelObject) return;
+
+        voxelObject.rotateSelectedVoxelsInSelectedAreaByY("static");
+        this.renderScene!();        
+    }
+    
+    rotateObjectSelectedAreaByZ(){
+        if(!this.initialized) return;
+        const scene = this.scene!;
+        let voxelObject = scene.getActiveVoxelObject();
+        if(!voxelObject) return;
+
+        voxelObject.rotateSelectedVoxelsInSelectedAreaByZ("static");
+        this.renderScene!();        
+    }    
 
     flipVoxelObjectByX(){
         if(!this.initialized) return;
@@ -1185,9 +1283,6 @@ export class EditorController{
 
         return voxelObject.getSelectedVoxelsCount();
     }
-
-
-
 
     // Select and edit modes
 

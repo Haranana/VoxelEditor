@@ -2,7 +2,7 @@ import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } 
 import "./Editor.css"
 import { Vector3 } from "../../math/vector3.type";
 import { Camera } from "../../voxel_engine/scene-objects/camera/camera";
-import { getBasicSampleVoxelObject } from "../../voxel_engine/scene-objects/voxel/sample-voxel-objects";
+import { getBasicSampleVoxelObject, getFlipRotationTestSampleVoxelObject } from "../../voxel_engine/scene-objects/voxel/sample-voxel-objects";
 import { Renderer, type RenderContext } from "../../render_engine/renderer";
 import { ControllerContext } from "../editor_controller/ControllerContext";
 import { Scene } from "../../voxel_engine/scene/scene";
@@ -21,6 +21,7 @@ import ResizableContainer from "../editor_widgets/ResizableContainer";
 import EditorCanvas from "../editor_widgets/EditorCanvas";
 import { SceneListWidget } from "../editor_widgets/scene_list/SceneListWidget";
 import { getSampleCamera } from "../../voxel_engine/scene-objects/camera/sample-cameras";
+import { EditSelectedVoxelsWidget } from "../editor_widgets/edit_selected_voxels/EditSelectedVoxelsWidget";
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -55,7 +56,7 @@ export default function EditorPage() {
     if(startingSceneInitializedRef.current) return;
     startingSceneInitializedRef.current = true;
     
-    const obj: VoxelObject = getBasicSampleVoxelObject("SampleObject")     
+    const obj: VoxelObject = getFlipRotationTestSampleVoxelObject("SampleObject")     
     sceneRef.current.addObject(obj);
 
     sceneRef.current.addObject(getSampleCamera("MainCamera"));
@@ -450,6 +451,12 @@ export default function EditorPage() {
         version={editObjectVersion}
   />
 
+  const [isEditSelectedVoxelsWidgetOpen, setEditSelectedVoxelsWidgetOpen] = useState<boolean>(false);
+  const editSelectedVoxelsWidget: React.ReactNode = <EditSelectedVoxelsWidget
+    isOpen = {isEditSelectedVoxelsWidgetOpen}
+    onOpenChange={setEditSelectedVoxelsWidgetOpen}
+  />
+
   return (
     <div className="EditorPage">
       <div className="EditorNav"></div>
@@ -532,6 +539,7 @@ export default function EditorPage() {
                 {cameraPropertiesWidget}
                 {scenePropertiesWidget}                
                 {editVoxelObjectWidget}
+                {editSelectedVoxelsWidget}
                 </div>
               </ResizableContainer>
             </div>

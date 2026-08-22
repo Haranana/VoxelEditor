@@ -2,7 +2,7 @@ import { clamp } from "../../../math/utils";
 import { Vector3 } from "../../../math/vector3.type";
 import { Vector4 } from "../../../math/vector4.type";
 import { RenderableObject } from "../../../render_engine/renderableObjects/renderableObject";
-import { copyVoxel, type Voxel, type VoxelArray } from "./voxel";
+import { copyVoxel, copyVoxelArray, type Voxel, type VoxelArray } from "./voxel";
 import { getEmptyVoxelArray } from "./voxel-array-generator";
 import { RenderableObjectManager } from "../renderable-object-manager";
 import { SceneObject, type WorldObjectTransform } from "../sceneObject";
@@ -323,9 +323,7 @@ export class VoxelObject extends SceneObject{
 
     removeVoxel(pos: Vector3){
         try{
-            this.voxels[pos.x][pos.y][pos
-    
-                .z] = null;
+            this.voxels[pos.x][pos.y][pos.z] = null;
             this.#notifyOfVoxelsChange();
             return true;
         }catch(e: any){
@@ -373,10 +371,8 @@ export class VoxelObject extends SceneObject{
             }            
             const voxelSelected =  this.getSelectedArea(areaType).addVoxel(v);                        
             if(voxelSelected) this.#notifyOfSelectedAreaChange();
-            console.log(voxelSelected);
             return true;            
         }else{
-            console.log("AAAAAAA")
             return false;
         }
     }
@@ -611,6 +607,45 @@ export class VoxelObject extends SceneObject{
         return true;
     }
 
+    emptySelectedAreaVoxels(areaType: SelectedAreaType): number{
+        let modifiedVoxels: number = 0;
+        this.getSelectedArea(areaType).voxels.forEach(v=>{
+            const voxel = Vector3.fromString(v);
+            if(this.isVoxelNonEmpty(voxel)){
+                this.removeVoxel(voxel);
+                modifiedVoxels++;
+            }
+        });     
+        return modifiedVoxels;
+    }
+
+    fillSelectedAreaVoxels(color: Vector4, areaType: SelectedAreaType): number{
+        let modifiedVoxels: number = 0;
+        this.getSelectedArea(areaType).voxels.forEach(v=>{
+            const voxel = Vector3.fromString(v);
+            if(this.isVoxelEmpty(voxel)){
+                this.setVoxel(voxel, {color});
+                modifiedVoxels++;
+            }
+        });     
+        return modifiedVoxels;
+    }
+
+    reverseSelectedAreaVoxels(color: Vector4, areaType: SelectedAreaType): number{
+        let modifiedVoxels: number = 0;
+        this.getSelectedArea(areaType).voxels.forEach(v=>{
+            const voxel = Vector3.fromString(v);
+            if(this.isVoxelEmpty(voxel)){
+                this.setVoxel(voxel, {color});
+                modifiedVoxels++;
+            }else if(this.isVoxelNonEmpty(voxel)){
+                this.removeVoxel(voxel);
+                modifiedVoxels++;
+            }
+        });     
+        return modifiedVoxels;
+    }
+
     //reset selected voxels and selects every empty voxel in object
     //returns number of newly selected voxels
     selectEmptyVoxels(areaType: SelectedAreaType): number{
@@ -744,6 +779,162 @@ export class VoxelObject extends SceneObject{
         return modifiedVoxels;
     }
 
+    rotateSelectedVoxelsInSelectedAreaByX(areaType: SelectedAreaType): number {
+        let modifiedVoxels = 0;
+
+        let minY = Infinity;
+        let maxY = -Infinity;
+        let minZ = Infinity;
+        let maxZ = -Infinity;
+
+        for (const vStr of this.getSelectedArea(areaType).voxels) {
+            const v = Vector3.fromString(vStr);
+
+            if (v.y < minY) minY = v.y;
+            if (v.y > maxY) maxY = v.y;
+            if (v.z < minZ) minZ = v.z;
+            if (v.z > maxZ) maxZ = v.z;
+        }
+
+        const newVoxelArray: VoxelArray = copyVoxelArray(this.voxels);
+        const newSelectedVoxels: Set<string> = new Set();
+
+        this.getSelectedArea(areaType).voxels.forEach((vStr) => {
+            const v = Vector3.fromString(vStr);
+
+            const voxelPosition = new Vector3(v.x, v.y, v.z);
+
+            const flippedVoxelPosition = new Vector3(
+                v.x,
+                minY + (v.z - minZ),
+                maxZ - (v.y - minY)
+            );
+
+            const voxel = this.getVoxel(voxelPosition);
+
+            newVoxelArray
+                [flippedVoxelPosition.x]
+                [flippedVoxelPosition.y]
+                [flippedVoxelPosition.z] = voxel ? copyVoxel(voxel) : voxel;
+
+            newSelectedVoxels.add(flippedVoxelPosition.toString());
+
+            modifiedVoxels++;
+        });
+
+        this.voxels = newVoxelArray;
+        this.getSelectedArea(areaType).voxels = newSelectedVoxels;
+
+        this.#notifyOfSelectedAreaChange();
+        this.#notifyOfVoxelsChange();
+
+        return modifiedVoxels;
+    }    
+
+rotateSelectedVoxelsInSelectedAreaByY(areaType: SelectedAreaType): number {
+    let modifiedVoxels = 0;
+
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minZ = Infinity;
+    let maxZ = -Infinity;
+
+    for (const vStr of this.getSelectedArea(areaType).voxels) {
+        const v = Vector3.fromString(vStr);
+
+        if (v.x < minX) minX = v.x;
+        if (v.x > maxX) maxX = v.x;
+        if (v.z < minZ) minZ = v.z;
+        if (v.z > maxZ) maxZ = v.z;
+    }
+
+    const newVoxelArray: VoxelArray = copyVoxelArray(this.voxels);
+    const newSelectedVoxels: Set<string> = new Set();
+
+    this.getSelectedArea(areaType).voxels.forEach((vStr) => {
+        const v = Vector3.fromString(vStr);
+
+        const voxelPosition = new Vector3(v.x, v.y, v.z);
+
+        const newVoxelPosition = new Vector3(
+            maxX - (v.z - minZ),
+            v.y,
+            minZ + (v.x - minX)
+        );
+
+        const voxel = this.getVoxel(voxelPosition);
+
+        newVoxelArray
+            [newVoxelPosition.x]
+            [newVoxelPosition.y]
+            [newVoxelPosition.z] = voxel ? copyVoxel(voxel) : voxel;
+
+        newSelectedVoxels.add(newVoxelPosition.toString());
+
+        modifiedVoxels++;
+    });
+
+    this.voxels = newVoxelArray;
+    this.getSelectedArea(areaType).voxels = newSelectedVoxels;
+
+    this.#notifyOfSelectedAreaChange();
+    this.#notifyOfVoxelsChange();
+
+    return modifiedVoxels;
+}
+
+rotateSelectedVoxelsInSelectedAreaByZ(areaType: SelectedAreaType): number {
+    let modifiedVoxels = 0;
+
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+
+    for (const vStr of this.getSelectedArea(areaType).voxels) {
+        const v = Vector3.fromString(vStr);
+
+        if (v.x < minX) minX = v.x;
+        if (v.x > maxX) maxX = v.x;
+        if (v.y < minY) minY = v.y;
+        if (v.y > maxY) maxY = v.y;
+    }
+
+    const newVoxelArray: VoxelArray = copyVoxelArray(this.voxels);
+    const newSelectedVoxels: Set<string> = new Set();
+
+    this.getSelectedArea(areaType).voxels.forEach((vStr) => {
+        const v = Vector3.fromString(vStr);
+
+        const voxelPosition = new Vector3(v.x, v.y, v.z);
+
+        const newVoxelPosition = new Vector3(
+            minX + (v.y - minY),
+            maxY - (v.x - minX),
+            v.z
+        );
+
+        const voxel = this.getVoxel(voxelPosition);
+
+        newVoxelArray
+            [newVoxelPosition.x]
+            [newVoxelPosition.y]
+            [newVoxelPosition.z] = voxel ? copyVoxel(voxel) : voxel;
+
+        newSelectedVoxels.add(newVoxelPosition.toString());
+
+        modifiedVoxels++;
+    });
+
+    this.voxels = newVoxelArray;
+    this.getSelectedArea(areaType).voxels = newSelectedVoxels;
+
+    this.#notifyOfSelectedAreaChange();
+    this.#notifyOfVoxelsChange();
+
+    return modifiedVoxels;
+}
+    
     rotateSelectedVoxelsByY(areaType: SelectedAreaType): number{
         let modifiedVoxels = 0;
         const maxZ = this.size.z-1;
@@ -785,6 +976,96 @@ export class VoxelObject extends SceneObject{
         this.#notifyOfVoxelsChange();
         return modifiedVoxels;
     }
+
+    flipSelectedVoxelsInSelectedAreaByX(areaType: SelectedAreaType){
+        let modifiedVoxels = 0;
+
+        let minX = Infinity;
+        let maxX = -Infinity;
+        for (const vStr of this.getSelectedArea(areaType).voxels) {
+            const v = Vector3.fromString(vStr);
+            if(v.x > maxX) maxX = v.x;
+            if(v.x < minX) minX = v.x;
+        }
+
+        const newVoxelArray: VoxelArray = copyVoxelArray(this.voxels);    
+        const newSelectedVoxels: Set<string> = new Set();          
+        this.getSelectedArea(areaType).voxels.forEach((vStr)=>{
+            const v = Vector3.fromString(vStr);
+            const voxelPosition = new Vector3(v.x,v.y,v.z);
+            const flippedVoxelPosition = new Vector3(minX + maxX - v.x ,v.y,v.z);      
+            const voxel = this.getVoxel(voxelPosition);
+            newVoxelArray[flippedVoxelPosition.x][flippedVoxelPosition.y][flippedVoxelPosition.z] =voxel?copyVoxel(voxel):voxel
+            newSelectedVoxels.add(flippedVoxelPosition.toString());
+            modifiedVoxels++;
+        });
+        this.voxels = newVoxelArray;
+        this.getSelectedArea(areaType).voxels = newSelectedVoxels;
+
+        this.#notifyOfSelectedAreaChange();
+        this.#notifyOfVoxelsChange();
+        return modifiedVoxels;
+    }
+
+    flipSelectedVoxelsInSelectedAreaByY(areaType: SelectedAreaType){
+        let modifiedVoxels = 0;
+
+        let minY = Infinity;
+        let maxY = -Infinity;
+        for (const vStr of this.getSelectedArea(areaType).voxels) {
+            const v = Vector3.fromString(vStr);
+            if(v.y > maxY) maxY = v.y;
+            if(v.y < minY) minY = v.y;
+        }
+
+        const newVoxelArray: VoxelArray = copyVoxelArray(this.voxels);     
+        const newSelectedVoxels: Set<string> = new Set();        
+        this.getSelectedArea(areaType).voxels.forEach((vStr)=>{
+            const v = Vector3.fromString(vStr);
+            const voxelPosition = new Vector3(v.x,v.y,v.z);
+            const flippedVoxelPosition = new Vector3(v.x ,minY + maxY - v.y,v.z);      
+            const voxel = this.getVoxel(voxelPosition);
+            newVoxelArray[flippedVoxelPosition.x][flippedVoxelPosition.y][flippedVoxelPosition.z] =voxel?copyVoxel(voxel):voxel
+            newSelectedVoxels.add(flippedVoxelPosition.toString());
+            modifiedVoxels++;
+        });
+        this.voxels = newVoxelArray;
+        this.getSelectedArea(areaType).voxels = newSelectedVoxels;
+
+        this.#notifyOfSelectedAreaChange();
+        this.#notifyOfVoxelsChange();
+        return modifiedVoxels;
+    }
+    
+    flipSelectedVoxelsInSelectedAreaByZ(areaType: SelectedAreaType){
+        let modifiedVoxels = 0;
+
+        let minZ = Infinity;
+        let maxZ = -Infinity;
+        for (const vStr of this.getSelectedArea(areaType).voxels) {
+            const v = Vector3.fromString(vStr);
+            if(v.z > maxZ) maxZ = v.z;
+            if(v.z < minZ) minZ = v.z;
+        }
+
+        const newVoxelArray: VoxelArray = copyVoxelArray(this.voxels);     
+        const newSelectedVoxels: Set<string> = new Set();
+        this.getSelectedArea(areaType).voxels.forEach((vStr)=>{
+            const v = Vector3.fromString(vStr);
+            const voxelPosition = new Vector3(v.x,v.y,v.z);
+            const flippedVoxelPosition = new Vector3(v.x ,v.y,minZ + maxZ - v.z);      
+            const voxel = this.getVoxel(voxelPosition);
+            newVoxelArray[flippedVoxelPosition.x][flippedVoxelPosition.y][flippedVoxelPosition.z] =voxel?copyVoxel(voxel):voxel
+            newSelectedVoxels.add(flippedVoxelPosition.toString());
+            modifiedVoxels++;
+        });
+        this.voxels = newVoxelArray;
+        this.getSelectedArea(areaType).voxels = newSelectedVoxels;
+
+        this.#notifyOfSelectedAreaChange();
+        this.#notifyOfVoxelsChange();
+        return modifiedVoxels;
+    }    
 
     flipSelectedVoxelsByX(areaType: SelectedAreaType): number{
         let modifiedVoxels = 0;
