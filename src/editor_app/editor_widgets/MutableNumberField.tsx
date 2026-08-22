@@ -13,11 +13,12 @@ export type MutableNumberFieldProps = {
   onAcceptedChange: (value: number) => void;
   step: number;
   inputId: string;
+  intervalLength?: number 
 };
 
 export function MutableNumberField(props: MutableNumberFieldProps) {
   const valueChangeIntervalRef = useRef<number | null>(null);
-  const intervalLength = 20;
+  const intervalLength = props.intervalLength ?? 20;
 
   const [draft, setDraft] = useState<string>(String(props.value));
 

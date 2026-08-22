@@ -634,7 +634,7 @@ export class EditorController{
         if(selectType === "static"){
             selectedAreaChanged = voxelObject.resetSelect("static")!=0;
             if(this.selectMode == "Voxel"){
-                selectedAreaChanged = voxelObject.selectVoxel(hitVoxel, "static") || selectedAreaChanged;
+                selectedAreaChanged = selectedAreaChanged || voxelObject.selectVoxel(hitVoxel, "static");
             } 
             else if(this.selectMode == "Face"){
                 selectedAreaChanged = voxelObject.selectFace(hitVoxel, rayCastResults.hitDirection, "static") || selectedAreaChanged;
@@ -994,7 +994,103 @@ export class EditorController{
     }
 
     //voxel object advanced modifiers
-    changeVoxelObjectSizeTo(newSize: Vector3){
+
+    getVoxelObjectSize(): (Vector3 | null){
+        if(!this.initialized) return null;
+        const scene = this.scene!;
+        const voxelObject = scene.getActiveVoxelObject();
+        if(!voxelObject) return null;     
+        return voxelObject.size;   
+    }
+
+    setVoxelObjectSizeX(x: number){
+        if(!this.initialized) return;
+        const scene = this.scene!;
+        const voxelObject = scene.getActiveVoxelObject();
+        if(!voxelObject) return;     
+        const newSize = voxelObject.size.copy();
+        newSize.x=x;
+        const sizeChanged = newSize.x!==voxelObject.size.x;    
+        voxelObject.resize(newSize);           
+        if(sizeChanged){
+            this.renderScene!();
+        }
+    }
+
+    setVoxelObjectSizeY(y: number){
+        if(!this.initialized) return;
+        const scene = this.scene!;
+        const voxelObject = scene.getActiveVoxelObject();
+        if(!voxelObject) return;     
+        const newSize = voxelObject.size.copy();
+        newSize.y=y;
+        const sizeChanged = newSize.y!==voxelObject.size.y;   
+        voxelObject.resize(newSize);  
+        if(sizeChanged){
+            this.renderScene!();
+        }
+    }
+    
+    setVoxelObjectSizeZ(z: number){
+        if(!this.initialized) return;
+        const scene = this.scene!;
+        const voxelObject = scene.getActiveVoxelObject();
+        if(!voxelObject) return;     
+        const newSize = voxelObject.size.copy();
+        newSize.z=z;
+        const sizeChanged = newSize.z!==voxelObject.size.z; 
+        voxelObject.resize(newSize);    
+        if(sizeChanged){
+            this.renderScene!();
+        }        
+    }    
+
+    addVoxelObjectSizeX(delta: number){
+        if(!this.initialized) return null;
+        const scene = this.scene!;
+        const voxelObject = scene.getActiveVoxelObject();
+        if(!voxelObject) return null;         
+        const newX = delta+voxelObject.size.x 
+        const newSize = voxelObject.size.copy();
+        newSize.x = newX;
+        const sizeChanged = newSize.x!==voxelObject.size.x;         
+        voxelObject.resize(newSize);
+        if(sizeChanged){
+            this.renderScene!();
+        }              
+    }
+
+    addVoxelObjectSizeY(delta: number){
+        if(!this.initialized) return null;
+        const scene = this.scene!;
+        const voxelObject = scene.getActiveVoxelObject();
+        if(!voxelObject) return null;         
+        const newY = delta+voxelObject.size.y 
+        const newSize = voxelObject.size.copy();
+        newSize.y = newY;
+        const sizeChanged = newSize.y!==voxelObject.size.y; 
+        voxelObject.resize(newSize);
+        if(sizeChanged){
+            this.renderScene!();
+        }              
+    }
+    
+    addVoxelObjectSizeZ(delta: number){
+        if(!this.initialized) return null;
+        const scene = this.scene!;
+        const voxelObject = scene.getActiveVoxelObject();
+        if(!voxelObject) return null;         
+        const newZ = delta+voxelObject.size.z 
+        const newSize = voxelObject.size.copy();
+        newSize.z = newZ;
+        const sizeChanged = newSize.z!==voxelObject.size.z; 
+        voxelObject.resize(newSize);
+        if(sizeChanged){
+            this.renderScene!();
+        }             
+    }    
+
+    setVoxelObjectSize(newSize: Vector3){
         if(!this.initialized) return;
         const scene = this.scene!;
         const voxelObject = scene.getActiveVoxelObject();
@@ -1012,9 +1108,14 @@ export class EditorController{
         const scene = this.scene!;
         const voxelObject = scene.getActiveVoxelObject();
         if(!voxelObject) return;
-
         const currentSize: Vector3 = voxelObject.size;
-        voxelObject.resize(currentSize.multByScalar(mult));
+
+        const newSize = currentSize.copy();
+        newSize.x = Math.floor(newSize.x * mult);
+        newSize.y = Math.floor(newSize.y * mult);
+        newSize.z = Math.floor(newSize.z * mult)
+            
+        voxelObject.resize(newSize);
         if(currentSize != voxelObject.size){
             this.renderScene!();
         }

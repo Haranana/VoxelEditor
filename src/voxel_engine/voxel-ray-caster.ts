@@ -48,13 +48,6 @@ export function getFirstVoxelOnRay(_: Camera,
     const voxelSize: number = obj.getVoxelSize(); 
     const ray: Ray = new Ray(rayOrigin, rayDirection);
 
-    /*
-    console.log(`
-        Origin: ${ray.origin.toString()} |
-        Direction: ${ray.direction.toString()} |
-        Point pos (model space) : ${pointFarMsPersp.toString()} |
-    `)  ;*/
-    
     let currentRayT: number = 0;
     if(obj.getVoxelFromModelSpacePoint(ray.get(currentRayT))){
         return {voxelCoords: obj.pointCoordinatesToVoxelId(ray.get(currentRayT)) , hitDirection: "PosX"};
@@ -161,16 +154,6 @@ export function getFirstVoxelOnRay(_: Camera,
         //there shouldn't be any possible way for all signs to be 0 so it's assumed that tForNextVoxels is never empty at this point
         //const minT = Math.min(...deltasT);
 
-        /*
-        console.log(`[getNextT] finding delta beetwen 2 arguments of ray
-            position before = ${curRayValue.toString()} |
-            sign = ${sign} |
-            voxelSize = ${voxelSize} |
-            next (x,y,z) = (${nextVoxelX},${nextVoxelY},${nextVoxelZ})
-            diffs (x,y,z) = (${nextVoxelX as number - curRayValue.x},${nextVoxelY as number - curRayValue.y},${nextVoxelZ as number - curRayValue.z})
-            deltaT = (${minT})
-            `);
-        */
         return {minDelta: smallestDelta!, dir};
     }
     

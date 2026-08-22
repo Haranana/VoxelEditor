@@ -65,7 +65,8 @@ export class VoxelObject extends SceneObject{
     }
     
     //dictates hard borders of voxel object
-    readonly maxSize: Vector3 = new Vector3(256,256,256);
+    static readonly maxSize: Vector3 = new Vector3(256,256,256);
+    static readonly minSize: Vector3 = new Vector3(2,2,2);
 
     //size of whole voxelObject
     size : Vector3 = new Vector3(0,0,0);
@@ -145,6 +146,7 @@ export class VoxelObject extends SceneObject{
         this.#borderOutlineRo.mesh = null;
         this.#setBorderOutlineRoToRebuild();
         this.#setBorderGridToRebuild();
+        this.sizeChangeEvent.emit();
     }
     sizeChangeEvent: VoxelEngineEvent<void> = new VoxelEngineEvent();
 
@@ -268,12 +270,12 @@ export class VoxelObject extends SceneObject{
     //returns id of possible vexel in this object
     //whether any voxel exists under this id is unkown
     //assumes that (0,0,0) is in the middle of the object
-    pointCoordinatesToVoxelId(v: Vector3) : Vector3{
-        const xCord :number = Math.floor(v.x/this.#voxelSize)+this.size.x/2;
-        const yCord :number = Math.floor(v.y/this.#voxelSize)+this.size.y/2;
-        const zCord :number = Math.floor(v.z/this.#voxelSize)+this.size.z/2;
-        const result = new Vector3(xCord, yCord, zCord);        
-        return result;
+    pointCoordinatesToVoxelId(v: Vector3): Vector3 {
+        const xCord = Math.floor(v.x / this.#voxelSize) + Math.floor(this.size.x / 2);
+        const yCord = Math.floor(v.y / this.#voxelSize) + Math.floor(this.size.y / 2);
+        const zCord = Math.floor(v.z / this.#voxelSize) + Math.floor(this.size.z / 2);
+
+        return new Vector3(xCord, yCord, zCord);
     }
 
     //receives voxel id
@@ -282,6 +284,7 @@ export class VoxelObject extends SceneObject{
         const x = v.x;
         const y = v.y;
         const z = v.z;
+        //console.log(`[getVoxel] request for voxel (${x},${y},${z}) | for object of size: (${this.size.x},${this.size.y},${this.size.z})`);
 
         if (
             x < 0 || x >= this.size.x ||
@@ -293,6 +296,7 @@ export class VoxelObject extends SceneObject{
 
         const chosenVoxel = this.voxels[x][y][z];
         return chosenVoxel ? copyVoxel(chosenVoxel) : null;
+       
     }
 
     setVoxel(pos: Vector3, newVoxel: Voxel){
@@ -1173,9 +1177,9 @@ rotateSelectedVoxelsInSelectedAreaByZ(areaType: SelectedAreaType): number {
     //returns new size of voxel object
     resize(newSize: Vector3) : Vector3{
         const clampedNewSize = new Vector3(
-            clamp({value: newSize.x , min: 0 , max: this.maxSize.x}),
-            clamp({value: newSize.y , min: 0 , max: this.maxSize.y}),
-            clamp({value: newSize.z , min: 0 , max: this.maxSize.z})
+            clamp({value: newSize.x , min: VoxelObject.minSize.x , max: VoxelObject.maxSize.x}),
+            clamp({value: newSize.y , min: VoxelObject.minSize.y , max: VoxelObject.maxSize.y}),
+            clamp({value: newSize.z , min: VoxelObject.minSize.z , max: VoxelObject.maxSize.z})
         );
 
         if(!clampedNewSize.equals(this.size)){
@@ -1211,7 +1215,7 @@ rotateSelectedVoxelsInSelectedAreaByZ(areaType: SelectedAreaType): number {
             this.voxels = newVoxels;
             this.staticSelectedArea.voxels = newStaticSelectedVoxels;
             
-
+            //console.log(`[resize] resizing object to: ${this.size}`);
             this.#notifyOfVoxelsChange();
             this.#notifyOfSizeChange();
             if(selectedAreaChanged) this.#notifyOfSelectedAreaChange();

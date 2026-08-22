@@ -16,6 +16,7 @@ export type EditToolsWidgetProps = {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     onValueChange: ()=>void;
+    
 }
 
 export function EditToolsWidget(props: EditToolsWidgetProps){

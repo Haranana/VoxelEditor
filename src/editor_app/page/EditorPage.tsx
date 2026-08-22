@@ -16,7 +16,7 @@ import { SelectToolsWidget } from "../editor_widgets/select_tools/SelectToolsWid
 import { EditToolsWidget } from "../editor_widgets/edit_tools/EditToolsWidget";
 import ScenePropertiesWidget from "../editor_widgets/ScenePropertiesWidget";
 import { ColorPaletteWidget } from "../editor_widgets/ColorPaletteWidget";
-import { EditVoxelObjectWidget } from "../editor_widgets/EditVoxelObjectWidget";
+import { EditVoxelObjectWidget } from "../editor_widgets/edit_voxel_object/EditVoxelObjectWidget";
 import ResizableContainer from "../editor_widgets/ResizableContainer";
 import EditorCanvas from "../editor_widgets/EditorCanvas";
 import { SceneListWidget } from "../editor_widgets/scene_list/SceneListWidget";
@@ -212,6 +212,7 @@ export default function EditorPage() {
     observer.observe(bodyVerticalRef.current);
     return () => observer.disconnect();
   }, []);
+  
 
   useEffect(() => {
     if (horizontalWidth <= 0) return;
@@ -333,50 +334,6 @@ export default function EditorPage() {
   />
   
   const [isSelectToolsWidgetOpen, setIsSelectToolsWidgetOpen] = useState<boolean>(true);
-  /*
-  const selectToolsButton : ActionButtonData[] = [
-    {
-      id: "voxelSelectButton",
-      label: "voxel",
-      onClick: () => {controller.setSelectMode("Voxel"); onSelectToolsUpdated()},
-      disabled: (controller.getSelectMode() === "Voxel"),
-    },
-    {
-      id: "cubeSelectButton",
-      label: "cube",
-      onClick: () => {controller.setSelectMode("Cube"); onSelectToolsUpdated()},
-      disabled: controller.getSelectMode()==="Cube",
-    },
-    {
-      id: "faceSelectButton",
-      label: "face",
-      onClick: () => {controller.setSelectMode("Face"); onSelectToolsUpdated()},
-      disabled: controller.getSelectMode() === "Face",
-    },
-    {
-      id: "colorSelectButton",
-      label: "color",
-      onClick: () => {controller.setSelectMode("Color"); onSelectToolsUpdated()},
-      disabled: controller.getSelectMode() === "Color",
-    },
-      {
-      id: "connectedSelectButton",
-      label: "connected",
-      onClick: () => {controller.setSelectMode("Connected"); onSelectToolsUpdated()},
-      disabled: controller.getSelectMode() === "Connected",
-    },
-{
-      id: "marqueeSelectButton",
-      label: "marquee",
-      onClick: () => {controller.setSelectMode("Marquee"); onSelectToolsUpdated()},
-      disabled: controller.getSelectMode() === "Marquee",
-    },    
-  ];
-
-  const selectToolsButtons : React.ReactNode = <ActionButtonsPanel
-    buttons={selectToolsButton}
-  />*/
-
   const selectToolsWidget : React.ReactNode = <SelectToolsWidget
     isOpen = {isSelectToolsWidgetOpen}
     onOpenChange={setIsSelectToolsWidgetOpen}
@@ -448,6 +405,7 @@ export default function EditorPage() {
   const editVoxelObjectWidget: React.ReactNode = <EditVoxelObjectWidget
         isOpen={isEditVoxelObjectWidgetOpen}
         onOpenChange={setEditVoxelObjectWidgetOpen}
+        onValueChange={()=>{setEditObjectVersion(prev=>(prev+1))}}
         version={editObjectVersion}
   />
 
