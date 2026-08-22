@@ -634,7 +634,7 @@ export class EditorController{
         if(selectType === "static"){
             selectedAreaChanged = voxelObject.resetSelect("static")!=0;
             if(this.selectMode == "Voxel"){
-                selectedAreaChanged = selectedAreaChanged || voxelObject.selectVoxel(hitVoxel, "static");
+                selectedAreaChanged = voxelObject.selectVoxel(hitVoxel, "static") || selectedAreaChanged ;
             } 
             else if(this.selectMode == "Face"){
                 selectedAreaChanged = voxelObject.selectFace(hitVoxel, rayCastResults.hitDirection, "static") || selectedAreaChanged;
