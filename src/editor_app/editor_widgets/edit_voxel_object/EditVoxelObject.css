@@ -15,7 +15,7 @@
     grid-template-columns: repeat(3,1fr);
     grid-template-rows: repeat(1,1fr);
     gap: 5px;
-    max-width: 150px;
+    max-width: 180px;
     justify-content: center;
 }
 

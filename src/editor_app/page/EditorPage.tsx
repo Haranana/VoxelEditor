@@ -1,8 +1,6 @@
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import "./Editor.css"
-import { Vector3 } from "../../math/vector3.type";
-import { Camera } from "../../voxel_engine/scene-objects/camera/camera";
-import { getBasicSampleVoxelObject, getFlipRotationTestSampleVoxelObject } from "../../voxel_engine/scene-objects/voxel/sample-voxel-objects";
+import { getFlipRotationTestSampleVoxelObject } from "../../voxel_engine/scene-objects/voxel/sample-voxel-objects";
 import { Renderer, type RenderContext } from "../../render_engine/renderer";
 import { ControllerContext } from "../editor_controller/ControllerContext";
 import { Scene } from "../../voxel_engine/scene/scene";
@@ -14,7 +12,7 @@ import CameraPropertiesWidget from "../editor_widgets/CameraPropertiesWidget";
 import { ActionButtonsPanel, type ActionButtonData } from "../editor_widgets/ActionButtonsPanel";
 import { SelectToolsWidget } from "../editor_widgets/select_tools/SelectToolsWidget";
 import { EditToolsWidget } from "../editor_widgets/edit_tools/EditToolsWidget";
-import ScenePropertiesWidget from "../editor_widgets/ScenePropertiesWidget";
+import ScenePropertiesWidget from "../editor_widgets/scene_properties/ScenePropertiesWidget";
 import { ColorPaletteWidget } from "../editor_widgets/ColorPaletteWidget";
 import { EditVoxelObjectWidget } from "../editor_widgets/edit_voxel_object/EditVoxelObjectWidget";
 import ResizableContainer from "../editor_widgets/ResizableContainer";
@@ -353,37 +351,13 @@ export default function EditorPage() {
   function onScenePropertiesUpdated(){
     setScenePropertiesVersion(prev=>prev+1);
   }
-
   const [isScenePropertiesWidgetOpen, setIsScenePropertiesWidgetOpen] = useState<boolean>(false);
-  const scenePropertiesButton : ActionButtonData[] = [
-    {
-      id: "ObjectGrid",
-      label: "object wireframe",
-      onClick: () => {sceneRef.current.toggleSelectedObjectWireframe(); onScenePropertiesUpdated()},
-    },
-    {
-      id: "borderGrid",
-      label: "border grid",
-      onClick: () => {sceneRef.current.toggleSelectedObjectBorderGrid(); onScenePropertiesUpdated()},
-    },
-    {
-      id: "borderWire",
-      label: "border outline",
-      onClick: () => {
-        sceneRef.current.toggleSelectedObjectBorderOutline(); 
-        onScenePropertiesUpdated()
-      },
-    },
-  ];
 
-  const scenePropertiesButtons : React.ReactNode = <ActionButtonsPanel
-    buttons={scenePropertiesButton}
-  />
 
   const scenePropertiesWidget : React.ReactNode = <ScenePropertiesWidget
-    buttonPanel = {scenePropertiesButtons}
     isOpen = {isScenePropertiesWidgetOpen}
     onOpenChange={setIsScenePropertiesWidgetOpen}
+    onValueChange = {()=>setScenePropertiesVersion((prev)=>prev+1)}
     version={scenePropertiesVersion}
   />
 

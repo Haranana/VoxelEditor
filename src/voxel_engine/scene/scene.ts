@@ -181,6 +181,11 @@ export class Scene{
         return null;
     }
 
+    //returns copy
+    getSeletedVoxelObjectRenderOptions(): SelectedVoxelObjectRenderOptions{
+        return {...this.seletedVoxelObjectRenderOptions}
+    }
+
     /*
     getSelectedSceneObject(): SceneObject | null{
         if(this.#selectedSceneObjectId != null){

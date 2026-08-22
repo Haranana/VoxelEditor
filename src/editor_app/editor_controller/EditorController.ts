@@ -839,22 +839,40 @@ export class EditorController{
     }
 
     //scene
-    toggleSceneObjectGrid(){
+    toggleActiveVoGrid(){
         if(!this.initialized || !this.scene) return;
-        this.scene.toggleSelectedObjectWireframe;
+        this.scene.toggleSelectedObjectWireframe();
         this.renderScene!();
     }
 
-    toggleSceneBorderGrid(){
+    toggleActiveVoBorderGrid(){
         if(!this.initialized || !this.scene) return;
-        this.scene.toggleSelectedObjectBorderGrid;
+        this.scene.toggleSelectedObjectBorderGrid();
         this.renderScene!();
     }
 
-    toggleSceneBorderWire(){
+    toggleActiveVoBorderOutline(){
         if(!this.initialized || !this.scene) return;
-        this.scene.toggleSelectedObjectBorderOutline;
+        this.scene.toggleSelectedObjectBorderOutline();
         this.renderScene!();
+    }
+
+    isActiveVoGridOn():boolean{
+        if(!this.initialized || !this.scene) return false;
+        const options = this.scene.getSeletedVoxelObjectRenderOptions();
+        return options.voxelObjectGrid;
+    }
+
+    isActiveVoBorderGridOn():boolean{
+        if(!this.initialized || !this.scene) return false;
+        const options = this.scene.getSeletedVoxelObjectRenderOptions();
+        return options.borderGrid;
+    }
+
+    isActiveVoBorderOutlineOn():boolean{
+        if(!this.initialized || !this.scene) return false;
+        const options = this.scene.getSeletedVoxelObjectRenderOptions();
+        return options.borderOutline;
     }
 
     setSceneActiveObject(sceneId: number){
