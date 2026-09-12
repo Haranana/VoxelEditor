@@ -301,17 +301,20 @@ export default function EditorPage() {
       const camera = sceneRef.current.getActiveCamera();
       
       const scene = sceneRef.current;
-      if(!camera || !canvasRef.current){
+      const activeCameraPosition = scene.getActiveCamera()?.transform.translation;
+      if(!camera || !canvasRef.current || !activeCameraPosition){
         return;
       }
       const resolution = new Vector2(canvasRef.current.width, canvasRef.current.height);
 
+      
       const renderContext: RenderContext = {
         device: null,
         queue: null,
         cameraContext: {
           viewMatrix: camera.getCameraView(),
           ndcProjection: camera.getProjectionMatrix(resolution),       
+          position: activeCameraPosition,
         },
         viewportContext: {
           resolution,
@@ -321,10 +324,13 @@ export default function EditorPage() {
           pitch: camera.pitch,
           yaw: camera.yaw,
         },
+        lightSourcesContext: {
+          lights: SceneRenderCollector.collectLightSource(),
+        },
         globalData: null,
       }
 
-      rendererRef.current.renderScene(SceneRenderCollector.collect(scene, camera, resolution), renderContext);
+      rendererRef.current.renderScene(SceneRenderCollector.collectRenderableObject(scene, camera, resolution), renderContext);
       rerenderOrderedRef.current = false;
     });
   }, []);

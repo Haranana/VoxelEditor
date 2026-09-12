@@ -4,6 +4,7 @@ import { Vector2 } from "../math/vector2.type";
 import type { ShaderResourceContext} from "./shaders/shader-resource";
 import type { Matrix4 } from "../math/matrix4.type";
 import { GPUMeshCache } from "./meshes/mesh-cache";
+import type { DistantLight } from "./renderableObjects/distantLight";
 import type { Vector3 } from "../math/vector3.type";
 
 export type ShaderGPUResources = {
@@ -24,6 +25,7 @@ export type RenderContext = {
     cameraContext: CameraContext | null,
     viewportContext: ViewportContext | null,
     gizmoCameraContext: GizmoCameraContext | null,
+    lightSourcesContext: LightSourcesContext,
     timeContext: TimeContext | null,
     globalData: unknown,
 }
@@ -31,6 +33,7 @@ export type RenderContext = {
 export type CameraContext = {
     viewMatrix: Matrix4,
     ndcProjection: Matrix4,
+    position: Vector3,
 }
 
 export type GizmoCameraContext = {
@@ -40,6 +43,10 @@ export type GizmoCameraContext = {
 
 export type ViewportContext = {
     resolution: Vector2,
+}
+
+export type LightSourcesContext = {
+    lights: DistantLight[];
 }
 
 export type TimeContext = {
@@ -54,6 +61,10 @@ async function debugShader(shaderModule: GPUShaderModule) {
     }
 }
 
+/*
+    to do: add caching of whatever is possible!
+
+*/
 export class Renderer{
 
     //readonly shaderResourceRegistry = new Map<Function, ShaderResourceHandler>();
@@ -73,7 +84,6 @@ export class Renderer{
     #idTexture: GPUTexture | null = null;
     #gizmosDepthTexture: GPUTexture | null = null
     #textureSize: Vector2 | null = null;
-
 
     initialized: boolean = false;
     initializing: boolean = false;

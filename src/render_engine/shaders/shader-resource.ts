@@ -1,4 +1,4 @@
-import { makeShaderDataDefinitions, makeStructuredView, type StructuredView } from "webgpu-utils"
+import { getSizeAndAlignmentOfUnsizedArrayElement, makeShaderDataDefinitions, makeStructuredView, type ShaderDataDefinitions, type StructuredView, type VariableDefinition } from "webgpu-utils"
 import type { RenderableObject } from "../renderableObjects/renderableObject"
 import type { RenderContext } from "../renderer"
 import { Matrices4, PerspectiveMatrices } from "../../math/matrices"
@@ -10,7 +10,7 @@ import type { ProjectionType } from "../../voxel_engine/scene-objects/camera/cam
 
 export type ShaderResourceContext = {
     object: RenderableObject,
-    renderContext: RenderContext
+    renderContext: RenderContext,
 }
 
 export abstract class ShaderResources{
@@ -23,6 +23,90 @@ export abstract class ShaderResources{
     abstract getBindGroupLayoutDescriptor(context: ShaderResourceContext): GPUBindGroupLayoutDescriptor;
     abstract init(context: ShaderResourceContext, layout: GPUBindGroupLayout): boolean;
     abstract update(context: ShaderResourceContext): boolean;
+}
+
+/*
+    assumes that there are no more than 32 lights on the scene
+    todo: in future this limit should be guarded by the app
+*/
+export class LightSourcesResources extends ShaderResources{
+    initialized: boolean = false;
+    storageBufferView: StructuredView | null = null;
+    storageBuffer: GPUBuffer | null = null;
+    bindGroup: GPUBindGroup | null = null;
+    lightSourcesMaxAmount: number = 32;
+
+    getBindGroup(): GPUBindGroup | null{
+        return this.bindGroup;
+    }
+   
+    getBindGroupLayoutDescriptor(): GPUBindGroupLayoutDescriptor{
+        return {
+            entries: [
+                {
+                    binding: 0,
+                    visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+                    buffer: { type: "read-only-storage" },
+                },
+            ],
+        }
+    }
+
+    init(context: ShaderResourceContext, layout: GPUBindGroupLayout): boolean{
+        const device : GPUDevice | null = context.renderContext.device;
+        const queue : GPUQueue | null = context.renderContext.queue;        
+        const shaderCode: string | undefined = context.object.material?.shader.code;
+        if(!device || !queue || !shaderCode) return false;
+        
+        const bindGroupLayout = layout;
+        
+        /*
+            Explanation for what's going on in the lightSourcesArrayBuffer size:     
+            https://greggman.github.io/webgpu-utils/docs/functions/getSizeAndAlignmentOfUnsizedArrayElement.html
+        */
+
+        const shaderDataDefiniton = makeShaderDataDefinitions(shaderCode);
+        const ligthSourceShaderStructSize = getSizeAndAlignmentOfUnsizedArrayElement(
+            shaderDataDefiniton!.storages.lightSourcesBuffer
+        ).size;
+
+        const lightSourcesArrayBuffer = new ArrayBuffer(
+            shaderDataDefiniton.storages.lightSourcesBuffer.size + ligthSourceShaderStructSize * this.lightSourcesMaxAmount);
+            
+
+        this.storageBufferView = makeStructuredView(shaderDataDefiniton.storages.lightSourcesBuffer, lightSourcesArrayBuffer);
+        this.storageBuffer = device.createBuffer({
+            label: 'light sources storage buffer',
+            size: this.storageBufferView.arrayBuffer.byteLength,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+        });
+
+        this.bindGroup = device.createBindGroup({
+            label: 'light sources storage buffer bind group',
+            layout: bindGroupLayout,
+            entries:[{
+                binding: 0,
+                resource: {buffer: this.storageBuffer},
+            }]
+        })
+
+        this.initialized = true;
+        return true;
+    }
+
+    update(context: ShaderResourceContext): boolean{
+        if(!this.initialized || !context.renderContext.queue || !context.renderContext.lightSourcesContext) return false;
+
+        const lightSources = {
+            lightsAmount: context.renderContext.lightSourcesContext.lights.length,
+            lights: context.renderContext.lightSourcesContext.lights.map(lightClassObj => lightClassObj.toObj()),            
+        } 
+        this.storageBufferView!.set(lightSources);
+      
+        context.renderContext.queue.writeBuffer(this.storageBuffer!, 0, this.storageBufferView!.arrayBuffer); 
+
+        return true;
+    }
 }
 
 export class CameraShaderResources extends ShaderResources{
@@ -79,6 +163,7 @@ export class CameraShaderResources extends ShaderResources{
         this.uniformBufferView!.set({
             viewMatrix: context.renderContext.cameraContext.viewMatrix.toArrays(),
             ndcProjection: context.renderContext.cameraContext.ndcProjection.toArrays(),
+            position: context.renderContext.cameraContext.position.toArray3(),
         });
         context.renderContext.queue.writeBuffer(this.uniformBuffer!, 0, this.uniformBufferView!.arrayBuffer); 
         return true;

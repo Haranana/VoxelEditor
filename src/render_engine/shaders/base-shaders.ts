@@ -1,3 +1,8 @@
+
+
+
+
+
 export const shaderViewportResourceCode: string = 
 `
     struct ShaderViewportResource{
@@ -13,11 +18,13 @@ export const shaderGizmoCameraResourceCode: string =
     };
 `
 
+// Camera position should be in world space
 export const shaderCameraResourceCode: string = 
 `
     struct ShaderCameraResource{
         viewMatrix: mat4x4f,       
         ndcProjection: mat4x4f, 
+        position: vec3f,
     };
 `
 export const shaderWorldObjectResourceCode: string = 
@@ -196,6 +203,117 @@ fn eyeFromOrbit(targetPosition: vec3f, distance: f32, pitch: f32, yaw: f32) -> v
     );
 }
 `;
+
+/*
+    For now supports only distant lights
+    also material for now only stores shadingModel id, 
+    which for now is only defined for flat shading: 
+    0 - flat shading 
+    any non-defined value will return 0
+
+    lightVector - vector FROM point to light source
+    viewVector - vector from point to camera position 
+*/
+export const lightSourcesResourceCode: string = 
+`
+    struct LightSource{
+        color: vec3f,
+        direction: vec3f,
+    };
+
+    struct LightSourcesResource{
+        lightsAmount: u32,
+        lights: array<LightSource>, 
+    };
+
+    struct Material{
+        shadingModel: u32,
+    };
+
+    fn cShaded(shadingModel: u32,viewVector: vec3f, normal: vec3f, surfaceColor: vec3f) -> vec3f {
+        if(shadingModel == 0){
+            var out: vec3f = cUnlit(viewVector, normal, surfaceColor);
+            let lightsAmount = lightSourcesBuffer.lightsAmount;
+            
+            for(var i:u32 = 0; i < lightsAmount; i++){
+                var lightDirection: vec3f = normalize(lightSourcesBuffer.lights[i].direction);
+                let lightColor: vec3f = lightSourcesBuffer.lights[i].color;
+
+                var lightVector: vec3f = vec3f(-lightDirection.x, -lightDirection.y, -lightDirection.z);
+                out += lambertDiffuse(lightVector, normal) * cLit(lightColor, surfaceColor);
+            }
+
+            return out;
+            
+        }else{
+            return vec3f(1.0,1.0,1.0);    
+        }
+    }
+
+    fn lambertDiffuse(lightVector: vec3f, normal: vec3f) -> f32{
+        return max(dot(lightVector, normal), 0.0);
+    }
+
+    fn cLit(lightColor: vec3f ,surfaceColor: vec3f) -> vec3f {
+        return lightColor * surfaceColor;
+    }
+
+    fn cUnlit(viewVector: vec3f, normal: vec3f, surfaceColor: vec3f) -> vec3f {
+        let out = vec3f(0.1,0.1,0.1);
+        return out;
+    }
+`
+
+export function shadedWorldObjectShader(){
+    return `
+        ${shaderViewportResourceCode}
+        @group(0) @binding(0) var<uniform> viewportBuffer: ShaderViewportResource;
+        ${shaderCameraResourceCode}
+        @group(1) @binding(0) var<uniform> cameraBuffer: ShaderCameraResource;
+        ${shaderWorldObjectResourceCode}
+        @group(2) @binding(0) var<uniform> objectBuffer: ShaderWorldObjectResource;
+        ${lightSourcesResourceCode}
+        @group(3) @binding(0) var<storage, read> lightSourcesBuffer: LightSourcesResource;
+
+        struct Vertex{
+            @location(0) position: vec3f,
+            @location(1) color: vec4f,
+            @location(2) normal: vec3f,
+        };
+
+        struct VertexShaderOutput{
+            @builtin(position) position: vec4f,
+            @location(0) @interpolate(flat) color: vec4f,
+            @location(1) @interpolate(flat) normal: vec3f,
+            @location(2) viewVector: vec3f,
+        };
+
+        ${fequalFunctionCode}
+
+        @vertex fn vertexShader(
+            v: Vertex) -> VertexShaderOutput {
+
+            var out: VertexShaderOutput;
+
+            let transform = objectBuffer.translation * objectBuffer.rotation * objectBuffer.scale; 
+            let modelPosition = vec4f(v.position, 1.0);                
+            let worldPosition = transform * vec4f(v.position, 1.0);
+            let clipPosition = (cameraBuffer.ndcProjection * cameraBuffer.viewMatrix * worldPosition).xyzw;
+
+            out.position = clipPosition;
+            out.normal = normalize(v.normal);
+            out.viewVector = cameraBuffer.position - worldPosition.xyz;
+            out.color = v.color;
+
+            return out;
+        }
+
+            @fragment fn fragmentShader(v: VertexShaderOutput) -> @location(0) vec4f {
+                var viewVector = normalize(v.viewVector); 
+                return vec4f(clamp(cShaded(0,viewVector, v.normal, v.color.xyz),vec3f(v.color.xyz)*0.75, vec3f(1.0) ), v.color.w);
+            }
+        `
+}
 
 export function worldObjectShader(){
     return `

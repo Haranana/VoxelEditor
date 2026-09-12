@@ -1,7 +1,7 @@
 import { RenderableObject } from "../../render_engine/renderableObjects/renderableObject";
-import { screenObjectShader, worldObjectGridShader, worldObjectShader } from "../../render_engine/shaders/base-shaders";
+import { screenObjectShader, shadedWorldObjectShader, worldObjectGridShader, worldObjectShader } from "../../render_engine/shaders/base-shaders";
 import { Shader } from "../../render_engine/shaders/shader";
-import { CameraShaderResources, GizmoCameraShaderResources, ScreenObjectShaderResources, ViewportShaderResources, WorldObjectShaderResources } from "../../render_engine/shaders/shader-resource";
+import { CameraShaderResources, GizmoCameraShaderResources, LightSourcesResources, ScreenObjectShaderResources, ViewportShaderResources, WorldObjectShaderResources } from "../../render_engine/shaders/shader-resource";
 import type { Gizmo } from "./gizmo/gizmo-object";
 import { generateVoBorderGridMesh, generateVoBorderOutlineMesh, generateVoGridMesh, generateVoMesh, generateVoSelectedAreaMesh} from "./voxel/voxel-mesh-generator";
 import type { SelectedAreaType, VoxelObject } from "./voxel/voxel-object";
@@ -11,8 +11,8 @@ import type { SelectedAreaType, VoxelObject } from "./voxel/voxel-object";
 export class RenderableObjectManager{
     static createVoRo(vo: VoxelObject): RenderableObject{
         const out: RenderableObject = new RenderableObject();
-        const shader = new Shader(worldObjectShader(), "vertexShader", "fragmentShader", 
-        [new ViewportShaderResources(0) ,new CameraShaderResources(1),new WorldObjectShaderResources(2)]);
+        const shader = new Shader(shadedWorldObjectShader(), "vertexShader", "fragmentShader", 
+        [new ViewportShaderResources(0) ,new CameraShaderResources(1),new WorldObjectShaderResources(2), new LightSourcesResources(3)]);
         out.mesh = generateVoMesh(vo);
         out.material = {
             shader

@@ -36,6 +36,10 @@ export class Vector3 {
         return new Vector3(this.x * v.x, this.y * v.y, this.z * v.z);
     }
 
+    to(v: Vector3): Vector3{
+        return v.subVector(this);
+    }
+
     equals(v: Vector3, eps: number = 1e-9): boolean {
         return Math.abs(this.x - v.x) <= eps
             && Math.abs(this.y - v.y) <= eps

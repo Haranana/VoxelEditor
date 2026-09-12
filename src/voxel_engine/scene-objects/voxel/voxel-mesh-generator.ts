@@ -14,29 +14,25 @@ export function generateVoMesh(vo: VoxelObject): Mesh{
         attributes:[
             "position",
             "color",
-            "quadUV",
+            "normal",
         ]
     });
 
     const addVoxelSideToMesh = (leftTopPosition: Vector3, rightTopPosition: Vector3, rightBottomPosition: Vector3, leftBottomPosition: Vector3, color: Vector4) =>{
         const leftTop : MeshBuilderVertex = {
-            position: leftTopPosition,
-            quadUV: new Vector2(0,0), 
+            position: leftTopPosition,             
             color,
         }
         const rightTop: MeshBuilderVertex = {
-            position: rightTopPosition,
-            quadUV: new Vector2(1,0), 
+            position: rightTopPosition,            
             color,
         }
         const rightBottom: MeshBuilderVertex = {
-            position: rightBottomPosition,
-            quadUV: new Vector2(1,1), 
+            position: rightBottomPosition, 
             color,
         }
         const leftBottom: MeshBuilderVertex = {
-            position: leftBottomPosition,
-            quadUV: new Vector2(0,1), 
+            position: leftBottomPosition,             
             color,
         }
         meshBuilder.addQuad({leftTop,rightTop,rightBottom,leftBottom})

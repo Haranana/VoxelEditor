@@ -294,10 +294,10 @@ export class MeshBuilder{
         const bottomRight: MeshBuilderVertex = {...quad.rightBottom};
         const bottomLeft: MeshBuilderVertex = {...quad.leftBottom};
 
-        if(!this.#doesVertexFitLayout(topLeft, ['quadUV']) || 
-        !this.#doesVertexFitLayout(topRight, ['quadUV']) || 
-        !this.#doesVertexFitLayout(bottomRight, ['quadUV']) || 
-        !this.#doesVertexFitLayout(bottomLeft, ['quadUV'])){
+        if(!this.#doesVertexFitLayout(topLeft, ['quadUV', 'normal']) || 
+        !this.#doesVertexFitLayout(topRight, ['quadUV', 'normal']) || 
+        !this.#doesVertexFitLayout(bottomRight, ['quadUV' , 'normal']) || 
+        !this.#doesVertexFitLayout(bottomLeft, ['quadUV', 'normal'])){
             throw Error(`Vertices fields are not consistent with declared layout`)
         }
 
@@ -309,7 +309,16 @@ export class MeshBuilder{
             bottomLeft.quadUV = new Vector2(1,0);
         }
 
-        //todo insert normals to vertices here
+        //adding normals if this attribute is required by layout
+        if(this.meshBuilderLayout.attributes.find(attrName=>attrName==='normal')){
+            const normal = this.meshBuilderLayout.frontFace === 'cw'?
+            topLeft.position.to(topRight.position).crossProduct(  topLeft.position.to(bottomLeft.position) )
+            : topLeft.position.to(topRight.position).crossProduct(  topLeft.position.to(bottomLeft.position) ).multByScalar(-1);
+            topLeft.normal = normal;
+            topRight.normal = normal;
+            bottomRight.normal = normal;
+            bottomLeft.normal = normal;
+        }
 
         const currentVertexIndex : number = this.vertices.length; 
         this.vertices.push(topLeft);
@@ -331,11 +340,21 @@ export class MeshBuilder{
         const v2: MeshBuilderVertex = {...triangle.secondVertex};
         const v3: MeshBuilderVertex = {...triangle.thirdVertex};
         
-        if(!this.#doesVertexFitLayout(v1) || 
-        !this.#doesVertexFitLayout(v2) || 
-        !this.#doesVertexFitLayout(v3)){
+        if(!this.#doesVertexFitLayout(v1 , ['normal']) || 
+        !this.#doesVertexFitLayout(v2, ['normal']) || 
+        !this.#doesVertexFitLayout(v3, ['normal'])){
             throw Error(`Vertices fields are not consistent with declared layout`)
         }         
+
+        //adding normals if this attribute is required by layout
+        if(this.meshBuilderLayout.attributes.find(attrName=>attrName==='normal')){
+            const normal = this.meshBuilderLayout.frontFace === 'cw'?
+            v1.position.to(v2.position).crossProduct(  v1.position.to(v3.position) )
+            : v1.position.to(v2.position).crossProduct(  v1.position.to(v3.position) ).multByScalar(-1);
+            v1.normal = normal;
+            v2.normal = normal;
+            v3.normal = normal;
+        }
 
         const currentVertexIndex : number = this.vertices.length; 
         this.vertices.push(v1);
@@ -364,8 +383,8 @@ export class MeshBuilder{
     }
     
     /*
-        warning, this method doesn't have support for all gpu data formats, if new attributes are added
-        I should make sure that their formats are accounted for here
+        warning, this method doesn't have support for all gpu data formats, 
+        if new attributes are added make sure that their formats are accounted for here
     */
     build(): Mesh{
         const floatsPerVertex = this.gpuLayout.stride/4;

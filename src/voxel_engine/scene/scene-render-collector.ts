@@ -1,7 +1,9 @@
 import { Matrices4 } from "../../math/matrices";
 import { Spaces } from "../../math/spaces";
 import type { Vector2 } from "../../math/vector2.type";
+import { Vector3 } from "../../math/vector3.type";
 import { Vectors } from "../../math/vectors";
+import { DistantLight } from "../../render_engine/renderableObjects/distantLight";
 import type { RenderableObject } from "../../render_engine/renderableObjects/renderableObject";
 import type { Camera } from "../scene-objects/camera/camera";
 import type { SceneObject } from "../scene-objects/sceneObject";
@@ -11,8 +13,13 @@ import { SceneGizmos } from "./scene-gizmos";
 
 
 //returns array of RenderableObjects to render in each frame based on scene and render options
+
 export class SceneRenderCollector{
-    public static collect(scene: Scene, camera: Camera, canvasSize: Vector2): RenderableObject[]{
+
+    //debug light for model view
+    static readonly modelViewDistLight: DistantLight = new DistantLight(new Vector3(1,0,1));
+    
+    public static collectRenderableObject(scene: Scene, camera: Camera, canvasSize: Vector2): RenderableObject[]{
         const out: RenderableObject[] = [];
         
         const isSelectedVoxelObject = (obj: SceneObject) =>{
@@ -108,5 +115,9 @@ export class SceneRenderCollector{
         }             
 
         return out;
+    }
+
+    public static collectLightSource(): DistantLight[]{
+        return [this.modelViewDistLight];
     }
 }
