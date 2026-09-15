@@ -1,9 +1,10 @@
 import { createRoot } from "react-dom/client";
 import { StrictMode } from "react";
-import EditorPage from "./editor_app/page/EditorPage";
+import EditorPage from "./web-app/main-page/MainPage";
 import './index.css'
-import { EditorController } from "./editor_app/editor_controller/EditorController";
-import { ControllerContext } from "./editor_app/editor_controller/ControllerContext";
+import { ControllerContext } from "./app-core/core-controller/core-controller-context";
+import { EditorController } from "./app-core/core-controller/core-controller";
+
 
 const controller = new EditorController(); 
 

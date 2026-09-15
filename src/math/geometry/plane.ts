@@ -1,5 +1,4 @@
-import type { Vector2 } from "../vector2.type";
-import type { Vector3 } from "../vector3.type";
+import type { Vector3 } from "../vector/vector3";
 
 export class Plane{
     #normal: Vector3; 

@@ -1,4 +1,4 @@
-import type { Vector3 } from "../vector3.type";
+import { Vector3 } from "../vector/vector3";
 
 export class Ray{
     direction: Vector3;
