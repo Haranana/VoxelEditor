@@ -5,10 +5,6 @@ import { Vector2 } from "../../../math/vector/vector2";
 import type { Scene } from "../../../app-core/scene/scene";
 
 export type EditorCanvasProps = {
-    renderer: Renderer,
-    scene: Scene,
-    onRenderAndSceneInit: ()=>void,
-    renderScene: ()=>void,
     canvasRef: RefObject<HTMLCanvasElement | null>;
 }
 
@@ -58,6 +54,7 @@ export default function EditorCanvas(props: EditorCanvasProps) {
         if(!props.canvasRef.current || !controller) return; 
     }
 
+    /*
     useEffect(()=>{
         const canvas = props.canvasRef.current;
         if (!canvas) return;
@@ -69,6 +66,7 @@ export default function EditorCanvas(props: EditorCanvasProps) {
 
         run();
     }, []);
+    */
 
     const pressedKeysRef = useRef<Set<string>>(new Set());
     useEffect(() => {
@@ -100,13 +98,7 @@ export default function EditorCanvas(props: EditorCanvasProps) {
         };
 
         const canvas = props.canvasRef.current;
-        if (!canvas) return;
-
-        const observer = new ResizeObserver(() => {
-            props.renderScene();
-        });
-
-        observer.observe(canvas);        
+        if (!canvas) return;  
 
         canvas.addEventListener("wheel", handleWheel);
         return () => {

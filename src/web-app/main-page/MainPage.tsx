@@ -1,8 +1,6 @@
-import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, {useContext, useEffect, useMemo, useRef, useState } from "react";
 import "./main-page.css"
-import { Renderer} from "../../render-engine/renderer";
 import type { ResizableContainerConsts } from "../editor-widgets/resizable-container/ResizableContainer";
-import { Vector2 } from "../../math/vector/vector2";
 import CameraPropertiesWidget from "../editor-widgets/camera-properties/CameraPropertiesWidget";
 import { SelectToolsWidget } from "../editor-widgets/select-tools/SelectToolsWidget";
 import { EditToolsWidget } from "../editor-widgets/edit-tools/EditToolsWidget";
@@ -14,22 +12,14 @@ import { EditSelectedVoxelsWidget } from "../editor-widgets/edit-selected-voxels
 import { ControllerContext } from "../../app-core/core-controller/core-controller-context";
 import { ColorPaletteWidget } from "../editor-widgets/color-palette/ColorPaletteWidget";
 import EditorCanvas from "../editor-widgets/editor-canvas/EditorCanvas";
-import { SceneContextCreator } from "../../app-core/scene/scene-context-creator";
-import { Scene } from "../../app-core/scene/scene";
-import { getFlipRotationTestSampleVoxelObject } from "../../app-core/scene-objects/voxel/sample-voxel-objects";
-import type { VoxelObject } from "../../app-core/scene-objects/voxel/voxel-object";
-import { getSampleCamera } from "../../app-core/scene-objects/camera/sample-cameras";
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
 export default function MainPage() {
-
   const controller = useContext(ControllerContext)!;
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const sceneRef = useRef<Scene>(new Scene());
-  const rendererRef = useRef<Renderer>(new Renderer());
 
   //states for updating widgets when controller changes data
   const [cameraPropertiesVersion, setCameraPropertiesVersion] = useState<number>(0);
@@ -46,25 +36,17 @@ export default function MainPage() {
   function onEditToolsUpdated(){
     setEditToolsPropertiesVersion(prev=>prev+1);
   }
-
-  //init starting scene
-  const startingSceneInitializedRef = useRef<boolean>(false);
+ 
+  const controllerInitialized = useRef<boolean>(false);  
   useEffect(()=>{
-    if(startingSceneInitializedRef.current) return;
-    startingSceneInitializedRef.current = true;
-    
-    const obj: VoxelObject = getFlipRotationTestSampleVoxelObject("SampleObject")     
-    sceneRef.current.addObject(obj);
+     if (canvasRef.current === null || controllerInitialized.current) {
+        return;
+    }
 
-    sceneRef.current.addObject(getSampleCamera("MainCamera"));
-  },[])
-
-  useEffect(()=>{
-    if(!sceneRef.current.getActiveCamera()) return;
-    
-    controller.init(sceneRef.current, rerenderScene, (p: Vector2)=>rendererRef.current.readIdPixel(p));
+    controller.init(canvasRef.current);
+    controllerInitialized.current = true;
     controller.onCameraModified = onCameraUpdated;
-  },[]);
+  },[canvasRef]);
   
   const bodyHorizontalRef = useRef<HTMLDivElement | null>(null);
   const bodyVerticalRef = useRef<HTMLDivElement | null>(null);
@@ -280,39 +262,6 @@ export default function MainPage() {
     topPanelData,
     bottomPanelData,
   ]);
-
-  const onRenderAndSceneInit = () => {
-    if(!rendererRef.current.initialized) return;
-    rerenderScene();
-  }
-
-  //scene rerender
-  let rerenderOrderedRef = useRef<boolean>(false);
-  const rerenderScene = useCallback(() => {
-    if (
-      rerenderOrderedRef.current ||
-      !rendererRef.current.initialized
-    ) return;
-
-    rerenderOrderedRef.current = true;
-    
-    requestAnimationFrame(() => {          
-      if(!canvasRef.current || !controller){
-        return;
-      }
-
-      const scene = sceneRef.current;
-      const resolution = new Vector2(canvasRef.current.width, canvasRef.current.height);
-      const renderContext = SceneContextCreator.createRenderContext(scene,resolution);
-      const sceneRenderableObjects = SceneContextCreator.collectRenderableObject(scene, resolution);
-      if(!renderContext || !sceneRenderableObjects){
-        return;
-      }
-
-      rendererRef.current.renderScene(sceneRenderableObjects, renderContext);
-      rerenderOrderedRef.current = false;
-    });
-  }, []);
   
   const [isCameraPropertiesWidgetOpen, setIsCameraPropertiesWidgetOpen] = useState<boolean>(false);
   const cameraPropertiesWidget : React.ReactNode = <CameraPropertiesWidget
@@ -422,11 +371,7 @@ export default function MainPage() {
 
               <div className="EditorBodyCenter">
                 <EditorCanvas
-                renderer={rendererRef.current}
-                scene={sceneRef.current}
-                renderScene = {rerenderScene}
-                onRenderAndSceneInit={onRenderAndSceneInit}
-                canvasRef={canvasRef}
+                  canvasRef={canvasRef}
                 />
               </div>
 

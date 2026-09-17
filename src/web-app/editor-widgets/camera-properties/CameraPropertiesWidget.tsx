@@ -2,11 +2,11 @@ import { useContext, useState} from "react";
 import { ExpandableRow } from "../expendable-row/ExpendableRow";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/16/solid";
 import './camera-properties.css'
-import type { ProjectionType } from "../../../voxel-engine/scene-objects/camera/camera";
 import MdiLockOutline from "../../icons/MdiLockOutline";
 import MdiLockOpenVariantOutline from "../../icons/MdiLockOpenVariantOutline";
 import { ControllerContext } from "../../../app-core/core-controller/core-controller-context";
 import { MutableNumberField } from "../mutable-number-field/MutableNumberField";
+import type { ProjectionType } from "../../../app-core/scene-objects/camera/camera";
 
 export type CameraPropertiesProps = {
     isOpen: boolean;

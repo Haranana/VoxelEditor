@@ -3,10 +3,10 @@ import { StrictMode } from "react";
 import EditorPage from "./web-app/main-page/MainPage";
 import './index.css'
 import { ControllerContext } from "./app-core/core-controller/core-controller-context";
-import { EditorController } from "./app-core/core-controller/core-controller";
+import { CoreController } from "./app-core/core-controller/core-controller";
 
 
-const controller = new EditorController(); 
+const controller = new CoreController(); 
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

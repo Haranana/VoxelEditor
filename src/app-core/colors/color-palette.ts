@@ -3,10 +3,11 @@ import type { ColorRGB } from "./color-types";
 
 export class ColorPalette{
 
-    // Maximum amount of cells that 
-    // 512 was picked arbitrary, but some limit is necessary nonetheless
+    // Maximum amount of colors that color palette can store 
+    // 512 was picked arbitrary
     readonly maxPaletteSize = 512;
     // Actual amount of cells in this palette
+    
     paletteSize = 60;
     #palette : ColorRGB[] = this.#loadPalette(); 
 

@@ -8,7 +8,7 @@ import { Plane } from "../../math/geometry/plane.ts";
 import { Spaces } from "../../math/geometry/space-utils.ts";
 import { Ray } from "../../math/geometry/ray.ts";
 import { planeRayIntersection } from "../../math/geometry/intersection-tests.ts";
-import type { Scene } from "../scene/scene.ts";
+import { Scene } from "../scene/scene.ts";
 import { Camera, type ProjectionType } from "../scene-objects/camera/camera.ts";
 import { getSampleCamera } from "../scene-objects/camera/sample-cameras.ts";
 import { pickingInteractions, type PickingInteraction } from "../picking/picking-interactions.ts";
@@ -16,14 +16,16 @@ import type { ColorRGB } from "../colors/color-types.ts";
 import { rgbToVector4, vector4ToRgb } from "../colors/color-utils.ts";
 import { faceDirectionToVector, vectorToFaceDirection, VoxelObject } from "../scene-objects/voxel/voxel-object.ts";
 import type { SceneObject } from "../scene-objects/sceneObject.ts";
-import { getBasicSampleVoxelObject } from "../scene-objects/voxel/sample-voxel-objects.ts";
+import { getBasicSampleVoxelObject, getFlipRotationTestSampleVoxelObject } from "../scene-objects/voxel/sample-voxel-objects.ts";
 import { ColorPalette } from "../colors/color-palette.ts";
 import type { Vector4 } from "../../math/vector/vector4.ts";
 import { generateCylinderVoxelArray, generatePyramidVoxelArray, generateSphereVoxelArray } from "../scene-objects/voxel/voxel-array-generator.ts";
 import { AppCoreEvent } from "../events/event.ts";
+import { Renderer } from "../../render-engine/renderer.ts";
+import { SceneContextCreator } from "../scene/scene-context-creator.ts";
 
 /*
-    EditorController is Responsible for communication from UI to Voxel Engine, Render Engine and Domain
+    CoreController is Responsible for communication from UI to Voxel Engine, Render Engine and Domain
 */
 
 type SelectSession = {
@@ -79,34 +81,74 @@ export const editToSelectCompatibility = new Map<EditMode, Set<SelectMode>>([
     ["PickColor", new Set(["Voxel"])],
 ]);
 
-export class EditorController{
+export class CoreController{
 
     selectMode: SelectMode  = "Voxel";
     editMode: EditMode  = "Add";
     scene: Scene | null = null;
-    renderScene: (()=>void) | null = null;
+    renderer: Renderer | null = null;
+    canvas: HTMLCanvasElement | null = null;
+    
     readIdTexture: ((p: Vector2)=>Promise<(number|undefined)>) | null = null;
     initialized: boolean = false;
-
-
+    
     constructor(){}
 
-    init(scene: Scene, renderScene: ()=>void, readIdTexture: ((p: Vector2)=>Promise<(number|undefined)>) ){
-        this.renderScene = renderScene;
+    async init(canvas: HTMLCanvasElement){
+        this.canvas = canvas;
+        const observer = new ResizeObserver(() => {
+            this.renderScene();
+        });
+        observer.observe(canvas);              
+
         this.#startCameraMoveAnimationLoop();
-        this.scene = scene;
-        this.readIdTexture = readIdTexture;
-
+        this.scene = this.#initScene();
+        this.renderer = await this.#initRenderer(canvas);
+        this.readIdTexture = this.renderer.readIdPixel.bind(this.renderer);
         this.initialized = true;
+
+        this.renderScene();
     }
 
-    setRenderScene(renderScene: ()=>void){
-        this.renderScene = renderScene;
+    async #initRenderer(canvas: HTMLCanvasElement): Promise<Renderer>{
+        const renderer = new Renderer();
+        await renderer.init(canvas);
+        return renderer;
     }
 
-    //Pressed keys handling
+    #initScene(): Scene{        
+        const scene = new Scene();
+        const obj: VoxelObject = getFlipRotationTestSampleVoxelObject("SampleObject")     
+        scene.addObject(obj);
+        scene.addObject(getSampleCamera("MainCamera"));
+        return scene;
+    }
+
+    renderSceneOrdered: boolean = false;
+    renderScene(){
+        if (this.renderSceneOrdered || !this.initialized) {
+            return;
+        }
+        this.renderSceneOrdered = true;
+        
+        requestAnimationFrame(() => {      
+            const scene = this.scene!;
+            const resolution = new Vector2(this.canvas!.width, this.canvas!.height);
+            const renderContext = SceneContextCreator.createRenderContext(scene,resolution);
+            const sceneRenderableObjects = SceneContextCreator.collectRenderableObject(scene, resolution);
+
+            if(!renderContext || !sceneRenderableObjects){
+                this.renderSceneOrdered = false;
+                return;
+            }
+
+            this.renderer!.renderScene(sceneRenderableObjects, renderContext);
+            this.renderSceneOrdered = false;
+        });
+    };
+
+    //Camera properties handling
     pressedKeys : Set<string> = new Set();
-
     registerKeyDown(e: KeyboardEvent){
         this.pressedKeys.add(e.key.toLowerCase());
     }
@@ -115,7 +157,6 @@ export class EditorController{
         this.pressedKeys.delete(e.key.toLowerCase());
     }
 
-    //Camera properties handling
     cameraMoveSession: CameraMoveSession = {
         lastX : null,
         lastY : null,
