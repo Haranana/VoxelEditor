@@ -2,19 +2,20 @@ import { Vector3 } from "../../math/vector/vector3";
 import { Voxel } from "../voxel-types/voxel";
 import { baseVoxelCodec } from "../voxel-types/voxel-codec";
 import { VoxelBrickGrid } from "../voxel-types/voxel-grid";
-import { SetVoxelResult, VoxelFormat } from "./voxel-format";
+import { ChunkableVoxelFormat, SetChunkableVoxelResult, SetVoxelResult } from "./voxel-format";
 
+/*
 export class GridSetVoxelResult extends SetVoxelResult{
     readonly dirtyChunks: Vector3[] = [];
     constructor(success: boolean, dirtyChunks: Vector3[]){
         super(success)
         this.dirtyChunks = dirtyChunks;        
     }
-}
+}*/
 
-export class VoxelGridFormat extends VoxelFormat<Voxel>{
-    static readonly defaultGridSize: Vector3 = new Vector3(64,64,64);
-    static readonly defaultChunkSize: Vector3 = new Vector3(32,32,32);
+export class VoxelGridFormat extends ChunkableVoxelFormat<Voxel>{
+    static readonly defaultGridSize: Vector3 = new Vector3(32,32,32);
+    static readonly defaultChunkSize: Vector3 = new Vector3(16,16,16);
     static readonly defaultBrickSize: Vector3 = new Vector3(4,4,4);
     
     #grid: VoxelBrickGrid<Voxel>;
@@ -35,10 +36,10 @@ export class VoxelGridFormat extends VoxelFormat<Voxel>{
         return out;    
     }
 
-    setVoxel(gridPosition: Vector3, newVoxel: Voxel): GridSetVoxelResult{
+    setVoxel(gridPosition: Vector3, newVoxel: Voxel|null): SetChunkableVoxelResult{
         const setVoxelSuccess = this.#grid.set(gridPosition, newVoxel);
         const dirtyChunks: Vector3[] = this.#getChunksAffectedByVoxel(gridPosition);
-        const out = new GridSetVoxelResult(setVoxelSuccess, dirtyChunks);
+        const out = new SetChunkableVoxelResult(setVoxelSuccess, dirtyChunks);
         return out;
     }
 
@@ -49,7 +50,7 @@ export class VoxelGridFormat extends VoxelFormat<Voxel>{
     }
 
     getChunkSize(): Vector3 {
-        return this.chunkSize;
+        return this.chunkSize.copy();
     }
 
     #getChunksAffectedByVoxel(gridPosition: Vector3): Vector3[]{
@@ -90,7 +91,7 @@ export class VoxelGridFormat extends VoxelFormat<Voxel>{
     }
 
     #getChunkForVoxel(gridPosition: Vector3): Vector3 | undefined{
-        if(!this.#grid.inRange(gridPosition)){
+        if(!this.#grid.voxelInRange(gridPosition)){
             return undefined;
         }
         const chunkId = new Vector3(Math.floor(gridPosition.x / this.chunkSize.x),

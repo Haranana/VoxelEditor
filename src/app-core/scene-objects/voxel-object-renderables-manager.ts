@@ -5,7 +5,7 @@ import { Shader } from "../../render-engine/shaders/shader";
 import { CameraShaderResources, LightSourcesResources, ViewportShaderResources, WorldObjectShaderResources } from "../../render-engine/shaders/shader-resource";
 import type { VoxelObject } from "./voxel-object";
 import { VoxelObjectChunkRenderables, VoxelObjectRenderable } from "./voxel-object-renderable";
-import { generateVoBorderGridMesh, generateVoBorderOutlineMesh, generateVoSelectedAreaMesh } from "./voxel/voxel-mesh-generator";
+import { generateVoChunkMesh,generateVoGridMesh, generateVoBorderGridMesh, generateVoBorderOutlineMesh, generateVoSelectedAreaMesh } from "./voxel-object-meshes";
 
 // Class for managing renderableObjects related to voxel scene object  
 export class VoxelObjectRenderablesManager{    
@@ -22,8 +22,8 @@ export class VoxelObjectRenderablesManager{
         );
         this.#borderOutlineRenderableObject = new VoxelObjectRenderable(
             voxelObject,
-            this.#createVoBorderGridRo,
-            this.#updateVoBorderGridRo
+            this.#createVoBorderOutlineRo,
+            this.#updateVoBorderOutlineRo
         );
         this.#borderGridRenderableObject = new VoxelObjectRenderable(
             voxelObject,
@@ -60,7 +60,7 @@ export class VoxelObjectRenderablesManager{
         const out: RenderableObject = new RenderableObject();
         const shader = new Shader(shadedWorldObjectShader(), "vertexShader", "fragmentShader", 
         [new ViewportShaderResources(0) ,new CameraShaderResources(1),new WorldObjectShaderResources(2), new LightSourcesResources(3)]);
-        out.mesh = generateChunkMesh(vo, chunkPos);
+        out.mesh = generateVoChunkMesh(vo, chunkPos);
         out.material = {
             shader
         };
@@ -75,13 +75,13 @@ export class VoxelObjectRenderablesManager{
         ro.worldTransform = {...vo.transform};
         
         if(!ro.material || !ro.material.shader){            
-            const shader = new Shader(worldObjectShader(), "vertexShader", "fragmentShader", 
+            const shader = new Shader(shadedWorldObjectShader(), "vertexShader", "fragmentShader", 
             [new ViewportShaderResources(0) ,new CameraShaderResources(1),new WorldObjectShaderResources(2), new LightSourcesResources(3)]);
             ro.material = {shader};
         }
 
         if(!ro.mesh){
-            ro.mesh = generateChunkMesh(vo, chunkPos);
+            ro.mesh = generateVoChunkMesh(vo, chunkPos);
         }
         ro.name = vo.name;
         ro.collider = null; 

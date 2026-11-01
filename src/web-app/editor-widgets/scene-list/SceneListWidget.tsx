@@ -17,9 +17,9 @@ import Popup from "../../other-components/popup/Popup"
 import { Tooltip } from "../../other-components/tooltip/Tooltip"
 import { SceneObject } from "../../../app-core/scene-objects/sceneObject"
 import { LightSource } from "../../../app-core/scene-objects/light_source/light-source"
-import { VoxelObject } from "../../../app-core/scene-objects/voxel/voxel-object"
 import { Camera } from "../../../app-core/scene-objects/camera/camera"
 import { Gizmo } from "../../../app-core/scene-objects/gizmo/gizmo-object"
+import { VoxelObject } from "../../../app-core/scene-objects/voxel-object"
 
 type SceneListObjectType = "gizmo" | "camera" | "voxel" | "object"
 

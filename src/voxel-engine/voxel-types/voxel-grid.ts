@@ -58,7 +58,7 @@ export class VoxelBrickGrid<T extends Voxel>{
                                 const voxelGridPosition = new Vector3(brickX*this.brickSize.x+voxelX,
                                     brickY*this.brickSize.y+voxelY,
                                     brickZ*this.brickSize.z+voxelZ);
-                                if(!this.inRange(voxelGridPosition)){
+                                if(!this.voxelInRange(voxelGridPosition)){
                                     brickInitValues.push(undefined);
                                 }else{
                                     brickInitValues.push(null);
@@ -208,12 +208,12 @@ export class VoxelBrickGrid<T extends Voxel>{
     }
 
     #getBrickGridPosition(voxelGridPosition: Vector3): Vector3|undefined{        
-        const position = new Vector3(
+        const brickGridPosition = new Vector3(
             Math.floor(voxelGridPosition.x/this.brickSize.x),
             Math.floor(voxelGridPosition.y/this.brickSize.y),
             Math.floor(voxelGridPosition.z/this.brickSize.z)
         ) 
-        return this.inRange(position)? position : undefined;
+        return this.voxelInRange(voxelGridPosition) && this.brickInRange(brickGridPosition)? brickGridPosition : undefined;
     }
 
     #getVoxelInBrickPosition(voxelGridPosition: Vector3): Vector3{
@@ -223,7 +223,17 @@ export class VoxelBrickGrid<T extends Voxel>{
         );         
     }
 
-    inRange(brickGridPosition: Vector3): boolean{
+    voxelInRange(voxelGridPosition: Vector3): boolean{
+        const inGridSize = ( 
+            voxelGridPosition.x >= 0 && voxelGridPosition.x < this.gridSize.x &&
+            voxelGridPosition.y >= 0 && voxelGridPosition.y < this.gridSize.y &&
+            voxelGridPosition.z >= 0 && voxelGridPosition.z < this.gridSize.z)
+
+        return inGridSize;
+        
+    }
+
+    brickInRange(brickGridPosition: Vector3): boolean{
         return (
             brickGridPosition.x >= 0 && brickGridPosition.x < this.bricksAmount.x &&
             brickGridPosition.y >= 0 && brickGridPosition.y < this.bricksAmount.y &&

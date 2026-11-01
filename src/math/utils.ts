@@ -11,16 +11,15 @@ export type clampInput = {
     max?: number
 } 
 export function clamp(input: clampInput) {
-    if(input.min && input.max){
+    if(input.min!==undefined && input.max!==undefined){
         return Math.max(input.min, Math.min(input.max, input.value));
-    }else if(input.min){
+    }else if(input.min!==undefined){
         return Math.max(input.min, input.value);
-    }else if(input.max){
+    }else if(input.max!==undefined){
         return Math.min(input.max, input.value);
     }else{
         return input.value;
     }
-
 }
 
 export function mod(n: number, m: number) {

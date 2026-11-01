@@ -69,6 +69,7 @@ export class VoxelObjectChunkRenderables{
             if(this.#shouldUpdateRenderableObject(i)){
                 const chunkPos = gridOffsetToPos(i , voxelObject.getChunksAmount()); 
                 this.#updateRenderableObject(voxelObject, chunkPos, this.#renderableObjects[i]);
+                this.#dirtyFlags[i] = false;
             }
             out.push(this.#renderableObjects[i]);
         }        
@@ -80,9 +81,11 @@ export class VoxelObjectChunkRenderables{
         if(this.#shouldUpdateRenderableObject(i)){
             const chunkPost = gridOffsetToPos(i, voxelObject.getChunksAmount())
             this.#updateRenderableObject(voxelObject, chunkPost, this.#renderableObjects[i]);
+            this.#dirtyFlags[i] = false;
         }
         return this.#renderableObjects[i];
     }
+
     setRenderableObjectDirty(i: number): boolean{
         if(!this.inRange(i)) return false;
         this.#dirtyFlags[i] = true;
@@ -101,6 +104,6 @@ export class VoxelObjectChunkRenderables{
     }
 
     inRange(i: number): boolean{
-        return (i>0 && i<this.#renderableObjects.length);
+        return (i>=0 && i<this.#renderableObjects.length);
     }
 }

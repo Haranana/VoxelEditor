@@ -143,6 +143,7 @@ export class VoxelBrick{
         return hash;
     }
 
+    /*
     equals(voxelBrick: VoxelBrick): boolean{
         if( !this.size.equals(voxelBrick.size) || this.voxelByteStride!=voxelBrick.voxelByteStride){
             return false;
@@ -153,6 +154,32 @@ export class VoxelBrick{
         for (let i = 0; i < this.data.length; i++) {
             if(this.data[i]!==voxelBrick.data[i]) return false; 
         }
+        return true;
+    }*/
+
+    equals(other: VoxelBrick): boolean {
+        if (this.data.length !== other.data.length) {
+            return false;
+        }
+
+        const thisBytes = new Uint8Array(
+            this.data.buffer,
+            this.data.byteOffset,
+            this.data.byteLength
+        );
+
+        const otherBytes = new Uint8Array(
+            other.data.buffer,
+            other.data.byteOffset,
+            other.data.byteLength
+        );
+
+        for (let i = 0; i < thisBytes.length; i++) {
+            if (thisBytes[i] !== otherBytes[i]) {
+                return false;
+            }
+        }
+
         return true;
     }
 }

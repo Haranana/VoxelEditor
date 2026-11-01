@@ -3,53 +3,14 @@ import { Vector3 } from "../../../math/vector/vector3";
 import { Vector4 } from "../../../math/vector/vector4";
 import { RenderableObject } from "../../../render-engine/renderableObjects/renderableObject";
 import { copyVoxel, copyVoxelArray, type Voxel, type VoxelArray } from "./voxel";
-import { getEmptyVoxelArray } from "./voxel-array-generator";
+import { getEmptyVoxelArray } from "./voxel-grids-generator";
 import { RenderableObjectManager } from "../renderable-object-manager";
 import { SceneObject, type WorldObjectTransform } from "../sceneObject";
 import { AppCoreEvent } from "../../events/event";
 import { VoxelObjectSelectedArea } from "./voxel-object-selected-area";
 
-export type FaceDirection = 
-| "PosX"
-| "NegX"
-| "PosY"
-| "NegY"
-| "PosZ"
-| "NegZ"
 
-export function faceDirectionToVector(dir: FaceDirection){
-    switch(dir){
-        case "PosX":
-            return new Vector3(1,0,0);
-        case "NegX":
-            return new Vector3(-1,0,0);
-        case "PosY":
-            return new Vector3(0,1,0);
-        case "NegY":
-            return new Vector3(0,-1,0);
-        case "PosZ":
-            return new Vector3(0,0,1);
-        case "NegZ":
-            return new Vector3(0,0,-1);
-    }
-}
-
-export function vectorToFaceDirection(v: Vector3){
-    if(v.equals(new Vector3(1,0,0))){
-        return "PosX";
-    }else if(v.equals(new Vector3(-1,0,0))){
-        return "NegX";
-    }else if(v.equals(new Vector3(0,1,0))){
-        return "PosY";
-    }else if(v.equals(new Vector3(0,-1,0))){
-        return "NegY";
-    }else if(v.equals(new Vector3(0,0,1))){
-        return "PosZ";
-    }else{
-        return "NegZ";
-    }
-}
-
+/*
 export type SelectedAreaType = "static" | "dynamic";
 
 // (0,0,0) of model space should be middle of the object
@@ -1365,13 +1326,13 @@ rotateSelectedVoxelsInSelectedAreaByZ(areaType: SelectedAreaType): number {
         return union.size;
     }
 
-    /*
-        If it's possible move each voxel in grid and selectedArea of given type in given direction
-        delta should be in voxels
-        eg. delta: Vector3(12,4,-2) means that each voxels will be move 12 voxels right, 4 voxels down and 2 voxels back
-        returns true if such move is possible - each voxel would be moved to position withing voxel object
-        returns false otherwise 
-    */
+    
+    //    If it's possible move each voxel in grid and selectedArea of given type in given direction
+    //    delta should be in voxels
+    //    eg. delta: Vector3(12,4,-2) means that each voxels will be move 12 voxels right, 4 voxels down and 2 voxels back
+    //    returns true if such move is possible - each voxel would be moved to position withing voxel object
+    //    returns false otherwise 
+
     moveSelectedVoxelsAndArea(type: SelectedAreaType, delta: Vector3, axis?: "X" | "Y" | "Z" ): boolean{
         let out = true;
         const selectedArea = this.getSelectedArea(type);
@@ -1477,14 +1438,14 @@ rotateSelectedVoxelsInSelectedAreaByZ(areaType: SelectedAreaType): number {
         return out;
     }
 
-    /*
-        Returns middle of selected area in voxel grid id
-        middle is calculated as floor of the half beetwen min and max id in voxels (center of bounding box)
-        if no voxels are selected in given area returns null
-    */
+    
+    //    Returns middle of selected area in voxel grid id
+     //   middle is calculated as floor of the half beetwen min and max id in voxels (center of bounding box)
+      //  if no voxels are selected in given area returns null
+
     getSelectedAreaMiddle(type: SelectedAreaType): Vector3 | null{
         const selectedArea = this.getSelectedArea(type);
-        if(selectedArea.voxels.size === 0 ) return null;
+        if(selectedArea.getVoxelsCount() === 0 ) return null;
 
         const out = new Vector3(0,0,0);
         
@@ -1513,6 +1474,4 @@ rotateSelectedVoxelsInSelectedAreaByZ(areaType: SelectedAreaType): number {
     isVoxelUsed(gridPosition: Vector3){
         return this.ghostVoxels.has(gridPosition.toString()) || this.isVoxelNonEmpty(gridPosition);
     }
-
-
-}
+}*/

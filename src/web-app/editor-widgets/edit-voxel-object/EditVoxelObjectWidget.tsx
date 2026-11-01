@@ -7,7 +7,7 @@ import MdiLockOpenVariantOutline from "../../icons/MdiLockOpenVariantOutline";
 import { Vector3 } from "../../../math/vector/vector3";
 import { ControllerContext } from "../../../app-core/core-controller/core-controller-context";
 import { MutableNumberField } from "../mutable-number-field/MutableNumberField";
-import { VoxelObject } from "../../../app-core/scene-objects/voxel/voxel-object";
+import { VoxelObject } from "../../../app-core/scene-objects/voxel-object";
 
 export type EditVoxelObjectWidgetProps = {
     isOpen: boolean;
@@ -130,7 +130,7 @@ return <ExpandableRow
                     <MutableNumberField
                         value={controller.getVoxelObjectSize()?.x ?? 0}
                         minValue={2}
-                        maxValue={VoxelObject.maxSize.x}
+                        maxValue={controller.getVoxelObjectMaxGridSize().x}
                         step={1}
                         onStep={(delta) => addSizeToGrouped(delta, "x")}
                         onAcceptedChange={(value) =>setSizeToGrouped(value, "x")}
@@ -148,7 +148,7 @@ return <ExpandableRow
                     <MutableNumberField
                         value={controller.getVoxelObjectSize()?.y ?? 0}
                         minValue={2}
-                        maxValue={VoxelObject.maxSize.y}
+                        maxValue={controller.getVoxelObjectMaxGridSize().y}
                         step={1}
                         onStep={(delta) => addSizeToGrouped(delta, "y")}
                         onAcceptedChange={(value) =>setSizeToGrouped(value, "y")}
@@ -166,7 +166,7 @@ return <ExpandableRow
                     <MutableNumberField
                         value={controller.getVoxelObjectSize()?.z ?? 0}
                         minValue={2}
-                        maxValue={VoxelObject.maxSize.z}
+                        maxValue={controller.getVoxelObjectMaxGridSize().z}
                         step={1}
                         onStep={(delta) => addSizeToGrouped(delta, "z")}
                         onAcceptedChange={(value) =>setSizeToGrouped(value, "z")}

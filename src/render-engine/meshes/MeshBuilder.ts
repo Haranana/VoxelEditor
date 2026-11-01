@@ -126,7 +126,7 @@ export class MeshBuilder{
     #getPrimitiveState(layout: MeshBuilderVertexLayout): GPUPrimitiveState{
         return{
             topology: layout.topology,
-            stripIndexFormat: layout.topology === "line-list" ? "uint32" : undefined, //triangle-list requires undefined stripIndexFormat
+            //stripIndexFormat: layout.topology === "line-list" ? "uint32" : undefined, //triangle-list requires undefined stripIndexFormat
             frontFace: layout.frontFace? layout.frontFace : 'cw',
             cullMode: layout.cullMode? layout.cullMode : 'back',
             unclippedDepth: false,

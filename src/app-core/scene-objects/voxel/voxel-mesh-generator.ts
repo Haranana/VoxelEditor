@@ -3,8 +3,7 @@ import { Vector3 } from "../../../math/vector/vector3";
 import { Vector4 } from "../../../math/vector/vector4";
 import type { Mesh } from "../../../render-engine/meshes/Mesh";
 import { MeshBuilder, type MeshBuilderVertex } from "../../../render-engine/meshes/MeshBuilder";
-
-import type { VoxelObject } from "./voxel-object";
+import type { VoxelObject } from "../voxel-object";
 import type { VoxelObjectSelectedArea } from "./voxel-object-selected-area";
 // collection of functions for creating Meshes of VoxelObject and its associated elements 
 
@@ -38,67 +37,67 @@ export function generateVoMesh(vo: VoxelObject): Mesh{
         meshBuilder.addQuad({leftTop,rightTop,rightBottom,leftBottom})
     }
 
-    const objectStart : Vector3 = new Vector3(-vo.size.x/2 , -vo.size.y/2, -vo.size.z/2) 
-    for(let x = 0; x < vo.size.x; x++){
-        for(let y = 0; y < vo.size.y; y++){
-            for(let z = 0; z < vo.size.z; z++){
+    const objectStart : Vector3 = new Vector3(-vo.getGridSize().x/2 , -vo.getGridSize().y/2, -vo.getGridSize().z/2) 
+    for(let x = 0; x < vo.getGridSize().x; x++){
+        for(let y = 0; y < vo.getGridSize().y; y++){
+            for(let z = 0; z < vo.getGridSize().z; z++){
                 const currentVoxelCoords = new Vector3(x,y,z);
                 const currentVoxelNonEmpty = vo.isVoxelNonEmpty(currentVoxelCoords);
-                const currentVoxelHasGhost = vo.ghostVoxels.has(currentVoxelCoords.toString());
+                const currentVoxelHasGhost = vo.getGhostVoxel(currentVoxelCoords)!==undefined;
                 if(currentVoxelNonEmpty || currentVoxelHasGhost){
-                    const voxelStartPosition = new Vector3( (objectStart.x +x)*vo.getVoxelSize() , (objectStart.y+y)*vo.getVoxelSize(), (objectStart.z+z)*vo.getVoxelSize());
+                    const voxelStartPosition = new Vector3( (objectStart.x +x)*vo.getVoxelSize().x , (objectStart.y+y)*vo.getVoxelSize().y, (objectStart.z+z)*vo.getVoxelSize().z);
                     
                     const getThisVoxelColor = (voxelId: Vector3)=>{
 
-                            return vo.ghostVoxels.has(voxelId.toString())? 
-                            vo.ghostVoxels.get(voxelId.toString())!.color : vo.getVoxel(voxelId)!.color;
+                            return vo.hasGhostVoxel(voxelId)? 
+                            vo.getGhostVoxel(voxelId)!.color : vo.getVoxel(voxelId)!.color;
                     }
                     
                     const voxelSize = vo.getVoxelSize();
                     const voxelColor = getThisVoxelColor(currentVoxelCoords);
 
-                    const leftTopFrontPosition = voxelStartPosition.addVector(new Vector3(0,0,voxelSize)); //a
-                    const rightTopFrontPosition = voxelStartPosition.addVector(new Vector3(voxelSize,0,voxelSize)); //b
-                    const rightBottomFrontPosition = voxelStartPosition.addVector(new Vector3(voxelSize,voxelSize,voxelSize)); //c
-                    const leftBottomFrontPosition = voxelStartPosition.addVector(new Vector3(0,voxelSize,voxelSize)); //d
+                    const leftTopFrontPosition = voxelStartPosition.addVector(new Vector3(0,0,voxelSize.z)); //a
+                    const rightTopFrontPosition = voxelStartPosition.addVector(new Vector3(voxelSize.x,0,voxelSize.y)); //b
+                    const rightBottomFrontPosition = voxelStartPosition.addVector(new Vector3(voxelSize.x,voxelSize.y,voxelSize.z)); //c
+                    const leftBottomFrontPosition = voxelStartPosition.addVector(new Vector3(0,voxelSize.y,voxelSize.z)); //d
                     const leftTopBackPosition = voxelStartPosition.addVector(new Vector3(0,0,0)); //e
-                    const rightTopBackPosition = voxelStartPosition.addVector(new Vector3(voxelSize,0,0)); //f
-                    const rightBottomBackPosition = voxelStartPosition.addVector(new Vector3(voxelSize,voxelSize,0)); //g
-                    const leftBottomBackPosition = voxelStartPosition.addVector(new Vector3(0,voxelSize,0)); //h
+                    const rightTopBackPosition = voxelStartPosition.addVector(new Vector3(voxelSize.x,0,0)); //f
+                    const rightBottomBackPosition = voxelStartPosition.addVector(new Vector3(voxelSize.x,voxelSize.y,0)); //g
+                    const leftBottomBackPosition = voxelStartPosition.addVector(new Vector3(0,voxelSize.y,0)); //h
                     
                     //front culling
                     const frontNeighbourVoxel = new Vector3(x,y,z+1);
-                    if(!vo.isVoxelNonEmpty(frontNeighbourVoxel) && !vo.ghostVoxels.has(frontNeighbourVoxel.toString())){
+                    if(!vo.isVoxelNonEmpty(frontNeighbourVoxel) && !vo.hasGhostVoxel(frontNeighbourVoxel)){
                         addVoxelSideToMesh(leftTopFrontPosition, rightTopFrontPosition, rightBottomFrontPosition, leftBottomFrontPosition, voxelColor);
                     }
 
                     //back culling
                     const backNeighbourVoxel = new Vector3(x,y,z-1);
-                    if(!vo.isVoxelNonEmpty(backNeighbourVoxel) && !vo.ghostVoxels.has(backNeighbourVoxel.toString())){
+                    if(!vo.isVoxelNonEmpty(backNeighbourVoxel) && !vo.hasGhostVoxel(backNeighbourVoxel)){
                         addVoxelSideToMesh(rightTopBackPosition, leftTopBackPosition, leftBottomBackPosition, rightBottomBackPosition, voxelColor);
                     }
 
                     //top culling
                     const topNeighbourVoxel = new Vector3(x,y-1,z);
-                    if(!vo.isVoxelNonEmpty(topNeighbourVoxel) && !vo.ghostVoxels.has(topNeighbourVoxel.toString())){
+                    if(!vo.isVoxelNonEmpty(topNeighbourVoxel) && !vo.hasGhostVoxel(topNeighbourVoxel)){
                         addVoxelSideToMesh(leftTopBackPosition, rightTopBackPosition, rightTopFrontPosition, leftTopFrontPosition, voxelColor);
                     }
 
                     //bottom culling
                     const bottomNeighbourVoxel = new Vector3(x,y+1,z);
-                    if(!vo.isVoxelNonEmpty(bottomNeighbourVoxel) && !vo.ghostVoxels.has(bottomNeighbourVoxel.toString())){
+                    if(!vo.isVoxelNonEmpty(bottomNeighbourVoxel) && !vo.hasGhostVoxel(bottomNeighbourVoxel)){
                         addVoxelSideToMesh(leftBottomFrontPosition, rightBottomFrontPosition, rightBottomBackPosition, leftBottomBackPosition, voxelColor);
                     }
 
                     //left culling
                     const leftNeighbourVoxel = new Vector3(x-1,y,z);
-                    if(!vo.isVoxelNonEmpty(leftNeighbourVoxel) && !vo.ghostVoxels.has(leftNeighbourVoxel.toString())){
+                    if(!vo.isVoxelNonEmpty(leftNeighbourVoxel) && !vo.hasGhostVoxel(leftNeighbourVoxel)){
                         addVoxelSideToMesh(leftTopBackPosition, leftTopFrontPosition, leftBottomFrontPosition, leftBottomBackPosition, voxelColor);
                     }
 
                     //right culling
                     const rightNeighbourVoxel = new Vector3(x+1,y,z);
-                    if(!vo.isVoxelNonEmpty(rightNeighbourVoxel) && !vo.ghostVoxels.has(rightNeighbourVoxel.toString())){
+                    if(!vo.isVoxelNonEmpty(rightNeighbourVoxel) && !vo.hasGhostVoxel(rightNeighbourVoxel)){
                         addVoxelSideToMesh(rightTopFrontPosition, rightTopBackPosition, rightBottomBackPosition, rightBottomFrontPosition, voxelColor);
                     }                                                       
                 }
@@ -164,14 +163,14 @@ export function generateVoGridMesh(vo: VoxelObject): Mesh{
     };
 
     const objectStart : Vector3 = new Vector3(
-        -vo.size.x/2,
-        -vo.size.y/2,
-        -vo.size.z/2
+        -vo.getGridSize().x/2,
+        -vo.getGridSize().y/2,
+        -vo.getGridSize().z/2
     );
 
-    for(let x = 0; x < vo.size.x; x++){
-        for(let y = 0; y < vo.size.y; y++){
-            for(let z = 0; z < vo.size.z; z++){
+    for(let x = 0; x < vo.getGridSize().x; x++){
+        for(let y = 0; y < vo.getGridSize().y; y++){
+            for(let z = 0; z < vo.getGridSize().z; z++){
 
                 const currentVoxelCoords = new Vector3(x,y,z);
 
@@ -179,44 +178,44 @@ export function generateVoGridMesh(vo: VoxelObject): Mesh{
                     vo.isVoxelNonEmpty(currentVoxelCoords);
 
                 const currentVoxelHasGhost =
-                    vo.ghostVoxels.has(currentVoxelCoords.toString());
+                    vo.hasGhostVoxel(currentVoxelCoords);
 
                 // Normalny voxel LUB ghost voxel
                 if(currentVoxelNonEmpty || currentVoxelHasGhost){
 
                     const voxelStartPosition = new Vector3(
-                        (objectStart.x + x) * vo.getVoxelSize(),
-                        (objectStart.y + y) * vo.getVoxelSize(),
-                        (objectStart.z + z) * vo.getVoxelSize()
+                        (objectStart.x + x) * vo.getVoxelSize().x,
+                        (objectStart.y + y) * vo.getVoxelSize().y,
+                        (objectStart.z + z) * vo.getVoxelSize().z
                     );
 
                     const voxelSize = vo.getVoxelSize();
-                    const voxelColor = vo.objectGridColor;
+                    const voxelColor = vo.getObjectGridColor();
 
                     const leftTopFrontPosition =
                         voxelStartPosition.addVector(
                             new Vector3(
                                 0-epsilon,
                                 0-epsilon,
-                                voxelSize+epsilon
+                                voxelSize.z+epsilon
                             )
                         );
 
                     const rightTopFrontPosition =
                         voxelStartPosition.addVector(
                             new Vector3(
-                                voxelSize+epsilon,
+                                voxelSize.x+epsilon,
                                 0-epsilon,
-                                voxelSize+epsilon
+                                voxelSize.z+epsilon
                             )
                         );
 
                     const rightBottomFrontPosition =
                         voxelStartPosition.addVector(
                             new Vector3(
-                                voxelSize+epsilon,
-                                voxelSize+epsilon,
-                                voxelSize+epsilon
+                                voxelSize.x+epsilon,
+                                voxelSize.y+epsilon,
+                                voxelSize.z+epsilon
                             )
                         );
 
@@ -224,8 +223,8 @@ export function generateVoGridMesh(vo: VoxelObject): Mesh{
                         voxelStartPosition.addVector(
                             new Vector3(
                                 0-epsilon,
-                                voxelSize+epsilon,
-                                voxelSize+epsilon
+                                voxelSize.y+epsilon,
+                                voxelSize.z+epsilon
                             )
                         );
 
@@ -241,7 +240,7 @@ export function generateVoGridMesh(vo: VoxelObject): Mesh{
                     const rightTopBackPosition =
                         voxelStartPosition.addVector(
                             new Vector3(
-                                voxelSize+epsilon,
+                                voxelSize.x+epsilon,
                                 0-epsilon,
                                 0-epsilon
                             )
@@ -250,8 +249,8 @@ export function generateVoGridMesh(vo: VoxelObject): Mesh{
                     const rightBottomBackPosition =
                         voxelStartPosition.addVector(
                             new Vector3(
-                                voxelSize+epsilon,
-                                voxelSize+epsilon,
+                                voxelSize.x+epsilon,
+                                voxelSize.y+epsilon,
                                 0-epsilon
                             )
                         );
@@ -260,7 +259,7 @@ export function generateVoGridMesh(vo: VoxelObject): Mesh{
                         voxelStartPosition.addVector(
                             new Vector3(
                                 0-epsilon,
-                                voxelSize+epsilon,
+                                voxelSize.y+epsilon,
                                 0-epsilon
                             )
                         );
@@ -270,7 +269,7 @@ export function generateVoGridMesh(vo: VoxelObject): Mesh{
 
                     if(
                         !vo.isVoxelNonEmpty(frontNeighbourVoxel) &&
-                        !vo.ghostVoxels.has(frontNeighbourVoxel.toString())
+                        !vo.hasGhostVoxel(frontNeighbourVoxel)
                     ){
                         addVoxelSideToMesh(
                             leftTopFrontPosition,
@@ -286,7 +285,7 @@ export function generateVoGridMesh(vo: VoxelObject): Mesh{
 
                     if(
                         !vo.isVoxelNonEmpty(backNeighbourVoxel) &&
-                        !vo.ghostVoxels.has(backNeighbourVoxel.toString())
+                        !vo.hasGhostVoxel(backNeighbourVoxel)
                     ){
                         addVoxelSideToMesh(
                             rightTopBackPosition,
@@ -302,7 +301,7 @@ export function generateVoGridMesh(vo: VoxelObject): Mesh{
 
                     if(
                         !vo.isVoxelNonEmpty(topNeighbourVoxel) &&
-                        !vo.ghostVoxels.has(topNeighbourVoxel.toString())
+                        !vo.hasGhostVoxel(topNeighbourVoxel)
                     ){
                         addVoxelSideToMesh(
                             leftTopBackPosition,
@@ -318,7 +317,7 @@ export function generateVoGridMesh(vo: VoxelObject): Mesh{
 
                     if(
                         !vo.isVoxelNonEmpty(bottomNeighbourVoxel) &&
-                        !vo.ghostVoxels.has(bottomNeighbourVoxel.toString())
+                        !vo.hasGhostVoxel(bottomNeighbourVoxel)
                     ){
                         addVoxelSideToMesh(
                             leftBottomFrontPosition,
@@ -334,7 +333,7 @@ export function generateVoGridMesh(vo: VoxelObject): Mesh{
 
                     if(
                         !vo.isVoxelNonEmpty(leftNeighbourVoxel) &&
-                        !vo.ghostVoxels.has(leftNeighbourVoxel.toString())
+                        !vo.hasGhostVoxel(leftNeighbourVoxel)
                     ){
                         addVoxelSideToMesh(
                             leftTopBackPosition,
@@ -350,7 +349,7 @@ export function generateVoGridMesh(vo: VoxelObject): Mesh{
 
                     if(
                         !vo.isVoxelNonEmpty(rightNeighbourVoxel) &&
-                        !vo.ghostVoxels.has(rightNeighbourVoxel.toString())
+                        !vo.hasGhostVoxel(rightNeighbourVoxel)
                     ){
                         addVoxelSideToMesh(
                             rightTopFrontPosition,
@@ -385,7 +384,7 @@ export function generateVoBorderGridMesh(vo: VoxelObject): Mesh {
         format: 'depth24plus',        
     });
 
-    const color = vo.borderColor;
+    const color = vo.getBorderColor();
 
     const addQuad = (A: Vector3,B: Vector3,C: Vector3,D: Vector3) => {
         meshBuilder.addQuad(
@@ -414,37 +413,38 @@ export function generateVoBorderGridMesh(vo: VoxelObject): Mesh {
             )};
 
     const step = vo.getVoxelSize();
+    const gridSize = vo.getGridSize();
 
     const objectStart = new Vector3(
-        -(vo.size.x  ) * step / 2,
-        -(vo.size.y  ) * step / 2,
-        -(vo.size.z  ) * step / 2
+        -(gridSize.x  ) * step.x / 2,
+        -(gridSize.y  ) * step.y / 2,
+        -(gridSize.z  ) * step.z / 2
     );
 
     const pos = (x:number,y:number,z:number)=>
         objectStart.addVector(
             new Vector3(
-                x * step,
-                y * step,
-                z * step
+                x * step.x,
+                y * step.y,
+                z * step.z
             )
         );
     
     // FRONT
-    for(let x = 0; x < vo.size.x; x++){
-        for(let y = 0; y < vo.size.y; y++){           
+    for(let x = 0; x < gridSize.x; x++){
+        for(let y = 0; y < gridSize.y; y++){           
             addQuad(
-                pos(x, y, vo.size.z),
-                pos(x+1, y, vo.size.z),
-                pos(x+1, y+1, vo.size.z),
-                pos(x, y+1, vo.size.z),
+                pos(x, y, gridSize.z),
+                pos(x+1, y, gridSize.z),
+                pos(x+1, y+1, gridSize.z),
+                pos(x, y+1, gridSize.z),
             );
         }
     }
 
     // BACK
-    for(let x = 0; x < vo.size.x; x++){
-        for(let y = 0; y < vo.size.y; y++){
+    for(let x = 0; x < gridSize.x; x++){
+        for(let y = 0; y < gridSize.y; y++){
 
             addQuad(
                 pos(x+1, y, 0),
@@ -456,8 +456,8 @@ export function generateVoBorderGridMesh(vo: VoxelObject): Mesh {
     }
 
     // TOP
-    for(let x = 0; x < vo.size.x; x++){
-        for(let z = 0; z < vo.size.z; z++){
+    for(let x = 0; x < gridSize.x; x++){
+        for(let z = 0; z < gridSize.z; z++){
 
             addQuad(
                 pos(x, 0, z),
@@ -469,21 +469,21 @@ export function generateVoBorderGridMesh(vo: VoxelObject): Mesh {
     }
 
     // BOTTOM
-    for(let x = 0; x < vo.size.x; x++){
-        for(let z = 0; z < vo.size.z; z++){
+    for(let x = 0; x < gridSize.x; x++){
+        for(let z = 0; z < gridSize.z; z++){
 
             addQuad(
-                pos(x, vo.size.y, z+1),
-                pos(x+1, vo.size.y, z+1),
-                pos(x+1, vo.size.y, z),
-                pos(x, vo.size.y, z),
+                pos(x, gridSize.y, z+1),
+                pos(x+1, gridSize.y, z+1),
+                pos(x+1, gridSize.y, z),
+                pos(x, gridSize.y, z),
             );
         }
     }
 
     // LEFT
-    for(let y = 0; y < vo.size.y; y++){
-        for(let z = 0; z < vo.size.z; z++){
+    for(let y = 0; y < gridSize.y; y++){
+        for(let z = 0; z < gridSize.z; z++){
 
             addQuad(
                 pos(0, y, z),
@@ -495,14 +495,14 @@ export function generateVoBorderGridMesh(vo: VoxelObject): Mesh {
     }
 
     // RIGHT
-    for(let y = 0; y < vo.size.y; y++){
-        for(let z = 0; z < vo.size.z; z++){
+    for(let y = 0; y < gridSize.y; y++){
+        for(let z = 0; z < gridSize.z; z++){
 
             addQuad(
-                pos(vo.size.x, y, z+1),
-                pos(vo.size.x, y, z),
-                pos(vo.size.x, y+1, z),
-                pos(vo.size.x, y+1, z+1),
+                pos(gridSize.x, y, z+1),
+                pos(gridSize.x, y, z),
+                pos(gridSize.x, y+1, z),
+                pos(gridSize.x, y+1, z+1),
             );
         }
     }
@@ -559,40 +559,41 @@ export function generateVoSelectedAreaMesh(vo: VoxelObject, selectedArea: VoxelO
     };
 
     const objectStart = new Vector3(
-        -vo.size.x / 2,
-        -vo.size.y / 2,
-        -vo.size.z / 2
+        -vo.getGridSize().x / 2,
+        -vo.getGridSize().y / 2,
+        -vo.getGridSize().z / 2
     );
 
-    selectedArea.voxels.forEach(voxelString => {
-
-        const voxelCoords = Vector3.fromString(voxelString);
+    selectedArea.getGridPositions().forEach(voxelCoords => {
 
         const x = voxelCoords.x;
         const y = voxelCoords.y;
         const z = voxelCoords.z;
 
         const voxelStartPosition = new Vector3(
-            (objectStart.x + x) * vo.getVoxelSize(),
-            (objectStart.y + y) * vo.getVoxelSize(),
-            (objectStart.z + z) * vo.getVoxelSize()
+            (objectStart.x + x) * vo.getVoxelSize().x,
+            (objectStart.y + y) * vo.getVoxelSize().y,
+            (objectStart.z + z) * vo.getVoxelSize().z
         );
 
         const voxelSize = vo.getVoxelSize();
         const voxelColor = selectedArea.color;
 
-        const leftTopFrontPosition = voxelStartPosition.addVector(new Vector3(0,0,voxelSize));
-        const rightTopFrontPosition = voxelStartPosition.addVector(new Vector3(voxelSize,0,voxelSize));
-        const rightBottomFrontPosition = voxelStartPosition.addVector(new Vector3(voxelSize,voxelSize,voxelSize));
-        const leftBottomFrontPosition = voxelStartPosition.addVector(new Vector3(0,voxelSize,voxelSize));
+        const leftTopFrontPosition = voxelStartPosition.addVector(new Vector3(0,0,voxelSize.z));
+        const rightTopFrontPosition = voxelStartPosition.addVector(new Vector3(voxelSize.x,0,voxelSize.z));
+        const rightBottomFrontPosition = voxelStartPosition.addVector(new Vector3(voxelSize.x,voxelSize.y,voxelSize.z));
+        const leftBottomFrontPosition = voxelStartPosition.addVector(new Vector3(0,voxelSize.y,voxelSize.z));
 
         const leftTopBackPosition = voxelStartPosition.addVector(new Vector3(0,0,0));
-        const rightTopBackPosition = voxelStartPosition.addVector(new Vector3(voxelSize,0,0));
-        const rightBottomBackPosition = voxelStartPosition.addVector(new Vector3(voxelSize,voxelSize,0));
-        const leftBottomBackPosition = voxelStartPosition.addVector(new Vector3(0,voxelSize,0));
+        const rightTopBackPosition = voxelStartPosition.addVector(new Vector3(voxelSize.x,0,0));
+        const rightBottomBackPosition = voxelStartPosition.addVector(new Vector3(voxelSize.x,voxelSize.y,0));
+        const leftBottomBackPosition = voxelStartPosition.addVector(new Vector3(0,voxelSize.y,0));
 
-        const selected = (x:number,y:number,z:number)=>
-            selectedArea.voxels.has(new Vector3(x,y,z).toString());
+        
+        const selected = (x:number,y:number,z:number)=>{
+            const selectedV = new Vector3(x,y,z)
+            return selectedArea.getGridPositions().find((v)=>v.equals(selectedV))!==undefined;
+        }
 
         const occupied = (x:number,y:number,z:number)=>
             vo.isVoxelNonEmpty(new Vector3(x,y,z));
@@ -685,8 +686,10 @@ export function generateVoBorderOutlineMesh(vo: VoxelObject): Mesh {
         format: 'depth24plus',        
     });
 
-    const borderColor = vo.borderColor;
+    const borderColor = vo.getBorderColor();
     const borderOffset = 0;
+    const gridSize = vo.getGridSize();
+    const voxelSize = vo.getVoxelSize();
 
     const addQuad = (
         topLeft: Vector3,
@@ -720,14 +723,14 @@ export function generateVoBorderOutlineMesh(vo: VoxelObject): Mesh {
     };
 
     const objectStart = new Vector3(
-        -(vo.size.x * vo.getVoxelSize()) / 2,
-        -(vo.size.y * vo.getVoxelSize()) / 2,
-        -(vo.size.z * vo.getVoxelSize()) / 2
+        -(gridSize.x * voxelSize.x) / 2,
+        -(gridSize.y * voxelSize.y) / 2,
+        -(gridSize.z * voxelSize.z) / 2
     );
 
-    const voxelSizeX = vo.getVoxelSize() * vo.size.x;
-    const voxelSizeY = vo.getVoxelSize() * vo.size.y;
-    const voxelSizeZ = vo.getVoxelSize() * vo.size.z;
+    const voxelSizeX = voxelSize.x * gridSize.x;
+    const voxelSizeY = voxelSize.y * gridSize.y;
+    const voxelSizeZ = voxelSize.z * gridSize.z;
 
     const A = objectStart.addVector(
         new Vector3(0,0,voxelSizeZ)

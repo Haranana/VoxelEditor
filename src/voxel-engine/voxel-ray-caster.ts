@@ -7,7 +7,7 @@ import { Ray } from "../math/geometry/ray";
 import { Plane } from "../math/geometry/plane";
 import { planeAABBIntersection } from "../math/geometry/intersection-tests";
 import type { Camera } from "../app-core/scene-objects/camera/camera";
-import { faceDirectionToVector, type FaceDirection, type VoxelObject } from "../app-core/scene-objects/voxel/voxel-object";
+import { type VoxelObject } from "../app-core/scene-objects/voxel-object";
 
 /*
 casts ray from given coordinates (in Model space) onto given voxel object and returns id of first-non empty voxel
@@ -17,6 +17,51 @@ if lastEmpty argument is true function returns last empty voxel before hit, othe
 
 if hitOnExit argument is true upon exiting bounding box without hitting any voxel the function will return last empty voxel hit,
 otherwise it will return null
+*/
+
+export type FaceDirection = 
+| "PosX"
+| "NegX"
+| "PosY"
+| "NegY"
+| "PosZ"
+| "NegZ"
+
+export function faceDirectionToVector(dir: FaceDirection){
+    switch(dir){
+        case "PosX":
+            return new Vector3(1,0,0);
+        case "NegX":
+            return new Vector3(-1,0,0);
+        case "PosY":
+            return new Vector3(0,1,0);
+        case "NegY":
+            return new Vector3(0,-1,0);
+        case "PosZ":
+            return new Vector3(0,0,1);
+        case "NegZ":
+            return new Vector3(0,0,-1);
+    }
+}
+
+export function vectorToFaceDirection(v: Vector3){
+    if(v.equals(new Vector3(1,0,0))){
+        return "PosX";
+    }else if(v.equals(new Vector3(-1,0,0))){
+        return "NegX";
+    }else if(v.equals(new Vector3(0,1,0))){
+        return "PosY";
+    }else if(v.equals(new Vector3(0,-1,0))){
+        return "NegY";
+    }else if(v.equals(new Vector3(0,0,1))){
+        return "PosZ";
+    }else{
+        return "NegZ";
+    }
+}
+
+/*
+Assumes that each coordinate of voxel size is the same
 */
 export function getFirstVoxelOnRay(_: Camera, 
                             pointSs: Vector2, 
@@ -30,6 +75,7 @@ export function getFirstVoxelOnRay(_: Camera,
                             )
     : {voxelCoords: Vector3, hitDirection: FaceDirection} | null {
     
+    const voxelSizeNum = obj.getVoxelSize().x //!!!!!
     const mvp = ndcProjectionMatrix.multMatrix(cameraViewMatrix).multMatrix(objectTransformMatrix)
     const mvpInversion = mvp.getInversion();
     const EPS = 1e-6;
@@ -45,12 +91,12 @@ export function getFirstVoxelOnRay(_: Camera,
 
     const rayDirection: Vector3 = pointFarMsPersp.subVector(pointNearMsPersp).normalize();
     const rayOrigin: Vector3 = pointNearMsPersp;
-    const voxelSize: number = obj.getVoxelSize(); 
+    const voxelSize: Vector3 = obj.getVoxelSize(); 
     const ray: Ray = new Ray(rayOrigin, rayDirection);
 
     let currentRayT: number = 0;
-    if(obj.getVoxelFromModelSpacePoint(ray.get(currentRayT))){
-        return {voxelCoords: obj.pointCoordinatesToVoxelId(ray.get(currentRayT)) , hitDirection: "PosX"};
+    if(obj.getVoxelFromModelPos(ray.get(currentRayT))){
+        return {voxelCoords: obj.modelToGridPos(ray.get(currentRayT)) , hitDirection: "PosX"};
     }
 
     const xSign : number = ray.direction.x == 0? 0 : ray.direction.x < 0? -1 : 1;
@@ -69,8 +115,8 @@ export function getFirstVoxelOnRay(_: Camera,
         return xSign == 0? null : xSign==1? Math.ceil(curX/voxelSize)*voxelSize+voxelSize : Math.floor(curX/voxelSize)*voxelSize-1;
         */
        if(xSign==0) return null;
-       const cell = Math.floor(curX/voxelSize);
-       const nextBoundary = xSign > 0? (cell+1)*voxelSize : cell*voxelSize;
+       const cell = Math.floor(curX/voxelSizeNum);
+       const nextBoundary = xSign > 0? (cell+1)*voxelSizeNum : cell*voxelSizeNum;
        return nextBoundary;
     }
 
@@ -79,8 +125,8 @@ export function getFirstVoxelOnRay(_: Camera,
         return ySign == 0? null : ySign==1? Math.ceil(curY/voxelSize)*voxelSize+voxelSize : Math.floor(curY/voxelSize)*voxelSize-1;
         */
         if(ySign==0) return null;
-        const cell = Math.floor(curY/voxelSize);
-        const nextBoundary = ySign > 0? (cell+1)*voxelSize : cell*voxelSize;
+        const cell = Math.floor(curY/voxelSizeNum);
+        const nextBoundary = ySign > 0? (cell+1)*voxelSizeNum : cell*voxelSizeNum;
         return nextBoundary;
     }
 
@@ -89,8 +135,8 @@ export function getFirstVoxelOnRay(_: Camera,
         return zSign == 0? null : zSign==1? Math.ceil(curZ/voxelSize)*voxelSize+voxelSize : Math.floor(curZ/voxelSize)*voxelSize-1;
         */
                if(zSign==0) return null;
-        const cell = Math.floor(curZ/voxelSize);
-        const nextBoundary = zSign > 0? (cell+1)*voxelSize : cell*voxelSize;
+        const cell = Math.floor(curZ/voxelSizeNum);
+        const nextBoundary = zSign > 0? (cell+1)*voxelSizeNum : cell*voxelSizeNum;
         return nextBoundary;
     }
 
@@ -167,7 +213,7 @@ export function getFirstVoxelOnRay(_: Camera,
         currentRayT += (nextVoxelBoundary.minDelta + EPS);
 
         const rayValue = ray.get(currentRayT)
-        const voxelId = obj.pointCoordinatesToVoxelId(rayValue);
+        const voxelId = obj.modelToGridPos(rayValue);
         if(obj.voxelExists(voxelId) && obj.isVoxelNonEmpty(voxelId)){ //is in bb and hit non-empty voxel
             
             let result : {voxelCoords: Vector3, hitDirection: FaceDirection} | null = {voxelCoords: voxelId, hitDirection: nextVoxelBoundary.dir};
@@ -211,12 +257,12 @@ export function getVoxelsOnRay(
 
     const rayDirection: Vector3 = pointFarMs.subVector(pointNearMs).normalize();
     const rayOrigin: Vector3 = pointNearMs;
-    const voxelSize: number = obj.getVoxelSize(); 
+    const voxelSize: Vector3 = obj.getVoxelSize(); 
     const ray: Ray = new Ray(rayOrigin, rayDirection);
 
     let currentRayT: number = 0;
-    if(obj.getVoxelFromModelSpacePoint(ray.get(currentRayT))){
-        out.push(obj.pointCoordinatesToVoxelId(ray.get(currentRayT)));        
+    if(obj.getVoxelFromModelPos(ray.get(currentRayT))){
+        out.push(obj.modelToGridPos(ray.get(currentRayT)));        
     }
 
     const xSign : number = ray.direction.x == 0? 0 : ray.direction.x < 0? -1 : 1;
@@ -232,22 +278,22 @@ export function getVoxelsOnRay(
     //returns null if sign for this dimension is 0
     const getNextVoxelX = (curX: number, xSign: number) : number | null =>{
        if(xSign==0) return null;
-       const cell = Math.floor(curX/voxelSize);
-       const nextBoundary = xSign > 0? (cell+1)*voxelSize : cell*voxelSize;
+       const cell = Math.floor(curX/voxelSize.x);
+       const nextBoundary = xSign > 0? (cell+1)*voxelSize.x : cell*voxelSize.x;
        return nextBoundary;
     }
 
     const getNextVoxelY = (curY: number, ySign: number) : number | null =>{
         if(ySign==0) return null;
-        const cell = Math.floor(curY/voxelSize);
-        const nextBoundary = ySign > 0? (cell+1)*voxelSize : cell*voxelSize;
+        const cell = Math.floor(curY/voxelSize.y);
+        const nextBoundary = ySign > 0? (cell+1)*voxelSize.y : cell*voxelSize.y;
         return nextBoundary;
     }
 
     const getNextVoxelZ = (curZ: number, zSign: number) : number | null=>{
         if(zSign==0) return null;
-        const cell = Math.floor(curZ/voxelSize);
-        const nextBoundary = zSign > 0? (cell+1)*voxelSize : cell*voxelSize;
+        const cell = Math.floor(curZ/voxelSize.z);
+        const nextBoundary = zSign > 0? (cell+1)*voxelSize.z : cell*voxelSize.z;
         return nextBoundary;
     }
 
@@ -316,7 +362,7 @@ export function getVoxelsOnRay(
         const nextVoxelBoundary  = getNextT(ray, currentRayT, sign);
         currentRayT += (nextVoxelBoundary.minDelta + EPS);
         const rayValue = ray.get(currentRayT)
-        const voxelId = obj.pointCoordinatesToVoxelId(rayValue);
+        const voxelId = obj.modelToGridPos(rayValue);
 
         if(obj.voxelExists(voxelId) && obj.isVoxelNonEmpty(voxelId)){ //is in bb and hit non-empty voxel                        
             if(obj.voxelExists(voxelId) && onlyNonEmptyVoxels? obj.isVoxelNonEmpty(voxelId) : true){
@@ -469,13 +515,14 @@ export function marqueeSelectRectangle(
     const isInFrustum = (v: Vector3)=>{
 
         const voxelSize = obj.getVoxelSize();
+        const gridSize = obj.getGridSize();
         const voxelMin = new Vector3(
-            (v.x - obj.size.x / 2) * voxelSize,
-            (v.y - obj.size.y / 2) * voxelSize,
-            (v.z - obj.size.z / 2) * voxelSize
+            (v.x - gridSize.x / 2) * voxelSize.x,
+            (v.y - gridSize.y / 2) * voxelSize.y,
+            (v.z - gridSize.z / 2) * voxelSize.z
         );
 
-        const voxelMax = voxelMin.addScalar(voxelSize);
+        const voxelMax = voxelMin.addVector(voxelSize);
         /*
         if(v.equals(new Vector3(10,10,10))){
         console.log(`[marquee] sample vortex data (pos: (10,10,10)): 
@@ -504,10 +551,10 @@ export function marqueeSelectRectangle(
         return true;
     }
 
-
-    for(let x = 0; x < obj.size.x; x++){
-        for(let y = 0; y < obj.size.y; y++){
-            for(let z = 0; z < obj.size.z; z++){
+    const gridSize = obj.getGridSize();
+    for(let x = 0; x < gridSize.x; x++){
+        for(let y = 0; y < gridSize.y; y++){
+            for(let z = 0; z < gridSize.z; z++){
                 const v = new Vector3(x,y,z);
                 if(obj.voxelExists(v) && (onlyNonEmptyVoxels? obj.isVoxelNonEmpty(v) : true) && isInFrustum(v)){
                     out.push(v);

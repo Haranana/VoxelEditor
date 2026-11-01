@@ -1,8 +1,10 @@
+import { clamp, gridOffsetToPos } from "../../../math/utils";
 import { Vector3 } from "../../../math/vector/vector3";
 import { Vector4 } from "../../../math/vector/vector4";
 import { UInt32List } from "../../classes/UInt32List";
 
 // resize not supported for now;
+//possibly could just use a occupancy 1-bit mask?
 export class VoxelObjectSelectedArea{
 
     static readonly #defaultColor: Vector4 = new Vector4(255,255,255,192); 
@@ -80,12 +82,38 @@ export class VoxelObjectSelectedArea{
         return out;
     }
 
+    getBoundingBoxCenter(): Vector3 | null{
+        if(this.#selectedVoxelsOffsets.size === 0 ) return null;
+
+        const out = new Vector3(0,0,0);
+        
+        const min = this.#gridSize.copy();
+        const max = new Vector3(0,0,0);
+
+        this.#selectedVoxelsOffsets.array().forEach((gridOffset)=>{
+            const gridPos = gridOffsetToPos(gridOffset, this.#gridSize);
+            gridPos.x = clamp({value: gridPos.x, min: min.x, max: max.x});
+            gridPos.y = clamp({value: gridPos.y, min: min.y, max: max.y});
+            gridPos.z = clamp({value: gridPos.z, min: min.z, max: max.z});            
+        })    
+
+        out.x = Math.floor((min.x + max.x) / 2);
+        out.y = Math.floor((min.y + max.y) / 2);
+        out.z = Math.floor((min.z + max.z) / 2);
+        
+        return out;
+    }
+
     getGridPositions(): Vector3[]{
         const out:Vector3[] = [];
         this.#selectedVoxelsOffsets.array().forEach((vOffset)=>{
             out.push(this.#GridOffsetToGridPosition(vOffset));
         });
         return out;
+    }
+
+    getVoxelsCount(): number{
+        return this.#selectedVoxelsOffsets.size;
     }
 
     #GridOffsetToGridPosition(offset: number){        
@@ -113,8 +141,10 @@ export class VoxelObjectSelectedArea{
         return out;
     }
 
-    clear(){
+    clear(): number{
+        const out = this.#selectedVoxelsOffsets.size;
         this.#selectedVoxelsOffsets.clear();
+        return out;
     }
 }
 

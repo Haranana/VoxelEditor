@@ -1,6 +1,6 @@
 import { Camera } from "../scene-objects/camera/camera";
 import { SceneObject } from "../scene-objects/sceneObject";
-import { VoxelObject } from "../scene-objects/voxel/voxel-object";
+import { VoxelObject } from "../scene-objects/voxel-object";
 import { AppCoreEvent } from "../events/event"
 import { Gizmo } from "../scene-objects/gizmo/gizmo-object";
 

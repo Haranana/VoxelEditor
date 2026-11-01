@@ -74,6 +74,10 @@ export class Vector3 {
         return new Vector3(this.x / n, this.y / n, this.z / n);
     }
 
+    between(v1: Vector3, v2: Vector3){
+        return (this.x >= v1.x && this.x <= v2.x && this.y >= v1.y && this.y <= v2.y && this.z >= v1.z && this.z <= v2.z );
+    }
+
     toString() {
         return `(${this.x}, ${this.y}, ${this.z})`;
     }
