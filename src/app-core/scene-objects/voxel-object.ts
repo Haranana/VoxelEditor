@@ -60,8 +60,13 @@ export class VoxelObject extends SceneObject{
     #notifyOfSelectedAreaChange(){        
         this.selectedAreaChangeEvent.emit();
     }
-    #onSelectedAreaChange(){
-        this.renderablesManager.clearSelectedAreaMesh();
+    #onSelectedAreaChange(areaType: SelectedAreaType){
+        if(areaType==='dynamic'){
+            this.renderablesManager.clearDynamicSelectedAreaMesh();
+        }else if(areaType==='static'){
+            this.renderablesManager.clearStaticSelectedAreaMesh();
+        }
+        
         
     }
     
@@ -382,7 +387,7 @@ export class VoxelObject extends SceneObject{
         const area = this.selectedAreas.get(areaType)!;
         let clearedVoxelsCount = area.clear();
         if(clearedVoxelsCount){
-            this.#onSelectedAreaChange();
+            this.#onSelectedAreaChange(areaType);
             this.#notifyOfSelectedAreaChange();
         }
         return clearedVoxelsCount;        
@@ -392,7 +397,7 @@ export class VoxelObject extends SceneObject{
         const area = this.selectedAreas.get(areaType)!;
         let selectVoxelSuccess = area.addGridPosition(gridPos);
         if(selectVoxelSuccess){
-            this.#onSelectedAreaChange();
+            this.#onSelectedAreaChange(areaType);
         }
         //console.log("SELECTED:", gridPos);
         //console.log(`selected voxels: ${area.getGridPositions()}`)
@@ -406,7 +411,7 @@ export class VoxelObject extends SceneObject{
             if(area.addGridPosition(pos)) selectedVoxelsCount++
         });
         if(selectedVoxelsCount){
-            this.#onSelectedAreaChange();
+            this.#onSelectedAreaChange(areaType);
             this.#notifyOfSelectedAreaChange();
         }
         return selectedVoxelsCount;
@@ -467,8 +472,7 @@ export class VoxelObject extends SceneObject{
                     }
         }}}
         if(selectedVoxelsCount){
-            console.log("SELECTED ALL VOXELS");
-            this.#onSelectedAreaChange();
+            this.#onSelectedAreaChange(areaType);
             this.#notifyOfSelectedAreaChange();
         }
         return selectedVoxelsCount;

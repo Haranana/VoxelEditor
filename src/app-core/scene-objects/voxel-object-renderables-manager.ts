@@ -30,10 +30,15 @@ export class VoxelObjectRenderablesManager{
             this.#createVoBorderGridRo,
             this.#updateVoBorderGridRo
         );
-        this.#selectedAreaRenderableObject = new VoxelObjectRenderable(
+        this.#staticSelectedAreaRenderableObject = new VoxelObjectRenderable(
             voxelObject,
-            this.#createVoSelectedAreaRo,
-            this.#updateVoSelectedAreaRo,
+            this.#createVoStaticSelectedAreaRo,
+            this.#updateVoStaticSelectedAreaRo,
+        );
+        this.#dynamicSelectedAreaRenderableObject = new VoxelObjectRenderable(
+            voxelObject,
+            this.#createVoDynamicSelectedAreaRo,
+            this.#updateVoDynamicSelectedAreaRo,
         );
     }
 
@@ -41,7 +46,8 @@ export class VoxelObjectRenderablesManager{
     #objectGridRenderableObject: VoxelObjectRenderable;
     #borderOutlineRenderableObject: VoxelObjectRenderable;
     #borderGridRenderableObject: VoxelObjectRenderable;
-    #selectedAreaRenderableObject: VoxelObjectRenderable;
+    #staticSelectedAreaRenderableObject: VoxelObjectRenderable;
+    #dynamicSelectedAreaRenderableObject: VoxelObjectRenderable;
 
     //object chunks
     getChunksRenderableObjects(vo: VoxelObject): RenderableObject[]{        
@@ -223,24 +229,24 @@ export class VoxelObjectRenderablesManager{
         ro.screenTransform = null;
     }
 
-    //selected area
-    getSelectedAreaRenderableObject(vo: VoxelObject): RenderableObject{        
-        return this.#selectedAreaRenderableObject.getRenderableObject(vo);
+    //selected areas
+    getStaticSelectedAreaRenderableObject(vo: VoxelObject): RenderableObject{        
+        return this.#staticSelectedAreaRenderableObject.getRenderableObject(vo);
     }
 
-    setSelectedAreaRenderableObjectDirty(){
-        this.#selectedAreaRenderableObject.setRenderableObjectDirty();
+    setStaticSelectedAreaRenderableObjectDirty(){
+        this.#staticSelectedAreaRenderableObject.setRenderableObjectDirty();
     }
 
-    clearSelectedAreaMesh(){
-        this.#selectedAreaRenderableObject.setMeshToRebuild();
+    clearStaticSelectedAreaMesh(){
+        this.#staticSelectedAreaRenderableObject.setMeshToRebuild();
     }    
 
-    #createVoSelectedAreaRo(vo: VoxelObject): RenderableObject{
+    #createVoStaticSelectedAreaRo(vo: VoxelObject): RenderableObject{
         const out: RenderableObject = new RenderableObject();
         const shader = new Shader(worldObjectShader(), "vertexShader", "fragmentShader", 
         [new ViewportShaderResources(0) ,new CameraShaderResources(1),new WorldObjectShaderResources(2)]);        
-        out.mesh = generateVoSelectedAreaMesh(vo);
+        out.mesh = generateVoSelectedAreaMesh(vo, 'static');
         out.material = {
             shader
         };
@@ -252,7 +258,7 @@ export class VoxelObjectRenderablesManager{
         return out;
     }
 
-    #updateVoSelectedAreaRo(vo: VoxelObject, ro: RenderableObject): void{
+    #updateVoStaticSelectedAreaRo(vo: VoxelObject, ro: RenderableObject): void{
         ro.worldTransform = {...vo.transform};
         
         if(!ro.material || !ro.material.shader){            
@@ -262,7 +268,52 @@ export class VoxelObjectRenderablesManager{
         }
 
         if(!ro.mesh){
-            ro.mesh = generateVoSelectedAreaMesh(vo);
+            ro.mesh = generateVoSelectedAreaMesh(vo, 'static');
+        }
+        ro.name = "selectedArea" + "(" + vo.name + ")" ;
+        ro.collider = null; 
+        ro.screenTransform = null;
+    }    
+
+    getDynamicSelectedAreaRenderableObject(vo: VoxelObject): RenderableObject{        
+        return this.#dynamicSelectedAreaRenderableObject.getRenderableObject(vo);
+    }
+
+    setDynamicSelectedAreaRenderableObjectDirty(){
+        this.#dynamicSelectedAreaRenderableObject.setRenderableObjectDirty();
+    }
+
+    clearDynamicSelectedAreaMesh(){
+        this.#dynamicSelectedAreaRenderableObject.setMeshToRebuild();
+    }        
+
+    #createVoDynamicSelectedAreaRo(vo: VoxelObject): RenderableObject{
+        const out: RenderableObject = new RenderableObject();
+        const shader = new Shader(worldObjectShader(), "vertexShader", "fragmentShader", 
+        [new ViewportShaderResources(0) ,new CameraShaderResources(1),new WorldObjectShaderResources(2)]);        
+        out.mesh = generateVoSelectedAreaMesh(vo, 'dynamic');
+        out.material = {
+            shader
+        };
+        out.collider = null; 
+        out.worldTransform = vo.transform;
+        out.screenTransform = null;
+        out.name = "selectedArea" + "(" + vo.name + ")" ;
+
+        return out;
+    }
+
+    #updateVoDynamicSelectedAreaRo(vo: VoxelObject, ro: RenderableObject): void{
+        ro.worldTransform = {...vo.transform};
+        
+        if(!ro.material || !ro.material.shader){            
+            const shader = new Shader(worldObjectShader(), "vertexShader", "fragmentShader", 
+            [new ViewportShaderResources(0) ,new CameraShaderResources(1),new WorldObjectShaderResources(2)]);
+            ro.material = {shader};
+        }
+
+        if(!ro.mesh){
+            ro.mesh = generateVoSelectedAreaMesh(vo, 'dynamic');
         }
         ro.name = "selectedArea" + "(" + vo.name + ")" ;
         ro.collider = null; 

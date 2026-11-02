@@ -65,11 +65,15 @@ export class SceneContextCreator{
                     out.push(newRenderableObject);
                 }
 
-                if(selectedVo.getSelectedVoxelsCount("dynamic") >0 || selectedVo.getSelectedVoxelsCount("static") ){
-                    
-                    const selectedObjectSelectedArea = selectedVo.renderablesManager.getSelectedAreaRenderableObject(selectedVo);
+                if(selectedVo.getSelectedVoxelsCount("dynamic") >0 ){                    
+                    const selectedObjectSelectedArea = selectedVo.renderablesManager.getDynamicSelectedAreaRenderableObject(selectedVo);
                     out.push(selectedObjectSelectedArea);
                 }            
+
+                if(selectedVo.getSelectedVoxelsCount("static") >0){
+                    const selectedObjectSelectedArea = selectedVo.renderablesManager.getStaticSelectedAreaRenderableObject(selectedVo);
+                    out.push(selectedObjectSelectedArea);
+                }
             }     
                    
             if(scene.seletedVoxelObjectRenderOptions.borderGrid){

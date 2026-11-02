@@ -497,7 +497,7 @@ export function generateVoBorderOutlineMesh(vo: VoxelObject): Mesh{
     return meshBuilder.build();   
 }
 
-export function generateVoSelectedAreaMesh(vo: VoxelObject): Mesh{
+export function generateVoSelectedAreaMesh(vo: VoxelObject, areaType: 'dynamic'|'static'): Mesh{
     const meshBuilder = new MeshBuilder({
         topology: "triangle-list",
         attributes: [
@@ -552,13 +552,11 @@ export function generateVoSelectedAreaMesh(vo: VoxelObject): Mesh{
         (-gridSize.z / 2)*voxelSize.z
     );
 
-    const staticSelectedArea: VoxelObjectSelectedArea = vo.selectedAreas.get('static')!;
-    const staticVoxelsColor: Vector4 = staticSelectedArea.color;
-    const staticVoxels: Vector3[] = staticSelectedArea.getGridPositions();
+    const selectedArea: VoxelObjectSelectedArea = vo.selectedAreas.get(areaType)!;
+    const voxelsColor: Vector4 = selectedArea.color;
+    const voxels: Vector3[] = selectedArea.getGridPositions();
     
-    //let counter = 0;
-    staticVoxels.forEach(gridPosition => {    
-        //console.log(counter++)    
+    voxels.forEach(gridPosition => {        
         const voxelStartPosition = objectStart.addVector(gridPosition.hadamard(voxelSize))
 
         const leftTopFrontPosition = voxelStartPosition.addVector(new Vector3(0,0,voxelSize.z));
@@ -582,172 +580,73 @@ export function generateVoSelectedAreaMesh(vo: VoxelObject): Mesh{
 
         // front
         neighbour = gridPosition.addVector(new Vector3(0,0,1)); 
-        if(!occupied(neighbour) && !selected(neighbour, staticSelectedArea)){
+        if(!occupied(neighbour) && !selected(neighbour, selectedArea)){
             addVoxelSideToMesh(
                 leftTopFrontPosition,
                 rightTopFrontPosition,
                 rightBottomFrontPosition,
                 leftBottomFrontPosition,
-                staticVoxelsColor
+                voxelsColor
             );
         }
 
         // back
         neighbour = gridPosition.addVector(new Vector3(0,0,-1)); 
-        if(!occupied(neighbour) && !selected(neighbour, staticSelectedArea)){
+        if(!occupied(neighbour) && !selected(neighbour, selectedArea)){
             addVoxelSideToMesh(
                 rightTopBackPosition,
                 leftTopBackPosition,
                 leftBottomBackPosition,
                 rightBottomBackPosition,
-                staticVoxelsColor
+                voxelsColor
             );
         }
 
         // top
         neighbour = gridPosition.addVector(new Vector3(0,-1,0)); 
-        if(!occupied(neighbour) && !selected(neighbour, staticSelectedArea)){
+        if(!occupied(neighbour) && !selected(neighbour, selectedArea)){
             addVoxelSideToMesh(
                 leftTopBackPosition,
                 rightTopBackPosition,
                 rightTopFrontPosition,
                 leftTopFrontPosition,
-                staticVoxelsColor
+                voxelsColor
             );
         }
 
         // bottom
         neighbour = gridPosition.addVector(new Vector3(0,1,0)); 
-        if(!occupied(neighbour) && !selected(neighbour, staticSelectedArea)){
+        if(!occupied(neighbour) && !selected(neighbour, selectedArea)){
             addVoxelSideToMesh(
                 leftBottomFrontPosition,
                 rightBottomFrontPosition,
                 rightBottomBackPosition,
                 leftBottomBackPosition,
-                staticVoxelsColor
+                voxelsColor
             );
         }
 
         // left
         neighbour = gridPosition.addVector(new Vector3(-1,0,0)); 
-        if(!occupied(neighbour) && !selected(neighbour, staticSelectedArea)){
+        if(!occupied(neighbour) && !selected(neighbour, selectedArea)){
             addVoxelSideToMesh(
                 leftTopBackPosition,
                 leftTopFrontPosition,
                 leftBottomFrontPosition,
                 leftBottomBackPosition,
-                staticVoxelsColor
+                voxelsColor
             );
         }
 
         // right
         neighbour = gridPosition.addVector(new Vector3(1,0,0)); 
-        if(!occupied(neighbour) && !selected(neighbour, staticSelectedArea)){
+        if(!occupied(neighbour) && !selected(neighbour, selectedArea)){
             addVoxelSideToMesh(
                 rightTopFrontPosition,
                 rightTopBackPosition,
                 rightBottomBackPosition,
                 rightBottomFrontPosition,
-                staticVoxelsColor
-            );
-        }
-    });
-
-    const dynamicSelectedArea: VoxelObjectSelectedArea = vo.selectedAreas.get('dynamic')!;
-    const dynamicVoxelsColor: Vector4 = dynamicSelectedArea.color;
-    const dynamicVoxels: Vector3[] = dynamicSelectedArea.getGridPositions();
-    
-    dynamicVoxels.forEach(gridPosition => {        
-        const voxelStartPosition = objectStart.addVector(gridPosition.hadamard(voxelSize))
-
-        const leftTopFrontPosition = voxelStartPosition.addVector(new Vector3(0,0,voxelSize.z));
-        const rightTopFrontPosition = voxelStartPosition.addVector(new Vector3(voxelSize.x,0,voxelSize.z));
-        const rightBottomFrontPosition = voxelStartPosition.addVector(new Vector3(voxelSize.x,voxelSize.y,voxelSize.z));
-        const leftBottomFrontPosition = voxelStartPosition.addVector(new Vector3(0,voxelSize.y,voxelSize.z));
-
-        const leftTopBackPosition = voxelStartPosition.addVector(new Vector3(0,0,0));
-        const rightTopBackPosition = voxelStartPosition.addVector(new Vector3(voxelSize.x,0,0));
-        const rightBottomBackPosition = voxelStartPosition.addVector(new Vector3(voxelSize.x,voxelSize.y,0));
-        const leftBottomBackPosition = voxelStartPosition.addVector(new Vector3(0,voxelSize.y,0));
-
-        const selected = (gridPosition: Vector3, selectedArea: VoxelObjectSelectedArea)=>{
-            return selectedArea.hasGridPosition(gridPosition);
-        }
-        const occupied = (gridPosition: Vector3)=>{
-            return vo.isVoxelNonEmpty(gridPosition) || vo.getGhostVoxel(gridPosition)!=null;
-        }
-
-        let neighbour = new Vector3(0,0,0);
-
-        // front
-        neighbour = gridPosition.addVector(new Vector3(0,0,1)); 
-        if(!occupied(neighbour) && !selected(neighbour, dynamicSelectedArea)){
-            addVoxelSideToMesh(
-                leftTopFrontPosition,
-                rightTopFrontPosition,
-                rightBottomFrontPosition,
-                leftBottomFrontPosition,
-                dynamicVoxelsColor
-            );
-        }
-
-        // back
-        neighbour = gridPosition.addVector(new Vector3(0,0,-1)); 
-        if(!occupied(neighbour) && !selected(neighbour, dynamicSelectedArea)){
-            addVoxelSideToMesh(
-                rightTopBackPosition,
-                leftTopBackPosition,
-                leftBottomBackPosition,
-                rightBottomBackPosition,
-                dynamicVoxelsColor
-            );
-        }
-
-        // top
-        neighbour = gridPosition.addVector(new Vector3(0,-1,0)); 
-        if(!occupied(neighbour) && !selected(neighbour, dynamicSelectedArea)){
-            addVoxelSideToMesh(
-                leftTopBackPosition,
-                rightTopBackPosition,
-                rightTopFrontPosition,
-                leftTopFrontPosition,
-                dynamicVoxelsColor
-            );
-        }
-
-        // bottom
-        neighbour = gridPosition.addVector(new Vector3(0,1,0)); 
-        if(!occupied(neighbour) && !selected(neighbour, dynamicSelectedArea)){
-            addVoxelSideToMesh(
-                leftBottomFrontPosition,
-                rightBottomFrontPosition,
-                rightBottomBackPosition,
-                leftBottomBackPosition,
-                dynamicVoxelsColor
-            );
-        }
-
-        // left
-        neighbour = gridPosition.addVector(new Vector3(-1,0,0)); 
-        if(!occupied(neighbour) && !selected(neighbour, dynamicSelectedArea)){
-            addVoxelSideToMesh(
-                leftTopBackPosition,
-                leftTopFrontPosition,
-                leftBottomFrontPosition,
-                leftBottomBackPosition,
-                dynamicVoxelsColor
-            );
-        }
-
-        // right
-        neighbour = gridPosition.addVector(new Vector3(1,0,0)); 
-        if(!occupied(neighbour) && !selected(neighbour, dynamicSelectedArea)){
-            addVoxelSideToMesh(
-                rightTopFrontPosition,
-                rightTopBackPosition,
-                rightBottomBackPosition,
-                rightBottomFrontPosition,
-                dynamicVoxelsColor
+                voxelsColor
             );
         }
     });
