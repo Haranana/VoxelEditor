@@ -62,7 +62,7 @@ export class VoxelObject extends SceneObject{
     }
     #onSelectedAreaChange(){
         this.renderablesManager.clearSelectedAreaMesh();
-        this.#notifyOfSelectedAreaChange();
+        
     }
     
     #notifyOfVoxelsChange(){ 
@@ -71,6 +71,7 @@ export class VoxelObject extends SceneObject{
     #onVoxelsChange(chunkPos: Vector3){
         const chunkOffset = gridPosToOffset(chunkPos, this.getChunksAmount());
         this.renderablesManager.clearChunkMesh(chunkOffset);
+        this.renderablesManager.clearObjectGridMesh();
         //this.#notifyOfVoxelsChange();
     }
 
@@ -382,6 +383,7 @@ export class VoxelObject extends SceneObject{
         let clearedVoxelsCount = area.clear();
         if(clearedVoxelsCount){
             this.#onSelectedAreaChange();
+            this.#notifyOfSelectedAreaChange();
         }
         return clearedVoxelsCount;        
     }
@@ -392,8 +394,8 @@ export class VoxelObject extends SceneObject{
         if(selectVoxelSuccess){
             this.#onSelectedAreaChange();
         }
-        console.log("SELECTED:", gridPos);
-        console.log(`selected voxels: ${area.getGridPositions()}`)
+        //console.log("SELECTED:", gridPos);
+        //console.log(`selected voxels: ${area.getGridPositions()}`)
         return selectVoxelSuccess;        
     }
 
@@ -405,6 +407,7 @@ export class VoxelObject extends SceneObject{
         });
         if(selectedVoxelsCount){
             this.#onSelectedAreaChange();
+            this.#notifyOfSelectedAreaChange();
         }
         return selectedVoxelsCount;
 
@@ -451,19 +454,22 @@ export class VoxelObject extends SceneObject{
         const area = this.selectedAreas.get(areaType)!;
         let selectedVoxelsCount = 0;
         for(let x: number = 0; x<this.#gridSize.x; x++){
+            
             for(let y: number = 0; y<this.#gridSize.y; y++){
                 for(let z: number = 0; z<this.#gridSize.z; z++){
                     const gridPos = new Vector3(x,y,z);
                     const v = this.getVoxel(gridPos);
                     if(v!==undefined){
                         if(shouldSelect(v, gridPos)){   
-                            area.addGridPosition(gridPos);
+                            area.addGridPositionUnsafe(gridPos);
                             selectedVoxelsCount++;         
                         }
                     }
         }}}
         if(selectedVoxelsCount){
+            console.log("SELECTED ALL VOXELS");
             this.#onSelectedAreaChange();
+            this.#notifyOfSelectedAreaChange();
         }
         return selectedVoxelsCount;
     }

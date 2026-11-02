@@ -1,6 +1,7 @@
 import { clamp, gridOffsetToPos } from "../../../math/utils";
 import { Vector3 } from "../../../math/vector/vector3";
 import { Vector4 } from "../../../math/vector/vector4";
+import { BitSet } from "../../classes/Bitset";
 import { UInt32List } from "../../classes/UInt32List";
 
 // resize not supported for now;
@@ -12,8 +13,14 @@ export class VoxelObjectSelectedArea{
     //Uint32 should be enough for grid of size about 1600^3, for anything more
     //this will have to be changed (maybe for bigint array?)
     #selectedVoxelsOffsets: UInt32List = new UInt32List();
+    #selectedVoxelsBitset: BitSet;
     #gridSize: Vector3;
     color: Vector4 = VoxelObjectSelectedArea.#defaultColor;
+
+    constructor(gridSize: Vector3){
+        this.#selectedVoxelsBitset = new BitSet(gridSize.x * gridSize.y * gridSize.z);
+        this.#gridSize = gridSize.copy();
+    }
 
     //returns false if voxel of this position is already in selected area
     //true otherwise
@@ -24,13 +31,25 @@ export class VoxelObjectSelectedArea{
         }
         const offset = v.x * this.#gridSize.y * this.#gridSize.z + v.y * this.#gridSize.z + v.z;
         this.#selectedVoxelsOffsets.add(offset);
+        this.#selectedVoxelsBitset.add(offset);
         return true;
+    }
+
+    //doesn't check if offset already exists in the list
+    addGridPositionUnsafe(v: Vector3): void {
+        const offset = v.x * this.#gridSize.y * this.#gridSize.z
+            + v.y * this.#gridSize.z
+            + v.z;
+
+        this.#selectedVoxelsOffsets.add(offset);
+        this.#selectedVoxelsBitset.add(offset);
     }
     addOffset(offset: number): boolean{        
         if(this.hasOffset(offset)){
             return false;
         }
         this.#selectedVoxelsOffsets.add(offset);
+        this.#selectedVoxelsBitset.add(offset);
         return true;
     }    
 
@@ -38,31 +57,51 @@ export class VoxelObjectSelectedArea{
     //false if voxel position couldn't be found 
     removeGridPosition(v: Vector3): boolean{
         const offset = v.x * this.#gridSize.y * this.#gridSize.z + v.y * this.#gridSize.z + v.z;
-        const removed = this.#selectedVoxelsOffsets.remove(offset);
-        return removed;
-    }
-    removeOffset(offset: number): boolean{
-        const removed = this.#selectedVoxelsOffsets.remove(offset);
+        const removed = this.#selectedVoxelsBitset.delete(offset); 
+        if(removed){
+            this.#selectedVoxelsOffsets.remove(offset);
+        }
         return removed;
     }
 
-    hasGridPosition(v: Vector3): boolean{
-        const offset = v.x * this.#gridSize.y * this.#gridSize.z + v.y * this.#gridSize.z + v.z;
-        const out = this.#selectedVoxelsOffsets.array().find((curOffset)=>curOffset===offset)!==undefined;
-        return out;
+    removeOffset(offset: number): boolean{
+        const removed = this.#selectedVoxelsBitset.delete(offset);
+        if(removed){ 
+            this.#selectedVoxelsOffsets.remove(offset);
+        }
+        return removed;
+    }
+
+    hasGridPosition(v: Vector3): boolean {
+        if (
+            v.x < 0 || v.x >= this.#gridSize.x ||
+            v.y < 0 || v.y >= this.#gridSize.y ||
+            v.z < 0 || v.z >= this.#gridSize.z
+        ) {
+            return false;
+        }
+
+        const offset = v.x * this.#gridSize.y * this.#gridSize.z
+            + v.y * this.#gridSize.z + v.z;
+
+        return this.#selectedVoxelsBitset.has(offset);
     }
 
     hasOffset(offset: number): boolean{
-        const out = this.#selectedVoxelsOffsets.array().find((curOffset)=>curOffset===offset)!==undefined;
-        return out;
+        return this.#selectedVoxelsBitset.has(offset);
+        //const out = this.#selectedVoxelsOffsets.array().find((curOffset)=>curOffset===offset)!==undefined;
+        //return out;
     }
 
+    
     //  returns list id of given voxel position (either by its gridPosition or gridOffset)
     //  or undefined if none is found
+    /*
     findGridPosition(v: Vector3): number|undefined{
         const offset = v.x * this.#gridSize.y * this.#gridSize.z + v.y * this.#gridSize.z + v.z;
-        const out = this.#selectedVoxelsOffsets.array().find((curOffset)=>curOffset===offset)
-        return out;
+        
+        //const out = this.#selectedVoxelsOffsets.array().find((curOffset)=>curOffset===offset)
+        //return out;
     }
 
     findOffset(offset: number): number|undefined{
@@ -70,9 +109,7 @@ export class VoxelObjectSelectedArea{
         return out;
     }
 
-    constructor(gridSize: Vector3){
-        this.#gridSize = gridSize.copy();
-    }
+
 
     getGridPositionStrings(): string[]{
         const out: string[] = []; 
@@ -80,7 +117,7 @@ export class VoxelObjectSelectedArea{
             out.push(this.#GridOffsetToGridPosition(vOffset).toString());
         })
         return out;
-    }
+    }*/
 
     getBoundingBoxCenter(): Vector3 | null{
         if(this.#selectedVoxelsOffsets.size === 0 ) return null;
@@ -131,12 +168,17 @@ export class VoxelObjectSelectedArea{
         for(let i=0; i<this.#selectedVoxelsOffsets.size; i++){
             if(this.#selectedVoxelsOffsets.get(i)!==area.#selectedVoxelsOffsets.get(i)) return false;
         }
+        const maxOffset = this.#gridSize.x * this.#gridSize.y * this.#gridSize.z -1;
+        for(let i=0; i<=maxOffset;i++){
+            if(this.hasOffset(i)!==area.hasOffset(i)) return false;
+        }
         return true
     }
 
     copy(){
         const out = new VoxelObjectSelectedArea(this.#gridSize)
         out.#selectedVoxelsOffsets = this.#selectedVoxelsOffsets.copy();
+        out.#selectedVoxelsBitset = this.#selectedVoxelsBitset.copy()
         out.color = this.color.copy();
         return out;
     }
@@ -144,6 +186,7 @@ export class VoxelObjectSelectedArea{
     clear(): number{
         const out = this.#selectedVoxelsOffsets.size;
         this.#selectedVoxelsOffsets.clear();
+        this.#selectedVoxelsBitset.clear();
         return out;
     }
 }

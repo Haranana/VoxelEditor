@@ -511,7 +511,7 @@ export function generateVoBorderGridMesh(vo: VoxelObject): Mesh {
 }
 
 export function generateVoSelectedAreaMesh(vo: VoxelObject, selectedArea: VoxelObjectSelectedArea): Mesh {
-
+   // console.log(`[generateVoSelectedAreaMesh]`)
     const meshBuilder = new MeshBuilder({
         topology: "triangle-list",
         attributes: [
@@ -565,7 +565,7 @@ export function generateVoSelectedAreaMesh(vo: VoxelObject, selectedArea: VoxelO
     );
 
     selectedArea.getGridPositions().forEach(voxelCoords => {
-
+        //console.log("Remeshing: ", voxelCoords.toString());
         const x = voxelCoords.x;
         const y = voxelCoords.y;
         const z = voxelCoords.z;

@@ -720,6 +720,7 @@ export class CoreController{
         const activeVo = this.scene.getActiveVoxelObject();
         if(!activeVo) return;
 
+        activeVo.resetSelectedArea('static');
         const selectedAreaChanged = activeVo.selectVoxelsByFunction("static", ()=>{
             return true
         });
@@ -1085,7 +1086,7 @@ export class CoreController{
             this.resetSelectSession();
             return;
         }
-        console.log(`hitVoxel: ${rayCastResults?.voxelCoords}`);
+        //console.log(`hitVoxel: ${rayCastResults?.voxelCoords}`);
         const hitVoxel : Vector3 = rayCastResults.voxelCoords;
         const hitDirection: Vector3 = faceDirectionToVector(rayCastResults.hitDirection);    
 
@@ -1910,7 +1911,7 @@ export class CoreController{
         // without it for example user could select empty area and then choose move mode to perform illegal action
 
         const oldEditMode: EditMode = this.editMode;
-        if(selectToEditCompatibility.get(this.selectMode)?.has(editMode)){
+        if(selectToEditCompatibility.get(this.selectMode)?.has(editMode)){            
             if(this.scene && this.scene.getActiveVoxelObject()){
                 this.scene.getActiveVoxelObject()?.resetSelectedArea('static');
             }             

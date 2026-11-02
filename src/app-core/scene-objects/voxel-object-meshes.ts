@@ -6,7 +6,7 @@ import { MeshBuilder, type MeshBuilderVertex } from "../../render-engine/meshes/
 import  { VoxelObject } from "./voxel-object";
 import type { VoxelObjectSelectedArea } from "./voxel/voxel-object-selected-area";
 
-export function generateVoChunkMesh(vo: VoxelObject, chunkPos: Vector3): Mesh{
+export function generateVoChunkMesh(vo: VoxelObject, chunkPos: Vector3): Mesh{    
     const meshBuilder: MeshBuilder = new MeshBuilder({
         topology: "triangle-list",
         attributes:[
@@ -126,6 +126,7 @@ export function generateVoChunkMesh(vo: VoxelObject, chunkPos: Vector3): Mesh{
 }
 
 export function generateVoGridMesh(vo: VoxelObject): Mesh{
+    
     const epsilon = 0.00;
     const meshBuilder: MeshBuilder = new MeshBuilder({
         topology: "triangle-list",
@@ -163,24 +164,21 @@ export function generateVoGridMesh(vo: VoxelObject): Mesh{
     const gridSize: Vector3 = vo.getGridSize()
     const voxelSize = vo.getVoxelSize();
     const objectStart : Vector3 = new Vector3(-gridSize.x/2 , -gridSize.y/2, -gridSize.z/2).hadamard(voxelSize); 
-    const chunkSize = vo.getChunkSize();
-    const chunksAmount = vo.getChunksAmount();
-    const voxelsAmount = chunkSize.hadamard(chunksAmount);
 
-    for(let x = 0; x < voxelsAmount.x; x++){
-        for(let y = 0; y < voxelsAmount.y; y++){
-            for(let z = 0; z < voxelsAmount.z; z++){
+    for(let x = 0; x < gridSize.x; x++){
+        for(let y = 0; y < gridSize.y; y++){
+            for(let z = 0; z < gridSize.z; z++){
 
                 const voxelGridPos = new Vector3(x,y,z);
                 const currentVoxelNonEmpty = vo.isVoxelNonEmpty(voxelGridPos);
-                const currentVoxelHasGhost = vo.getGhostVoxel(voxelGridPos)!==undefined;
+                const currentVoxelHasNonEmptyGhost = vo.getGhostVoxel(voxelGridPos) instanceof Vector3;
                 const chunkPositionOffset = new Vector3(x*voxelSize.x,y*voxelSize.y,z*voxelSize.z);
 
-                if(currentVoxelNonEmpty || currentVoxelHasGhost){
+                if(currentVoxelNonEmpty || currentVoxelHasNonEmptyGhost){
+                    
                     const voxelStartPosition = objectStart.addVector(chunkPositionOffset);
                     const getThisVoxelColor = ()=>{
-                            return currentVoxelHasGhost? 
-                            vo.getGhostVoxel(voxelGridPos)!.color : vo.getVoxel(voxelGridPos)!.color;
+                            return vo.getObjectGridColor();
                     }                            
                     const voxelColor = getThisVoxelColor();
 
@@ -240,7 +238,9 @@ export function generateVoGridMesh(vo: VoxelObject): Mesh{
             }
         }
     }
-    return meshBuilder.build();
+
+    const out = meshBuilder.build();
+    return out;
 }
 
 export function generateVoBorderGridMesh(vo: VoxelObject): Mesh{
@@ -556,7 +556,9 @@ export function generateVoSelectedAreaMesh(vo: VoxelObject): Mesh{
     const staticVoxelsColor: Vector4 = staticSelectedArea.color;
     const staticVoxels: Vector3[] = staticSelectedArea.getGridPositions();
     
-    staticVoxels.forEach(gridPosition => {        
+    //let counter = 0;
+    staticVoxels.forEach(gridPosition => {    
+        //console.log(counter++)    
         const voxelStartPosition = objectStart.addVector(gridPosition.hadamard(voxelSize))
 
         const leftTopFrontPosition = voxelStartPosition.addVector(new Vector3(0,0,voxelSize.z));
