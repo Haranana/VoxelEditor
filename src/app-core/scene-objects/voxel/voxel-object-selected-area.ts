@@ -119,26 +119,29 @@ export class VoxelObjectSelectedArea{
         return out;
     }*/
 
-    getBoundingBoxCenter(): Vector3 | null{
-        if(this.#selectedVoxelsOffsets.size === 0 ) return null;
+    getBoundingBoxCenter(): Vector3 | null {
+        if (this.#selectedVoxelsOffsets.size === 0) return null;
 
-        const out = new Vector3(0,0,0);
-        
         const min = this.#gridSize.copy();
-        const max = new Vector3(0,0,0);
+        const max = new Vector3(0, 0, 0);
 
-        this.#selectedVoxelsOffsets.array().forEach((gridOffset)=>{
+        this.#selectedVoxelsOffsets.array().forEach((gridOffset) => {
             const gridPos = gridOffsetToPos(gridOffset, this.#gridSize);
-            gridPos.x = clamp({value: gridPos.x, min: min.x, max: max.x});
-            gridPos.y = clamp({value: gridPos.y, min: min.y, max: max.y});
-            gridPos.z = clamp({value: gridPos.z, min: min.z, max: max.z});            
-        })    
 
-        out.x = Math.floor((min.x + max.x) / 2);
-        out.y = Math.floor((min.y + max.y) / 2);
-        out.z = Math.floor((min.z + max.z) / 2);
-        
-        return out;
+            if (gridPos.x < min.x) min.x = gridPos.x;
+            if (gridPos.y < min.y) min.y = gridPos.y;
+            if (gridPos.z < min.z) min.z = gridPos.z;
+
+            if (gridPos.x > max.x) max.x = gridPos.x;
+            if (gridPos.y > max.y) max.y = gridPos.y;
+            if (gridPos.z > max.z) max.z = gridPos.z;
+        });
+
+        return new Vector3(
+            Math.floor((min.x + max.x) / 2),
+            Math.floor((min.y + max.y) / 2),
+            Math.floor((min.z + max.z) / 2)
+        );
     }
 
     getGridPositions(): Vector3[]{

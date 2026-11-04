@@ -5,7 +5,6 @@ import { Vector3 } from "../../math/vector/vector3.ts";
 import { Vectors } from "../../math/vector/vector-utils.ts";
 import { DistantLight } from "../../render-engine/renderableObjects/distantLight.ts";
 import type { RenderableObject } from "../../render-engine/renderableObjects/renderableObject.ts";
-import type { Camera } from "../scene-objects/camera/camera.ts";
 import type { SceneObject } from "../scene-objects/sceneObject.ts";
 import type { Scene } from "./scene.ts";
 import { SceneGizmos } from "./scene-gizmos.ts";
@@ -98,7 +97,7 @@ export class SceneContextCreator{
             // Move gizmo position is based on static selected area bounding box center
             if(scene.sceneGizmosRenderOptions.objectMoveGizmo){
                 const gizmoPositionGrid = selectedVo.getSelectedAreaBoundingBoxCenter('static');
-                
+                console.log(`[SceneContextCreator] static area bbox center: ${gizmoPositionGrid}`);
                 const camera = scene.getActiveCamera();
                 if(gizmoPositionGrid && camera && selectedVoChunksRo && selectedVoChunksRo.length>0 /*&& selectedRo.mesh && selectedRo.mesh.vertices.length>0*/){
                     const gizmoPositionModel = selectedVo.GridPosToModel(gizmoPositionGrid);                

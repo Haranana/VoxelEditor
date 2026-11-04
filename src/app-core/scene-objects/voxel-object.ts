@@ -530,6 +530,8 @@ export class VoxelObject extends SceneObject{
             let newVGridPos: Vector3 = vGridPos.copy();
 
             this.setVoxel(vGridPos, null);
+            selectedArea.removeGridPosition(vGridPos);
+
             if(x){
                 const oldY = newVGridPos.y;
                 const oldZ = newVGridPos.z;
@@ -552,13 +554,21 @@ export class VoxelObject extends SceneObject{
             this.#ghostVoxels.set(newVGridPos, vCopy);
             modifiedVoxels++;                    
         }
-
+        
         this.copyGhostVoxelsToGrid();
+        this.#ghostVoxels.getAll().forEach((_,gridPosStr)=>{
+            const gridPos = Vector3.fromString(gridPosStr);
+            selectedArea.addGridPosition(gridPos);
+        });
+
+        
         this.clearGhostVoxels();
         if(modifiedVoxels){
+            this.#onSelectedAreaChange(areaType);
             this.#notifyOfSelectedAreaChange();
-            this.#notifyOfVoxelsChange();
+            //this.#notifyOfVoxelsChange(); copyGhostVoxelsToGrid should already do it
         }
+        //console.log(modifiedVoxels)
         return modifiedVoxels;
     }
 
@@ -588,9 +598,14 @@ export class VoxelObject extends SceneObject{
         }
 
         selectedVoxels.forEach(vGridPos=>{
+
             let flippedGridPos = vGridPos.copy();
             const v = this.getVoxel(vGridPos);
             if(v===undefined) return; 
+
+            this.setVoxel(vGridPos, null);
+            selectedArea.removeGridPosition(vGridPos);
+            
             if(flipX){                                                        
                 flippedGridPos.x = minX + maxX - vGridPos.x;
             }
@@ -604,10 +619,15 @@ export class VoxelObject extends SceneObject{
         });
 
         this.copyGhostVoxelsToGrid();
+        this.#ghostVoxels.getAll().forEach((_,gridPosStr)=>{
+            const gridPos = Vector3.fromString(gridPosStr);
+            this.selectVoxel(areaType, gridPos);
+        });
         this.clearGhostVoxels();
 
         if(modifiedVoxels>0){
             this.#notifyOfVoxelsChange();
+            this.#notifyOfSelectedAreaChange();
         }        
         return modifiedVoxels;
     }    
@@ -643,6 +663,7 @@ export class VoxelObject extends SceneObject{
     copyGhostVoxelsToGrid(){
         let out = 0;
         const voxelSparseList = this.#ghostVoxels.getAll();
+        console.log(voxelSparseList);
         voxelSparseList.forEach((voxel, gridPosition)=>{
             if(this.setVoxel(Vector3.fromString(gridPosition) , voxel)){
                 out++;
@@ -684,6 +705,7 @@ export class VoxelObject extends SceneObject{
     
 
     moveGhostVoxels(delta: Vector3, axis?: "X" | "Y" | "Z"): boolean{
+        console.log(`[moveGhostVoxels] ghost voxels`)
         let out = true;
         let refinedDelta = new Vector3(0,0,0);
         if(axis){
@@ -693,7 +715,8 @@ export class VoxelObject extends SceneObject{
         }
 
         const ghostVoxelsList = this.#ghostVoxels.getAll();
-        ghostVoxelsList.forEach((_, gridPosStr)=>{
+        ghostVoxelsList.forEach((v, gridPosStr)=>{
+            console.log(`[moveGhostVoxels] ${gridPosStr} | ${v?.color}`)
             const gridPosMoved = Vector3.fromString(gridPosStr).addVector(refinedDelta);
             if(!this.voxelExists(gridPosMoved)){
                 out = false;
@@ -708,7 +731,7 @@ export class VoxelObject extends SceneObject{
                 newGhostVoxels.set(gridPosMoved.toString(), v? v.copy():null);         
             })            
             
-            this.#ghostVoxels.clear();
+            this.clearGhostVoxels();
             newGhostVoxels.forEach((v,k)=>{
                 this.addGhostVoxel(Vector3.fromString(k), v);                
             })

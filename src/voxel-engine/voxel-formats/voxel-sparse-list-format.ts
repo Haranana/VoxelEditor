@@ -18,7 +18,7 @@ export class VoxelSparseListFormat extends VoxelFormat<Voxel>{
 
     constructor(gridSize: Vector3){
         super();
-        this.gridSize = gridSize;
+        this.gridSize = gridSize.copy();
         this.#voxelCodec;
     }
 
@@ -32,7 +32,7 @@ export class VoxelSparseListFormat extends VoxelFormat<Voxel>{
 
     setVoxel(gridPosition: Vector3, newVoxel: Voxel|null): SparseListSetVoxelResult {
         if(gridPosition.x < this.gridSize.x && gridPosition.y < this.gridSize.y && gridPosition.z < this.gridSize.z &&
-            gridPosition.x > 0 && gridPosition.y < 0 && gridPosition.z < 0){
+            gridPosition.x >= 0 && gridPosition.y >= 0 && gridPosition.z >= 0){
             this.#sparseList.set(gridPosition.toString(),newVoxel);
             return new SparseListSetVoxelResult(true);
         }

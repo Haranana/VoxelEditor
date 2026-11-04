@@ -108,6 +108,7 @@ export class CoreController{
         this.readIdTexture = this.renderer.readIdPixel.bind(this.renderer);
         this.initialized = true;
 
+
         this.renderScene();
     }
 
@@ -931,7 +932,7 @@ export class CoreController{
     }
 
     async handleCanvasPickingInteraction(pickingInteraction: PickingInteraction, clickPos: Vector2, hitGridPosition: Vector3, canvasSize: Vector2){
-        console.log(`[handleCanvasPickingInteraction] Starting voxels move session: ${pickingInteraction}`);
+        //console.log(`[handleCanvasPickingInteraction] Starting voxels move session: ${pickingInteraction}`);
         if(pickingInteraction==='CameraGizmoPosX'){
             this.centerCameraAtPositiveX();
         }else if(pickingInteraction==='CameraGizmoNegX'){
@@ -1012,7 +1013,16 @@ export class CoreController{
                 this.selectSession.startCoords = new Vector3(pointerPos.x,pointerPos.y,0);
                 selectedAreaChanged = voxelObject.selectVoxelsByArray("dynamic" , getVoxelsOnRay(pointerPos, voxelObject, canvasSize, mvp,true)) > 0;
             }  
-        }else if(selectType === "dynamic"){ //on dynamic select type selection happened on pointer move, on pointer down does action and restarts select
+        }else if(selectType === "dynamic" ){ //on dynamic select type selection happened on pointer move, on pointer down does action and restarts select
+                        if(this.selectMode=="Cube"){
+                this.selectSession.startCoords = hitVoxel;  
+                selectedAreaChanged = voxelObject.selectVoxel(selectType, hitVoxel);
+            }
+            else if(this.selectMode=="Marquee"){
+                this.selectSession.startCoords = new Vector3(pointerPos.x,pointerPos.y,0);
+                selectedAreaChanged = voxelObject.selectVoxelsByArray(selectType, getVoxelsOnRay(pointerPos, voxelObject, canvasSize, mvp,true)) >0;
+            }else{
+            
             if(this.editMode=="Add"){
                 const newVoxel = new Voxel(this.#currentColor);
                 voxelObjectChanged = voxelObject.modifySelectedVoxelsByFunction("dynamic", (_,v)=>v===null? newVoxel: v)!=0;
@@ -1031,15 +1041,8 @@ export class CoreController{
                 this.#colorPalette.setCustomColor(this.#currentColorId, pickedColor);
                 this.setCurrentColor(this.#currentColorId);
             }
-
-            if(this.selectMode=="Cube"){
-                this.selectSession.startCoords = hitVoxel;  
-                selectedAreaChanged = voxelObject.selectVoxel(selectType, hitVoxel);
-            }
-            else if(this.selectMode=="Marquee"){
-                this.selectSession.startCoords = new Vector3(pointerPos.x,pointerPos.y,0);
-                selectedAreaChanged = voxelObject.selectVoxelsByArray(selectType, getVoxelsOnRay(pointerPos, voxelObject, canvasSize, mvp,true)) >0;
-            }            
+        }
+       
         }
         
         if(voxelObjectChanged || selectedAreaChanged){
@@ -1138,7 +1141,8 @@ export class CoreController{
             else if(this.editMode=="Move"){               
                 selectedAreaChanged = voxelObject.selectCube(this.selectSession.startCoords!, hitVoxel, "dynamic");  
             }
-        }else{
+        }else{ //no select session
+            /*
             if(this.editMode == "Add"){
                 if(this.selectMode=="Voxel" || this.selectMode=="Cube"){
                     selectedAreaChanged = voxelObject.selectVoxel(selectType, hitVoxel);
@@ -1156,7 +1160,34 @@ export class CoreController{
                     selectedAreaChanged = voxelObject.selectConnected(hitVoxel,selectType);   
                 }
             }else{
-                //higlightCausedChange = props.selectedObject.highlightVoxel(hitVoxel);
+                if(this.selectMode=="Voxel" || this.selectMode=="Cube"){
+                    selectedAreaChanged = voxelObject.selectVoxel('dynamic', hitVoxel);
+                }else if(this.selectMode=="Face"){
+                    selectedAreaChanged = voxelObject.selectFace(hitVoxel , vectorToFaceDirection(hitDirection),'dynamic');
+                }else if(this.selectMode=="Color"){
+                    selectedAreaChanged = voxelObject.selectByColor(hitVoxel,'dynamic');
+                }else if(this.selectMode=="Connected"){
+                    selectedAreaChanged = voxelObject.selectConnected(hitVoxel,'dynamic');   
+                }
+            }*/
+            if(this.editMode == "Add"){
+                if(this.selectMode=="Voxel" || this.selectMode=="Cube"){
+                    selectedAreaChanged = voxelObject.selectVoxel(selectType, hitVoxel);
+                }else if(this.selectMode=="Face"){
+                    selectedAreaChanged = voxelObject.selectFace(hitVoxel , vectorToFaceDirection(hitDirection), selectType,true);
+                }
+            }else{
+                if(voxelObject.getVoxel(hitVoxel)){
+                    if(this.selectMode=="Voxel" || this.selectMode=="Cube" || this.selectMode=="Marquee"){
+                        selectedAreaChanged = voxelObject.selectVoxel('dynamic', hitVoxel);
+                    }else if(this.selectMode=="Face"){
+                        selectedAreaChanged = voxelObject.selectFace(hitVoxel , vectorToFaceDirection(hitDirection),'dynamic');
+                    }else if(this.selectMode=="Color"){
+                        selectedAreaChanged = voxelObject.selectByColor(hitVoxel,'dynamic');
+                    }else if(this.selectMode=="Connected"){
+                        selectedAreaChanged = voxelObject.selectConnected(hitVoxel,'dynamic');   
+                    }
+                }
             }
         }
 
@@ -1166,6 +1197,7 @@ export class CoreController{
     }
 
     async handleCanvasPointerUp(pointerPos: Vector2, canvasSize: Vector2){
+
         if(!this.initialized) return;
         const scene = this.scene!;
         const voxelObject = scene.getActiveVoxelObject();
@@ -1194,6 +1226,7 @@ export class CoreController{
                     const newVoxel = new Voxel(this.#currentColor);
                     voxelObject.modifySelectedVoxelsByFunction(selectType, (_,v)=>v===null? newVoxel : v);
                 }else if(this.editMode=="Paint"){
+                    
                     const newVoxel = new Voxel(this.#currentColor);
                     voxelObject.modifySelectedVoxelsByFunction(selectType, (_,v)=>v!==null? newVoxel: v);
                 }else if(this.editMode=="Remove"){
@@ -1207,6 +1240,7 @@ export class CoreController{
         }
         if(this.hasSelectSessionStarted() && this.selectMode==="Marquee"){
                 if(this.editMode=="Paint"){
+                    console.log(`[handleCanvasPointerUp]`)
                     const newVoxel = new Voxel(this.#currentColor);
                     voxelObject.modifySelectedVoxelsByFunction(selectType, (_,v)=>v!==null? newVoxel: v);
                 }else if(this.editMode=="Remove"){
@@ -1909,11 +1943,16 @@ export class CoreController{
     setEditMode(editMode: EditMode){
         // Reset static select area
         // without it for example user could select empty area and then choose move mode to perform illegal action
+        if(!this.initialized) return;
 
         const oldEditMode: EditMode = this.editMode;
         if(selectToEditCompatibility.get(this.selectMode)?.has(editMode)){            
             if(this.scene && this.scene.getActiveVoxelObject()){
-                this.scene.getActiveVoxelObject()?.resetSelectedArea('static');
+                const vo = this.scene.getActiveVoxelObject()!;
+                vo.resetSelectedArea('dynamic');
+                vo.resetSelectedArea('static')
+                this.renderScene()
+                
             }             
             this.editMode = editMode;
             if(this.editMode === 'Move'){
@@ -1936,11 +1975,20 @@ export class CoreController{
 
     //expects that each select mode has at least one compatible edit mode
     setSelectMode(selectMode: SelectMode){
+        if(!this.initialized) return;
+
+        
         const oldSelectMode: SelectMode = this.selectMode;
         if(!editToSelectCompatibility.get(this.editMode)?.has(selectMode)){
             this.setEditMode(selectToEditCompatibility.get(selectMode)!.values().next().value!);            
         }
         this.selectMode = selectMode
+        if(this.scene && this.scene.getActiveVoxelObject()){
+            const vo = this.scene.getActiveVoxelObject()!;
+            vo.resetSelectedArea('dynamic');
+            vo.resetSelectedArea('static')
+            this.renderScene();
+        }        
         if(oldSelectMode!==selectMode){
             this.notifyOfSelectModeChange();
         }
