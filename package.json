@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
+    "@radix-ui/react-menubar": "^1.2.1",
     "gh-pages": "^6.3.0",
     "react": "^19.2.0",
     "react-color": "^2.19.3",

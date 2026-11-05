@@ -263,17 +263,14 @@ export class VoxelObject extends SceneObject{
     }
     
     #selectFaceRecursion(v: Vector3, dir: FaceDirection, emptyVoxels: boolean, areaType: SelectedAreaType){
-        //console.log(`[selectFaceRecursion] iteration: ${v} -`)
         const possiblyBlockingVoxelCoords = this.#blockingVoxelCoords(v , dir);
         const voxelBehind = this.#voxelBehindId(v,dir);
         const shouldSkipThisVoxel = emptyVoxels? (!this.voxelExists(v) ||  this.isVoxelNonEmpty(v) || this.selectedAreas.get(areaType)!.hasGridPosition(v) || (this.voxelExists(voxelBehind) && this.isVoxelEmpty(voxelBehind)))
         : !this.voxelExists(v) || this.isVoxelEmpty(v) || this.selectedAreas.get(areaType)!.hasGridPosition(v);
 
         if(shouldSkipThisVoxel) return;
-        //console.log(`[selectFaceRecursion] iteration: ${v} +`)
         
         const isCurrentVoxelOnSurface = this.isVoxelEmpty(possiblyBlockingVoxelCoords) || !this.voxelExists(possiblyBlockingVoxelCoords);
-        //console.log(`isCurrentVoxelOnSurface: ${isCurrentVoxelOnSurface } | for blocking voxel: ${possiblyBlockingVoxelCoords}`)
         if(!isCurrentVoxelOnSurface) return;
 
         const selectedVoxel = v;
@@ -399,8 +396,6 @@ export class VoxelObject extends SceneObject{
         if(selectVoxelSuccess){
             this.#onSelectedAreaChange(areaType);
         }
-        //console.log("SELECTED:", gridPos);
-        //console.log(`selected voxels: ${area.getGridPositions()}`)
         return selectVoxelSuccess;        
     }
 
@@ -568,7 +563,6 @@ export class VoxelObject extends SceneObject{
             this.#notifyOfSelectedAreaChange();
             //this.#notifyOfVoxelsChange(); copyGhostVoxelsToGrid should already do it
         }
-        //console.log(modifiedVoxels)
         return modifiedVoxels;
     }
 
@@ -663,7 +657,6 @@ export class VoxelObject extends SceneObject{
     copyGhostVoxelsToGrid(){
         let out = 0;
         const voxelSparseList = this.#ghostVoxels.getAll();
-        console.log(voxelSparseList);
         voxelSparseList.forEach((voxel, gridPosition)=>{
             if(this.setVoxel(Vector3.fromString(gridPosition) , voxel)){
                 out++;
@@ -705,7 +698,6 @@ export class VoxelObject extends SceneObject{
     
 
     moveGhostVoxels(delta: Vector3, axis?: "X" | "Y" | "Z"): boolean{
-        console.log(`[moveGhostVoxels] ghost voxels`)
         let out = true;
         let refinedDelta = new Vector3(0,0,0);
         if(axis){
@@ -716,7 +708,6 @@ export class VoxelObject extends SceneObject{
 
         const ghostVoxelsList = this.#ghostVoxels.getAll();
         ghostVoxelsList.forEach((v, gridPosStr)=>{
-            console.log(`[moveGhostVoxels] ${gridPosStr} | ${v?.color}`)
             const gridPosMoved = Vector3.fromString(gridPosStr).addVector(refinedDelta);
             if(!this.voxelExists(gridPosMoved)){
                 out = false;

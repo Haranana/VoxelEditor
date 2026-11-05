@@ -12,6 +12,7 @@ import { EditSelectedVoxelsWidget } from "../editor-widgets/edit-selected-voxels
 import { ControllerContext } from "../../app-core/core-controller/core-controller-context";
 import { ColorPaletteWidget } from "../editor-widgets/color-palette/ColorPaletteWidget";
 import EditorCanvas from "../editor-widgets/editor-canvas/EditorCanvas";
+import Menubar from "../editor-widgets/menu-bar/MenuBar";
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -331,7 +332,9 @@ export default function MainPage() {
 
   return (
     <div className="EditorPage">
-      <div className="EditorNav"></div>
+      <div className="EditorNav">
+        <Menubar></Menubar>
+      </div>
       <div className="EditorBody">
         <ControllerContext value={controller}>
           <div className="EditorBodyHorizontal" ref={bodyHorizontalRef}>

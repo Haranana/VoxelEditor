@@ -43,7 +43,7 @@ type ResizeSession = {
 
 export default function ResizableContainer(props: ResizableContainerProps) {
   const [resizeSession, setResizeSession] = useState<ResizeSession>(null);
-  const handleSize = 8;
+  const handleSize = 4;
 
   function handlePointerDown(
     e: React.PointerEvent<HTMLDivElement>,

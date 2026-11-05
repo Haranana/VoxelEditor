@@ -1,0 +1,80 @@
+.MenubarRoot{
+    width: 100%;
+    height: 100%;
+    background-color: var(--line-color-2);
+    display: flex;
+    flex-direction: row;
+    justify-content: left;
+    font-family: var(--font-2);
+
+    padding: 5px 0px 5px 20px;
+}
+
+.MenubarContent *{
+    font-family: var(--font-1);
+    font-size: var(--font-s);
+}
+
+.MenubarIcon{
+    width: 20px;
+    height: 20px;
+}
+
+.MenubarRoot button{
+    font-family: var(--font-2);
+    background-color: transparent;
+    border-radius: 10px;
+    border: none;
+}
+
+.MenubarRoot button:hover{
+    background-color: var(--color-weak);
+    border-radius: 10px;
+}
+
+.MenubarContentRowItem{
+    display: flex;
+    flex-direction: row;
+    cursor: pointer;    
+    align-items: center;
+    justify-content: left;
+    padding-left: 4px;
+    padding-right: 4px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+}
+
+.MenubarContentRowItem:hover{
+    background-color: var(--color-medium);
+}
+
+.MenubarContentRowItem.MenubarContentRowItemShortcut > :last-child {
+    padding-left: 50px;
+    margin-left: auto;
+}
+
+.MenubarIconSlot{
+        display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.MenubarItem{
+    display: flex;
+    flex-direction: row;
+    cursor: pointer;
+}
+
+
+.MenubarContent{
+    background-color: var(--color-strong);
+}
+
+.MenubarSubContent{
+    background: var(--color-strong);
+}
+
+.MenubarSeparator{
+    border-top: solid 1px;
+    border-color: rgba(255 255 255 128);
+}
