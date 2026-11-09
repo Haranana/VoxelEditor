@@ -4,11 +4,17 @@ import { VoxelObject } from "../scene-objects/voxel-object";
 import { AppCoreEvent } from "../events/event"
 import { Gizmo } from "../scene-objects/gizmo/gizmo-object";
 
-export type SelectedVoxelObjectRenderOptions = {
+export type objectViewEditorOptions = {
     borderGrid: boolean,
     borderOutline: boolean,    
     voxelObject: boolean,
     voxelObjectGrid: boolean,
+}
+
+export type sceneViewEditorOptions = {
+    voxelObjectsGrid: boolean,
+    activeVoxelObjectBorderOutline: boolean,
+    floorGrid: boolean,
 }
 
 export type SceneGizmosRenderOptions = {
@@ -21,11 +27,16 @@ export type SceneGizmosRenderOptions = {
 export class Scene{
 
     readonly objects: Map<number, SceneObject> = new Map<number, SceneObject>();      
-    seletedVoxelObjectRenderOptions: SelectedVoxelObjectRenderOptions = {
+    objectViewEditorOptions: objectViewEditorOptions = {
         borderGrid: true,
         borderOutline: true,    
         voxelObject: true,
         voxelObjectGrid: true,
+    }
+    sceneViewEditorOptions: sceneViewEditorOptions = {
+        voxelObjectsGrid: false,
+        activeVoxelObjectBorderOutline: false,
+        floorGrid: false,
     }
 
     sceneGizmosRenderOptions: SceneGizmosRenderOptions = {
@@ -46,7 +57,7 @@ export class Scene{
     objectEnabledChangeEvent: AppCoreEvent<void> = new AppCoreEvent();
 
     #notifyOfObjectListChanged(){
-        this.objectListChangedEvent.emit();
+        this.objectListChangedEvent.emit();        
     }
     objectListChangedEvent: AppCoreEvent<void> = new AppCoreEvent();
 
@@ -130,19 +141,19 @@ export class Scene{
 
 
     toggleSelectedObjectBorderGrid(){
-        this.seletedVoxelObjectRenderOptions.borderGrid = !this.seletedVoxelObjectRenderOptions.borderGrid;
+        this.objectViewEditorOptions.borderGrid = !this.objectViewEditorOptions.borderGrid;
     }
 
     toggleSelectedObjectBorderOutline(){
-        this.seletedVoxelObjectRenderOptions.borderOutline = !this.seletedVoxelObjectRenderOptions.borderOutline;
+        this.objectViewEditorOptions.borderOutline = !this.objectViewEditorOptions.borderOutline;
     }
 
     toggleSelectedObjectEnabled(){
-        this.seletedVoxelObjectRenderOptions.voxelObject = !this.seletedVoxelObjectRenderOptions.voxelObject;
+        this.objectViewEditorOptions.voxelObject = !this.objectViewEditorOptions.voxelObject;
     }
 
     toggleSelectedObjectWireframe(){
-        this.seletedVoxelObjectRenderOptions.voxelObjectGrid = !this.seletedVoxelObjectRenderOptions.voxelObjectGrid;
+        this.objectViewEditorOptions.voxelObjectGrid = !this.objectViewEditorOptions.voxelObjectGrid;
     }
 
     toggleCameraControllGizmo(){
@@ -186,8 +197,8 @@ export class Scene{
     }
 
     //returns copy
-    getSeletedVoxelObjectRenderOptions(): SelectedVoxelObjectRenderOptions{
-        return {...this.seletedVoxelObjectRenderOptions}
+    getobjectViewEditorOptions(): objectViewEditorOptions{
+        return {...this.objectViewEditorOptions}
     }
 
     getSceneGizmosRenderOptions(): SceneGizmosRenderOptions{
@@ -210,7 +221,7 @@ export class Scene{
         if(this.objects.get(newId) instanceof Camera){
             const oldId = this.#activeCameraId;
             this.#activeCameraId = newId;
-            if(oldId!==newId) this.#notifyOfChangedActiveCamera();            
+            if(oldId!==newId) this.#notifyOfChangedActiveCamera();                        
             return true;
         }
         return false;
@@ -327,4 +338,42 @@ export class Scene{
         this.#notifyOfObjectEnabledChange();
         return true;
     }
+    
+
+    setSceneOptionsVoGrid(b: boolean){
+        this.sceneViewEditorOptions.voxelObjectsGrid = b;
+    }
+
+    toggleSceneOptionVoGrid(){
+        this.sceneViewEditorOptions.voxelObjectsGrid = !this.sceneViewEditorOptions.voxelObjectsGrid;
+    }
+
+    getSceneOptionsVoGrid(){
+        return this.sceneViewEditorOptions.voxelObjectsGrid;
+    }    
+    
+
+    setSceneOptionsActiveVoBorderOutline(b: boolean){
+        this.sceneViewEditorOptions.activeVoxelObjectBorderOutline = b;
+    }
+
+    toggleSceneOptionsActiveVoBorderOutline(){
+        this.sceneViewEditorOptions.activeVoxelObjectBorderOutline = !this.sceneViewEditorOptions.activeVoxelObjectBorderOutline;
+    }
+
+    getSceneOptionsActiveVoBorderOutline(){
+        return this.sceneViewEditorOptions.activeVoxelObjectBorderOutline
+    }    
+    
+    setSceneOptionsFloorGrid(b: boolean){
+        this.sceneViewEditorOptions.floorGrid = b;
+    }
+
+    toggleSceneOptionsFloorGrid(){
+        this.sceneViewEditorOptions.floorGrid = !this.sceneViewEditorOptions.floorGrid;
+    }    
+
+    getSceneOptionsFloorGrid(){
+        return this.sceneViewEditorOptions.floorGrid;
+    }    
 }

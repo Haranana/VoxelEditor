@@ -1,5 +1,5 @@
 import { Vector3 } from "../../math/vector/vector3.ts";
-import { clamp, mod } from "../../math/utils.ts";
+import { clamp, degreeToRadians, mod } from "../../math/utils.ts";
 import { Vector2 } from "../../math/vector/vector2.ts";
 import { faceDirectionToVector, getFirstVoxelOnRay, getVoxelsOnRay, marqueeSelectRectangle, vectorToFaceDirection } from "../../voxel-engine/voxel-ray-caster.ts";
 import { Matrices4 } from "../../math/matrix/matrix-utils.ts";
@@ -48,6 +48,8 @@ type CameraMoveSession = {
     deltaY: number,
 }
 
+export type EditorView = "object" | "scene" | "render"
+
 export type SelectMode = 
 | "Voxel"
 | "Cube"
@@ -89,6 +91,7 @@ export class CoreController{
     scene: Scene | null = null;
     renderer: Renderer | null = null;
     canvas: HTMLCanvasElement | null = null;
+    editorView: EditorView = "object";
     
     readIdTexture: ((p: Vector2)=>Promise<(number|undefined)>) | null = null;
     initialized: boolean = false;
@@ -108,7 +111,7 @@ export class CoreController{
         this.readIdTexture = this.renderer.readIdPixel.bind(this.renderer);
         this.initialized = true;
 
-
+        this.#controllerInitializedEvent.emit();
         this.renderScene();
     }
 
@@ -126,41 +129,190 @@ export class CoreController{
         return scene;
     }
 
-    renderSceneOrdered: boolean = false;
-    renderScene() {
-    if (this.renderSceneOrdered || !this.initialized) {
-        return;
+    #controllerInitializedEvent: AppCoreEvent<void> = new AppCoreEvent<void>()
+    subscribeControllerInitializedEvent(listener: ()=>void){
+        this.#controllerInitializedEvent.subscribe(listener);
     }
 
-    this.renderSceneOrdered = true;
 
-    requestAnimationFrame(() => {
-        try {
-            const scene = this.scene!;
-            const resolution = new Vector2(
-                this.canvas!.width,
-                this.canvas!.height
-            );
-
-            const renderContext =
-                SceneContextCreator.createRenderContext(scene, resolution);
-
-            const sceneRenderableObjects =
-                SceneContextCreator.collectRenderableObject(scene, resolution);
-
-            if (!renderContext || !sceneRenderableObjects) {
-                return;
-            }
-
-            this.renderer!.renderScene(
-                sceneRenderableObjects,
-                renderContext
-            );
-        } finally {
-            this.renderSceneOrdered = false;
+    renderSceneOrdered: boolean = false;
+    renderScene() {
+        if (this.renderSceneOrdered || !this.initialized) {
+            return;
         }
-    });
-}
+
+        this.renderSceneOrdered = true;
+
+        requestAnimationFrame(() => {
+            try {
+                const scene = this.scene!;
+                const resolution = new Vector2(
+                    this.canvas!.width,
+                    this.canvas!.height
+                );
+
+                const renderContext =
+                    SceneContextCreator.createRenderContext(scene, resolution, this.editorView);
+
+                const sceneRenderableObjects =
+                    SceneContextCreator.collectRenderableObject(scene, resolution, this.editorView);
+
+                if (!renderContext || !sceneRenderableObjects) {
+                    return;
+                }
+
+                this.renderer!.renderScene(
+                    sceneRenderableObjects,
+                    renderContext
+                );
+            } finally {
+                this.renderSceneOrdered = false;
+            }
+        });
+    }
+
+    // active object
+
+    sceneHasActiveObject(): boolean|undefined{
+        if(!this.initialized || !this.scene){
+            return undefined;
+        }
+        if(!this.scene.getActiveVoxelObject()){
+            return false;
+        }
+        return true;
+    }
+
+    //object transform
+
+    readonly translationMin: number = -10000;
+    readonly translationMax: number = 10000;
+
+    readonly scaleMin: number = 0.1;
+    readonly scaleMax: number = 10;
+
+    readonly rotationMinRadians: number = 0;
+    readonly rotationMaxRadians: number = Math.PI * 2;
+    readonly rotationMinDegrees: number = 0;
+    readonly rotationMaxDegrees: number = 360;
+
+    loadActiveObjectDefaultTransform(): boolean{
+        if(!this.initialized || !this.scene || !this.scene.getActiveVoxelObject()){
+            return false;
+        }
+
+        const obj = this.scene.getActiveVoxelObject()!;
+        const defaultTranslation = new Vector3(0,0,0);
+        const defaultRotation = new Vector3(0,0,0);
+        const defaultScale = new Vector3(1,1,1);
+        obj.setTransformTranslation(defaultTranslation);
+        obj.setTransformRotation(defaultRotation);
+        obj.setTransformScale(defaultScale);
+
+        this.renderScene();
+        return true;
+    }
+
+
+    getActiveObjectTranslation(): Vector3|undefined{
+        if(!this.initialized || !this.scene || !this.scene.getActiveVoxelObject()){
+        return undefined;
+        }
+        return this.scene.getActiveVoxelObject()!.getTransformTranslation();
+        
+    }
+    
+    addTranslateToActiveObject(t: Vector3): boolean{
+         if(!this.initialized || !this.scene || !this.scene.getActiveVoxelObject()){
+            return false;
+         }
+         const vo = this.scene.getActiveVoxelObject()!;
+         vo.setTransformTranslation( vo.getTransformTranslation().addVector(t));
+
+         this.renderScene();
+         return true;
+    }
+
+    setTranslateToActiveObject(t:Vector3): boolean{
+         if(!this.initialized || !this.scene || !this.scene.getActiveVoxelObject()){
+            return false;
+         }
+         const vo = this.scene.getActiveVoxelObject()!;
+         vo.setTransformTranslation(t);
+         this.renderScene();
+         return true;
+    }
+
+    getActiveObjectScale(): Vector3|undefined{
+        if(!this.initialized || !this.scene || !this.scene.getActiveVoxelObject()){
+        return undefined;
+        }
+        return this.scene.getActiveVoxelObject()!.getTransformScale();
+    }    
+
+    addScaleToActiveObject(s: Vector3): boolean{
+        if(!this.initialized || !this.scene || !this.scene.getActiveVoxelObject()){
+        return false;
+        }
+        const vo = this.scene.getActiveVoxelObject()!;
+        const clampedScale = vo.getTransformScale().addVector(s);
+        clampedScale.x = clamp({value: clampedScale.x , min: this.scaleMin, max: this.scaleMax});
+        clampedScale.y = clamp({value: clampedScale.y , min: this.scaleMin, max: this.scaleMax});
+        clampedScale.z = clamp({value: clampedScale.z , min: this.scaleMin, max: this.scaleMax});
+        vo.setTransformScale(clampedScale);
+        this.renderScene();
+        return true;
+    }
+
+    setScaleToActiveObject(s:Vector3): boolean{
+        if(!this.initialized || !this.scene || !this.scene.getActiveVoxelObject()){
+        return false;
+        }
+        const vo = this.scene.getActiveVoxelObject()!;
+        const clampedScale = s;
+        clampedScale.x = clamp({value: clampedScale.x , min: this.scaleMin, max: this.scaleMax});
+        clampedScale.y = clamp({value: clampedScale.y , min: this.scaleMin, max: this.scaleMax});
+        clampedScale.z = clamp({value: clampedScale.z , min: this.scaleMin, max: this.scaleMax});
+        vo.setTransformScale(clampedScale);
+        this.renderScene();
+        return true;
+    }    
+
+    //in radians
+    getActiveObjectRotation(): Vector3|undefined{
+        if(!this.initialized || !this.scene || !this.scene.getActiveVoxelObject()){
+        return undefined;
+        }
+        return this.scene.getActiveVoxelObject()!.getTransformRotation();
+    }    
+
+    addRotationToActiveObject(r: Vector3): boolean{
+         if(!this.initialized || !this.scene || !this.scene.getActiveVoxelObject()){
+            return false;
+         }
+         const vo = this.scene.getActiveVoxelObject()!;
+         const clampedRotation = vo.getTransformRotation().addVector(r);
+         clampedRotation.x = mod(clampedRotation.x, Math.PI * 2);
+         clampedRotation.y = mod(clampedRotation.y, Math.PI * 2);
+         clampedRotation.z = mod(clampedRotation.z, Math.PI * 2);
+         vo.setTransformRotation(clampedRotation)
+         this.renderScene();
+         return true;
+    }
+
+    setRotationToActiveObject(r: Vector3){
+         if(!this.initialized || !this.scene || !this.scene.getActiveVoxelObject()){
+            return false;
+         }
+         r.x = mod(r.x, Math.PI * 2);
+         r.y = mod(r.y, Math.PI * 2);
+         r.z = mod(r.z, Math.PI * 2);
+         const vo = this.scene.getActiveVoxelObject()!;
+         vo.setTransformRotation(r);
+         
+         this.renderScene();
+         return true;
+    }
 
     //Camera properties handling
     pressedKeys : Set<string> = new Set();
@@ -180,87 +332,114 @@ export class CoreController{
     };
     animationFrameId: number | null = null;
     lastTime: number | null = null;
-    cameraFovYMinValue = 1;
-    cameraFovYMaxValue = 179;
+    readonly cameraFovYMinValue = degreeToRadians(1);
+    readonly cameraFovYMaxValue = degreeToRadians(179);
 
-    cameraNearMinValue = 0.001;
-    cameraNearMaxValue = 1000;
+    readonly cameraNearMinValue = 0.001;
+    readonly cameraNearMaxValue = 1000;
 
-    cameraFarMinValue = 0.002;
-    cameraFarMaxValue = 20000;
+    readonly cameraFarMinValue = 0.002;
+    readonly cameraFarMaxValue = 20000;
 
-    cameraDistanceMinValue = 0;
-    cameraDistanceMaxValue = 10000;
+    readonly cameraDistanceMinValue = 0;
+    readonly cameraDistanceMaxValue = 10000;
 
-    cameraPitchMinValue = -89;
-    cameraPitchMaxValue = 89;
-    cameraYawMinValue = 0;
-    cameraYawMaxValue = 360;
+    readonly cameraPitchMinValue = degreeToRadians(-89);
+    readonly cameraPitchMaxValue = degreeToRadians(89);
+    readonly cameraYawMinValue = degreeToRadians(0);
+    readonly cameraYawMaxValue = degreeToRadians(360);
 
-    mouseWheelSensitivity = 0.25;
+    readonly mouseWheelSensitivity = 0.25;
     
     onCameraModified : (()=>void) | null = null; //not sure whats that supposed to do, dont remember
 
+    sceneHasActiveCamera(): undefined|boolean{
+        if(!this.initialized || !this.scene){
+            return undefined;
+        }
+        if(!this.scene.getActiveCamera()){
+            return false;
+        }
+        return true;
+    }
 
-    #startCameraMoveAnimationLoop(){
-        const cameraMoveAnimationLoop = (time: number) => {         
-            if(this.initialized && this.scene && this.scene.getActiveCamera() ){  
-                const scene = this.scene!;
-                const camera = scene.getActiveCamera();
-                
-                if(!camera) return;
+    #startCameraMoveAnimationLoop() {
+    const cameraMoveAnimationLoop = (time: number) => {
+        if (this.initialized && this.scene && this.scene.getActiveCamera()) {
+            const scene = this.scene!;
+            const camera = scene.getActiveCamera();
 
-                const pitchChangeRate = 90;
-                const yawChangeRate = 90;
+            if (camera) {
+                const pitchChangeRate = Math.PI / 2;
+                const yawChangeRate = Math.PI / 2;
+                const pitchLimit = this.cameraPitchMaxValue;
+
                 const last = this.lastTime ?? time;
                 const deltaTime = (time - last) / 1000;
                 this.lastTime = time;
-                
-                //let updatedCamera = { ...this.camera!};
+
                 let cameraModified = false;
 
-                if(this.pressedKeys.has("w")){
-                    camera.pitch = clamp({value: camera.pitch + pitchChangeRate*deltaTime, min: -89, max: 89});
+                if (this.pressedKeys.has("w")) {
+                    camera.pitch = clamp({
+                        value: camera.pitch + pitchChangeRate * deltaTime,
+                        min: -pitchLimit,
+                        max: pitchLimit
+                    });
                     cameraModified = true;
                 }
-                if(this.pressedKeys.has("s")){
-                    camera.pitch = clamp({value: camera.pitch - pitchChangeRate*deltaTime, min: -89, max: 89});
-                    cameraModified = true;
-                }
-                if(this.pressedKeys.has("a")){
-                    camera.yaw = camera.yaw + yawChangeRate*deltaTime;
-                    cameraModified = true;
-                }
-                if(this.pressedKeys.has("d")){
-                    camera.yaw = camera.yaw - yawChangeRate*deltaTime;
-                    cameraModified = true;
-                }   
 
-                
-                const mouseSensitivity = 0.5;
+                if (this.pressedKeys.has("s")) {
+                    camera.pitch = clamp({
+                        value: camera.pitch - pitchChangeRate * deltaTime,
+                        min: -pitchLimit,
+                        max: pitchLimit
+                    });
+                    cameraModified = true;
+                }
+
+                if (this.pressedKeys.has("a")) {
+                    camera.yaw += yawChangeRate * deltaTime;
+                    cameraModified = true;
+                }
+
+                if (this.pressedKeys.has("d")) {
+                    camera.yaw -= yawChangeRate * deltaTime;
+                    cameraModified = true;
+                }
+
+                const mouseSensitivity = degreeToRadians(0.5);
                 const dx = this.cameraMoveSession.deltaX;
-                const dy = this.cameraMoveSession.deltaY;     
+                const dy = this.cameraMoveSession.deltaY;
 
                 if (dx !== 0 || dy !== 0) {
                     camera.yaw -= dx * mouseSensitivity;
-                    camera.pitch -=dy * mouseSensitivity;
-                    camera.pitch = clamp( {value: camera.pitch , min: -89, max: 89});
+                    camera.pitch -= dy * mouseSensitivity;
+
+                    camera.pitch = clamp({
+                        value: camera.pitch,
+                        min: -pitchLimit,
+                        max: pitchLimit
+                    });
+
                     this.cameraMoveSession.deltaX = 0;
                     this.cameraMoveSession.deltaY = 0;
 
                     cameraModified = true;
                 }
 
-                if(cameraModified){
-                 
-                    if(this.onCameraModified!=null) this.onCameraModified();
-                    this.renderScene!();   
+                if (cameraModified) {
+                    if (this.onCameraModified != null) this.onCameraModified();
+                    this.renderScene!();
                 }
             }
-            this.animationFrameId = requestAnimationFrame(cameraMoveAnimationLoop);
         }
+
         this.animationFrameId = requestAnimationFrame(cameraMoveAnimationLoop);
-    }
+    };
+
+    this.animationFrameId = requestAnimationFrame(cameraMoveAnimationLoop);
+}
 
     hasCameraMoveSessionStarted(){
         return this.cameraMoveSession.lastX != null && this.cameraMoveSession.lastY != null;
@@ -536,8 +715,9 @@ export class CoreController{
         const camera = scene.getActiveCamera();
         if(!camera) return;
 
-        const v = clamp({ value, min: this.cameraPitchMinValue, max: this.cameraPitchMaxValue });
-
+        //const v = clamp({ value, min: this.cameraPitchMinValue, max: this.cameraPitchMaxValue });
+        const v = mod(value, 2*Math.PI);
+        
         if (v !== camera.pitch) {
             camera.pitch = v;
             if(this.onCameraModified!=null) this.onCameraModified();
@@ -560,7 +740,7 @@ export class CoreController{
         const camera = scene.getActiveCamera();
         if(!camera) return;
 
-        const v = mod(value, 360);
+        const v = mod(value, 2*Math.PI);
 
         if (v !== camera.yaw) {
             camera.yaw = v;
@@ -840,7 +1020,7 @@ export class CoreController{
 
         const projection = camera.getProjectionMatrix(canvasSize);
         const view = camera.getCameraView();
-        const transform = Matrices4.transform(object.transform);
+        const transform = Matrices4.transform(object.getTransform());
 
         const sessionBegRayBeg: Vector3  = Spaces.screenToModel(begSs, canvasSize, 0,1, projection, view, transform)
         const sessionBegRayEnd: Vector3  = Spaces.screenToModel(begSs, canvasSize, 1,1, projection, view, transform)
@@ -858,7 +1038,7 @@ export class CoreController{
 
         const begMs = planeRayIntersection(sessionBegRay, moveAxisPlane);
         const endMs = planeRayIntersection(sessionEndRay, moveAxisPlane);
-        console.log(`[getMoveSessionDelta] begMs|endMs [${begMs}|${endMs}]`);
+
 
         // This should never happen but safeguard if any ray is parallel to move axis  plane
         if(!begMs || !endMs){
@@ -872,7 +1052,7 @@ export class CoreController{
                             Math.round(begToEndMsVector.y / voxelSize.y),
                             Math.round(begToEndMsVector.z / voxelSize.z)
                         );
-        console.log(`[getMoveSessionDelta] move vector: ${out.toString()}`)                
+        
         return out;
     }
 
@@ -932,7 +1112,7 @@ export class CoreController{
     }
 
     async handleCanvasPickingInteraction(pickingInteraction: PickingInteraction, clickPos: Vector2, hitGridPosition: Vector3, canvasSize: Vector2){
-        //console.log(`[handleCanvasPickingInteraction] Starting voxels move session: ${pickingInteraction}`);
+       
         if(pickingInteraction==='CameraGizmoPosX'){
             this.centerCameraAtPositiveX();
         }else if(pickingInteraction==='CameraGizmoNegX'){
@@ -968,9 +1148,9 @@ export class CoreController{
         const lastEmpty = this.editMode === "Add";
         const hitOnExit = true;
         
-        const mvp = camera.getProjectionMatrix(canvasSize).multMatrix(Matrices4.transform(voxelObject.transform)).multMatrix(camera.getCameraView());
+        const mvp = camera.getProjectionMatrix(canvasSize).multMatrix(Matrices4.transform(voxelObject.getTransform())).multMatrix(camera.getCameraView());
         
-        const rayCastResults = getFirstVoxelOnRay(camera, pointerPos, voxelObject, canvasSize, Matrices4.transform(voxelObject.transform), camera.getProjectionMatrix(canvasSize), camera.getCameraView(), lastEmpty , hitOnExit);
+        const rayCastResults = getFirstVoxelOnRay(camera, pointerPos, voxelObject, canvasSize, Matrices4.transform(voxelObject.getTransform()), camera.getProjectionMatrix(canvasSize), camera.getCameraView(), lastEmpty , hitOnExit);
         
         if(!rayCastResults) return;
         const hitVoxel : Vector3 = rayCastResults.voxelCoords;
@@ -1063,7 +1243,7 @@ export class CoreController{
 
         //const pickingInteractionId = await this.readIdTexture!(pointerPos);
         if(this.hasVoxelsMoveSessionStarted()){    
-            console.log(`[handleCanvasPointerMove] updating voxels move session, session status ${this.hasVoxelsMoveSessionStarted()}`)
+          
             this.updateVoxelsMoveSession(pointerPos, canvasSize);     
             this.renderScene!();
             return;
@@ -1074,13 +1254,13 @@ export class CoreController{
 
         const selectType : "dynamic" | "static" = (this.editMode === "Select" || this.editMode==='Move')? "static" : "dynamic";
         
-        const mvp = camera.getProjectionMatrix(canvasSize).multMatrix(Matrices4.transform(voxelObject.transform)).multMatrix(camera.getCameraView());
+        const mvp = camera.getProjectionMatrix(canvasSize).multMatrix(Matrices4.transform(voxelObject.getTransform())).multMatrix(camera.getCameraView());
 
         const rayCastResults = getFirstVoxelOnRay(
             camera, 
             pointerPos, 
             voxelObject, canvasSize, 
-            Matrices4.transform(voxelObject.transform), 
+            Matrices4.transform(voxelObject.getTransform()), 
             camera.getProjectionMatrix(canvasSize), 
             camera.getCameraView(), 
             lastEmpty , 
@@ -1089,7 +1269,7 @@ export class CoreController{
             this.resetSelectSession();
             return;
         }
-        //console.log(`hitVoxel: ${rayCastResults?.voxelCoords}`);
+
         const hitVoxel : Vector3 = rayCastResults.voxelCoords;
         const hitDirection: Vector3 = faceDirectionToVector(rayCastResults.hitDirection);    
 
@@ -1214,7 +1394,7 @@ export class CoreController{
         const selectType : "dynamic" | "static" = this.editMode === "Select"? "static" : "dynamic";       
         const lastEmpty = this.editMode === "Add";
         const hitOnExit = true;   
-        const rayCastResults = getFirstVoxelOnRay(camera, pointerPos, voxelObject, canvasSize, Matrices4.transform(voxelObject.transform), camera.getProjectionMatrix(canvasSize), camera.getCameraView(), lastEmpty , hitOnExit);
+        const rayCastResults = getFirstVoxelOnRay(camera, pointerPos, voxelObject, canvasSize, Matrices4.transform(voxelObject.getTransform()), camera.getProjectionMatrix(canvasSize), camera.getCameraView(), lastEmpty , hitOnExit);
         if(!rayCastResults) return;
 
         const hitVoxel : Vector3 = rayCastResults.voxelCoords;
@@ -1240,7 +1420,6 @@ export class CoreController{
         }
         if(this.hasSelectSessionStarted() && this.selectMode==="Marquee"){
                 if(this.editMode=="Paint"){
-                    console.log(`[handleCanvasPointerUp]`)
                     const newVoxel = new Voxel(this.#currentColor);
                     voxelObject.modifySelectedVoxelsByFunction(selectType, (_,v)=>v!==null? newVoxel: v);
                 }else if(this.editMode=="Remove"){
@@ -1257,6 +1436,41 @@ export class CoreController{
     }
 
     //scene
+
+    isSceneVoGridOn(): boolean|undefined{
+        if(!this.initialized || !this.scene) return undefined;
+        else return this.scene!.getSceneOptionsVoGrid();        
+    }
+
+    isSceneActiveVoBorderOutlineOn(): boolean|undefined{
+        if(!this.initialized || !this.scene) return undefined;
+        else return this.scene!.getSceneOptionsActiveVoBorderOutline();
+    }
+
+    isSceneFloorGridOn(): boolean|undefined{
+        if(!this.initialized || !this.scene) return undefined;
+        else return this.scene!.getSceneOptionsFloorGrid();
+    }
+
+    toggleSceneVoGridOn(): boolean{
+        if(!this.initialized || !this.scene) return false;
+        this.scene!.toggleSceneOptionVoGrid();        
+        return true;
+    }
+
+    toggleSceneActiveVoBorderOutlineOn(): boolean{
+        if(!this.initialized || !this.scene) return false;
+        this.scene!.toggleSceneOptionsActiveVoBorderOutline();
+        return true;
+    }
+
+    toggleSceneFloorGridOn(): boolean{
+        if(!this.initialized || !this.scene) return false;
+        this.scene!.toggleSceneOptionsFloorGrid();
+        return true;
+    }
+
+
     toggleActiveVoGrid(){
         if(!this.initialized || !this.scene) return;
         this.scene.toggleSelectedObjectWireframe();
@@ -1277,19 +1491,19 @@ export class CoreController{
 
     isActiveVoGridOn():boolean{
         if(!this.initialized || !this.scene) return false;
-        const options = this.scene.getSeletedVoxelObjectRenderOptions();
+        const options = this.scene.getobjectViewEditorOptions();
         return options.voxelObjectGrid;
     }
 
     isActiveVoBorderGridOn():boolean{
         if(!this.initialized || !this.scene) return false;
-        const options = this.scene.getSeletedVoxelObjectRenderOptions();
+        const options = this.scene.getobjectViewEditorOptions();
         return options.borderGrid;
     }
 
     isActiveVoBorderOutlineOn():boolean{
         if(!this.initialized || !this.scene) return false;
-        const options = this.scene.getSeletedVoxelObjectRenderOptions();
+        const options = this.scene.getobjectViewEditorOptions();
         return options.borderOutline;
     }
 
@@ -1356,27 +1570,37 @@ export class CoreController{
             }else if(obj instanceof Camera){
                 this.scene.setActiveCameraId(sceneId);
             }
+            this.renderScene();
         }        
     }
 
     setSceneActiveCamera(sceneId: number){
         if(!this.initialized || !this.scene) return;
-        this.scene.setActiveCameraId(sceneId);
+        if(this.scene.setActiveCameraId(sceneId)){
+            this.renderScene()
+        }
     }
 
     setSceneActiveVo(sceneId: number){
         if(!this.initialized || !this.scene) return;
-        this.scene.setActiveVoxelObjectId(sceneId);
+        if(this.scene.setActiveVoxelObjectId(sceneId)){
+            
+            this.renderScene()
+        }
     }
 
     deleteSceneObject(sceneId: number){
         if(!this.initialized || !this.scene) return;
-        this.scene.removeObject(sceneId);                
+        if(this.scene.removeObject(sceneId)){
+            this.renderScene()
+        }                
     }
 
     toggleSceneObjectEnabled(sceneId: number){
         if(!this.initialized || !this.scene) return;
-        this.scene.toggleObjectEnabled(sceneId);              
+        if(this.scene.toggleObjectEnabled(sceneId)){
+            this.renderScene()
+        }              
     }
 
     //returns null if editor is uninitialized or if scene is null
@@ -1390,14 +1614,18 @@ export class CoreController{
     addNewVoxelObject(name: string = "VoxelObject", factoryFunction: ((name: string)=>VoxelObject) = getBasicSampleVoxelObject){
         if(!this.initialized || !this.scene) return;
         const vo = factoryFunction(name);
-        this.scene.addObject(vo);
+        if(this.scene.addObject(vo)){
+            this.renderScene()
+        }
+        
     }
 
     addNewCamera(name: string = "Camera", factoryFunction: ((name: string)=>Camera) = getSampleCamera){
         if(!this.initialized || !this.scene) return;
         const c = factoryFunction(name);
-        this.scene.addObject(c);
-        if(this.renderScene) this.renderScene(); //fixes things when only camera is added
+        if(this.scene.addObject(c)){
+        this.renderScene();
+        }
     }
 
     //returns false if not initialized
@@ -1414,54 +1642,64 @@ export class CoreController{
 
     // if at any point change of scene will be possible this should be modified
     // so that it automatically subscribes to a new scene
-    subscribeObjectEnabledChangeSceneEvent(listener: ()=>void){
-        if(!this.initialized || !this.scene) return;
+    subscribeObjectEnabledChangeSceneEvent(listener: ()=>void): boolean{
+        if(!this.initialized || !this.scene) return false;
         this.scene.objectEnabledChangeEvent.subscribe(listener);
+        return true;
     }
 
-    subscribeObjectListChangedSceneEvent(listener: ()=>void){
-        if(!this.initialized || !this.scene) return;
+    subscribeObjectListChangedSceneEvent(listener: ()=>void): boolean{
+        if(!this.initialized || !this.scene) return false;
         this.scene.objectListChangedEvent.subscribe(listener);
+        return true;        
     }
 
     subscribeObjectAddedSceneEvent(listener: ()=>void){
-        if(!this.initialized || !this.scene) return;
+        if(!this.initialized || !this.scene) return false;
         this.scene.objectAddedEvent.subscribe(listener);
+        return true;
     }
 
     subscribeObjectRemovedSceneEvent(listener: ()=>void){
-        if(!this.initialized || !this.scene) return;
+        if(!this.initialized || !this.scene) return false;
         this.scene.objectRemovedEvent.subscribe(listener);
+        return true;
     }
 
     subscribeActiveVoChangedSceneEvent(listener: ()=>void){
-        if(!this.initialized || !this.scene) return;
+        if(!this.initialized || !this.scene) return false;
         this.scene.activeVoChanged.subscribe(listener);
+        return true;
     }
 
     subscribeActiveCameraChangedSceneEvent(listener: ()=>void){
-        if(!this.initialized || !this.scene) return;
+        if(!this.initialized || !this.scene) return false;
         this.scene.activeCameraChanged.subscribe(listener);
+        return true;
     }
 
     subscribeActiveVoSelectedAreaChangedSceneEvent(listener: ()=>void){
-        if(!this.initialized || !this.scene) return;
+        if(!this.initialized || !this.scene) return false;
         this.scene.activeVoSelectedAreaChangeEvent.subscribe(listener);        
+        return true;
     }
 
     subscribeActiveVoVoxelsChangedSceneEvent(listener: ()=>void){
-        if(!this.initialized || !this.scene) return;
+        if(!this.initialized || !this.scene) return false;
         this.scene.activeVoVoxelsChangeEvent.subscribe(listener);        
+        return true;
     }
 
     subscribeActiveVoTransformChangedSceneEvent(listener: ()=>void){
-        if(!this.initialized || !this.scene) return;
+        if(!this.initialized || !this.scene) return false;
         this.scene.activeVoTransformChangeEvent.subscribe(listener);        
+        return true;
     }
 
     subscribeActiveVoSizeChangedSceneEvent(listener: ()=>void){
-        if(!this.initialized || !this.scene) return;
+        if(!this.initialized || !this.scene) return false;
         this.scene.activeVoSizeChangeEvent.subscribe(listener);        
+        return true;
     }
 
     //color
@@ -1993,4 +2231,31 @@ export class CoreController{
             this.notifyOfSelectModeChange();
         }
     }    
+
+
+    //editor view
+    setEditorView(editorView: EditorView){
+        const editorViewChanged = this.editorView !== editorView;
+        this.editorView = editorView;
+        
+        if(this.editorView=='render' || this.editorView=='scene'){
+            if(this.scene && this.scene.getActiveCamera() && this.scene.getActiveVoxelObject()){
+                const camera = this.scene.getActiveCamera()!;
+                camera.target = new Vector3(0,0,0)
+            }
+        }else if(this.editorView=='object'){
+            if(this.scene && this.scene.getActiveCamera() && this.scene.getActiveVoxelObject()){
+                const camera = this.scene.getActiveCamera()!;
+                const obj = this.scene.getActiveVoxelObject()!;
+                camera.target = obj.getTransformTranslation();
+            }            
+        }
+        if(editorViewChanged){
+            this.renderScene();
+        }
+    }
+
+    getEditorView(): EditorView{
+        return this.editorView;
+    }
 }

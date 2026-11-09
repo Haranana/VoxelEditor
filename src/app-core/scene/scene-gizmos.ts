@@ -1,4 +1,4 @@
-import { degreeToRadians } from "../../math/utils";
+
 import { Vector2 } from "../../math/vector/vector2";
 import { Vector3 } from "../../math/vector/vector3";
 import { RenderableObject} from "../../render-engine/renderableObjects/renderableObject";
@@ -17,7 +17,7 @@ export class SceneGizmos{
     static getCameraControllGizmoRo(camera: Camera): RenderableObject{
         const gizmo = this.#cameraControllGizmo;
         
-        gizmo.screenTransform =gizmo.screenTransform? {...gizmo.screenTransform, rotation: new Vector3(degreeToRadians(camera.pitch), degreeToRadians(camera.yaw), 0.0)} : null;        
+        gizmo.screenTransform =gizmo.screenTransform? {...gizmo.screenTransform, rotation: new Vector3(camera.pitch, camera.yaw, 0.0)} : null;        
         if(!gizmo.gizmoRo){
             gizmo.gizmoRo = RenderableObjectManager.createGizmoRo(gizmo);            
         }

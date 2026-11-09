@@ -7,6 +7,7 @@ import MdiLockOpenVariantOutline from "../../icons/MdiLockOpenVariantOutline";
 import { ControllerContext } from "../../../app-core/core-controller/core-controller-context";
 import { MutableNumberField } from "../mutable-number-field/MutableNumberField";
 import type { ProjectionType } from "../../../app-core/scene-objects/camera/camera";
+import { degreeToRadians, radiansToDegrees } from "../../../math/utils";
 
 export type CameraPropertiesProps = {
     isOpen: boolean;
@@ -137,13 +138,16 @@ export default function CameraPropertiesWidget(props: CameraPropertiesProps) {
                     <div className="MutableFieldWrapper">
                         <p className="MutableFieldTitle">Fov Y</p>
                         <MutableNumberField
-                            value={controller.getCameraFovY() ?? 0}
+                            value={(() => {
+                                const fov = controller.getCameraFovY();
+                                return fov ? radiansToDegrees(fov) : 0;
+                            })()}
                             minValue={controller.cameraFovYMinValue}
                             maxValue={controller.cameraFovYMaxValue}
                             step={1}
-                            onStep={(delta) => controller.addCameraFovY(delta)}
+                            onStep={(delta) => controller.addCameraFovY(degreeToRadians(delta))}
                             onAcceptedChange={(value) =>
-                                controller.setCameraFovY(value)
+                                controller.setCameraFovY(degreeToRadians(value))
                             }
                             canIncrease
                             canDecrease
@@ -210,13 +214,16 @@ export default function CameraPropertiesWidget(props: CameraPropertiesProps) {
                     <div className="MutableFieldWrapper">
                         <p className="MutableFieldTitle">Pitch</p>
                         <MutableNumberField
-                            value={controller.getCameraPitch() ?? 0}
+                            value={(() => {
+                                const pitch = controller.getCameraPitch();
+                                return pitch ? radiansToDegrees(pitch) : 0;
+                            })()}
                             minValue={controller.cameraPitchMinValue}
                             maxValue={controller.cameraPitchMaxValue}
                             step={1}
-                            onStep={(delta) => controller.addCameraPitch(delta)}
+                            onStep={(delta) => controller.addCameraPitch(degreeToRadians(delta))}
                             onAcceptedChange={(value) =>
-                                controller.setCameraPitch(value)
+                                controller.setCameraPitch(degreeToRadians(value))
                             }
                             canIncrease
                             canDecrease
@@ -227,13 +234,16 @@ export default function CameraPropertiesWidget(props: CameraPropertiesProps) {
                     <div className="MutableFieldWrapper">
                         <p className="MutableFieldTitle">Yaw</p>
                         <MutableNumberField
-                            value={controller.getCameraYaw() ?? 0}
+                            value={(() => {
+                                const yaw = controller.getCameraYaw();
+                                return yaw ? radiansToDegrees(yaw) : 0;
+                            })()}
                             minValue={controller.cameraYawMinValue}
                             maxValue={controller.cameraYawMaxValue}
                             step={1}
-                            onStep={(delta) => controller.addCameraYaw(delta)}
+                            onStep={(delta) => controller.addCameraYaw(degreeToRadians(delta))}
                             onAcceptedChange={(value) =>
-                                controller.setCameraYaw(value)
+                                controller.setCameraYaw(degreeToRadians(value))
                             }
                             canIncrease
                             canDecrease

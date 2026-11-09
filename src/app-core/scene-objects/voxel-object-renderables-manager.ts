@@ -71,14 +71,14 @@ export class VoxelObjectRenderablesManager{
             shader
         };
         out.collider = null; 
-        out.worldTransform = vo.transform;
+        out.worldTransform = vo.getTransform();
         out.screenTransform = null;
         out.name = vo.name ;
         return out;
     }
 
     #updateChunkRo(vo: VoxelObject, chunkPos: Vector3, ro: RenderableObject): void{
-        ro.worldTransform = {...vo.transform};
+        ro.worldTransform = vo.getTransform();
         
         if(!ro.material || !ro.material.shader){            
             const shader = new Shader(shadedWorldObjectShader(), "vertexShader", "fragmentShader", 
@@ -116,14 +116,14 @@ export class VoxelObjectRenderablesManager{
             shader
         };
         out.collider = null; 
-        out.worldTransform = vo.transform;
+        out.worldTransform = vo.getTransform();
         out.screenTransform = null;
         out.name = "grid" + "(" + vo.name + ")" ;
         return out;
     }
 
     #updateVoGridRo(vo: VoxelObject, ro: RenderableObject): void{
-        ro.worldTransform = {...vo.transform};
+        ro.worldTransform = vo.getTransform();
         
         if(!ro.material || !ro.material.shader){            
             const shader = new Shader(worldObjectGridShader(), "vertexShader", "fragmentShader", 
@@ -161,14 +161,14 @@ export class VoxelObjectRenderablesManager{
             shader
         };
         out.collider = null; 
-        out.worldTransform = vo.transform;
+        out.worldTransform = vo.getTransform();
         out.screenTransform = null;
         out.name = "borderOutline" + "(" + vo.name + ")" ;
         return out;
     }
 
     #updateVoBorderOutlineRo(vo: VoxelObject, ro: RenderableObject): void{
-        ro.worldTransform = {...vo.transform};
+        ro.worldTransform = vo.getTransform();
         
         if(!ro.material || !ro.material.shader){            
             const shader = new Shader(worldObjectGridShader(), "vertexShader", "fragmentShader", 
@@ -206,14 +206,14 @@ export class VoxelObjectRenderablesManager{
             shader
         };
         out.collider = null; 
-        out.worldTransform = vo.transform;
+        out.worldTransform = vo.getTransform();
         out.screenTransform = null;
         out.name = "borderGrid" + "(" + vo.name + ")" ;
         return out;
     }
 
     #updateVoBorderGridRo(vo: VoxelObject, ro: RenderableObject): void{
-        ro.worldTransform = {...vo.transform};
+        ro.worldTransform = vo.getTransform();
         
         if(!ro.material || !ro.material.shader){            
             const shader = new Shader(worldObjectGridShader(), "vertexShader", "fragmentShader", 
@@ -251,7 +251,7 @@ export class VoxelObjectRenderablesManager{
             shader
         };
         out.collider = null; 
-        out.worldTransform = vo.transform;
+        out.worldTransform = vo.getTransform();
         out.screenTransform = null;
         out.name = "selectedArea" + "(" + vo.name + ")" ;
 
@@ -259,7 +259,7 @@ export class VoxelObjectRenderablesManager{
     }
 
     #updateVoStaticSelectedAreaRo(vo: VoxelObject, ro: RenderableObject): void{
-        ro.worldTransform = {...vo.transform};
+        ro.worldTransform = vo.getTransform();
         
         if(!ro.material || !ro.material.shader){            
             const shader = new Shader(worldObjectShader(), "vertexShader", "fragmentShader", 
@@ -296,7 +296,7 @@ export class VoxelObjectRenderablesManager{
             shader
         };
         out.collider = null; 
-        out.worldTransform = vo.transform;
+        out.worldTransform = vo.getTransform();
         out.screenTransform = null;
         out.name = "selectedArea" + "(" + vo.name + ")" ;
 
@@ -304,7 +304,7 @@ export class VoxelObjectRenderablesManager{
     }
 
     #updateVoDynamicSelectedAreaRo(vo: VoxelObject, ro: RenderableObject): void{
-        ro.worldTransform = {...vo.transform};
+        ro.worldTransform = vo.getTransform();
         
         if(!ro.material || !ro.material.shader){            
             const shader = new Shader(worldObjectShader(), "vertexShader", "fragmentShader", 

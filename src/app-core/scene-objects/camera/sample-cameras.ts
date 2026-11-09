@@ -1,9 +1,10 @@
+import { degreeToRadians } from "../../../math/utils";
 import { Vector3 } from "../../../math/vector/vector3";
 import { Camera } from "./camera";
 
 export function getSampleCamera(name: string): Camera{
     const camera: Camera = new Camera(name, new Vector3(0,0,0), 1000);
-    camera.fovY = 90;
+    camera.fovY = degreeToRadians(90);
     camera.near = 0.1;
     camera.far = 5000,
     camera.transform = {

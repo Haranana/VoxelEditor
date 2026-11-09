@@ -1,7 +1,6 @@
 import type { WorldTransform } from "../../render-engine/renderableObjects/renderableObject";
 import {type Mat3, Matrix3 } from "../matrix/matrix3";
 import {type Mat4, Matrix4 } from "../matrix/matrix4";
-import { degreeToRadians } from "../utils";
 import type { Vector2 } from "../vector/vector2";
 import {type Vector3 } from "../vector/vector3";
 
@@ -102,7 +101,7 @@ export const Matrices4 = {
   transform(t: WorldTransform){
     const objectTranslation : Matrix4 = Matrices4.translation(t.translation)
     const objectScale : Matrix4 = Matrices4.scaling(t.scale)
-    const objectRotation: Matrix4 = Matrices4.rotation(degreeToRadians(t.rotation.x), degreeToRadians(t.rotation.y), degreeToRadians(t.rotation.z))
+    const objectRotation: Matrix4 = Matrices4.rotation(t.rotation.x, t.rotation.y, t.rotation.z)
     return objectTranslation.multMatrix(objectRotation).multMatrix(objectScale);
   },
 

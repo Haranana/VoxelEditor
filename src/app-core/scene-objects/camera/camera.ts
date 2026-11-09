@@ -56,9 +56,9 @@ export class Camera extends SceneObject {
             
         if(this.projectionType == 'perspective'){
             out = PerspectiveMatrices.PerspectiveProjection(
-                degreeToRadians(this.fovY), this.near, this.far, canvasSize.x/canvasSize.y)
+                this.fovY, this.near, this.far, canvasSize.x/canvasSize.y)
             this.#cache.perspectiveProjection = PerspectiveMatrices.PerspectiveProjection(
-                degreeToRadians(this.fovY), this.near, this.far, canvasSize.x/canvasSize.y)
+                this.fovY, this.near, this.far, canvasSize.x/canvasSize.y)
         }else{
             out =PerspectiveMatrices.orthogonalProjection(
                 -canvasSize.x/2, canvasSize.x/2,-canvasSize.y/2, canvasSize.y/2, this.near, this.far)
@@ -75,9 +75,9 @@ export class Camera extends SceneObject {
 
     getCameraView(): Matrix4 {
         const eye = new Vector3(
-            this.target.x + this.distance * Math.cos(degreeToRadians(this.pitch)) * Math.sin(degreeToRadians(this.yaw)),
-            this.target.y + this.distance * Math.sin(degreeToRadians(this.pitch)),
-            this.target.z + this.distance * Math.cos(degreeToRadians(this.pitch)) * Math.cos(degreeToRadians(this.yaw)),
+            this.target.x + this.distance * Math.cos(this.pitch) * Math.sin(this.yaw),
+            this.target.y + this.distance * Math.sin(this.pitch),
+            this.target.z + this.distance * Math.cos(this.pitch) * Math.cos(this.yaw),
         );
         return PerspectiveMatrices.lightView(
             eye,
@@ -88,9 +88,9 @@ export class Camera extends SceneObject {
 
     getForward(): Vector3{
         return new Vector3(
-            Math.cos(degreeToRadians(this.pitch)) * Math.sin(degreeToRadians(this.yaw)),
-            Math.sin(degreeToRadians(this.pitch)),
-            Math.cos(degreeToRadians(this.pitch)) * Math.cos(degreeToRadians(this.yaw)),
+            Math.cos(this.pitch) * Math.sin(this.yaw),
+            Math.sin(this.pitch),
+            Math.cos(this.pitch) * Math.cos(this.yaw),
         );
     }
 

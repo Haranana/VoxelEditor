@@ -1,4 +1,4 @@
-import React, {useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, {useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import "./main-page.css"
 import type { ResizableContainerConsts } from "../editor-widgets/resizable-container/ResizableContainer";
 import CameraPropertiesWidget from "../editor-widgets/camera-properties/CameraPropertiesWidget";
@@ -13,12 +13,17 @@ import { ControllerContext } from "../../app-core/core-controller/core-controlle
 import { ColorPaletteWidget } from "../editor-widgets/color-palette/ColorPaletteWidget";
 import EditorCanvas from "../editor-widgets/editor-canvas/EditorCanvas";
 import Menubar from "../editor-widgets/menu-bar/MenuBar";
+import EditorViewSelectBar from "../editor-widgets/editor-view-select-bar/EditorViewSelectBar";
+import ObjectTransformWidget from "../editor-widgets/object-transform/ObjectTransformWidget";
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
+
+
 export default function MainPage() {
+
   const controller = useContext(ControllerContext)!;
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -301,7 +306,10 @@ export default function MainPage() {
     version={scenePropertiesVersion}
   />
 
-  const sceneListWidget: React.ReactNode = <SceneListWidget></SceneListWidget>
+  const [sceneListWidgetVersion, setSceneListWidgetVersion] = useState<number>(0);
+  const sceneListWidget: React.ReactNode = <SceneListWidget
+  version={sceneListWidgetVersion} onValueChange={()=>setSceneListWidgetVersion(prev=>prev+1)}
+  />
   
   const [colorPaletteVersion, setColorPaletteVersion] = useState<number>(0);
   function onColorPaletteChanged(){
@@ -329,6 +337,43 @@ export default function MainPage() {
     isOpen = {isEditSelectedVoxelsWidgetOpen}
     onOpenChange={setEditSelectedVoxelsWidgetOpen}
   />
+
+  const [objectTransformWidgetVersion, setObjectTransformWidgetVersion] = useState<number>(0)
+  const [isObjectTransformWidgetOpen, setObjectTransformWidgetOpen] = useState<boolean>(false);
+  const objectTransformWidget: ReactNode = <ObjectTransformWidget 
+  isOpen={isObjectTransformWidgetOpen} onOpenChange={()=>setObjectTransformWidgetOpen(prev=>!prev)} 
+  version={objectTransformWidgetVersion} onValueChange={()=>{setObjectTransformWidgetVersion(prev=>prev+1);}} />
+
+  const [editorViewSelectBarWidgetVersion, setEditorViewSelectBarWidgetVersion] = useState<number>(0)
+  const editorViewSelectBarWidget: ReactNode = <EditorViewSelectBar 
+  version={editorViewSelectBarWidgetVersion} onValueChange={()=>setEditorViewSelectBarWidgetVersion(prev=>prev+1)}/>
+
+  function getEditorBodyRightWidgets(): React.ReactNode[] {
+    const out: React.ReactNode[] = []
+    if(controller.getEditorView()==='object'){
+        out.push(sceneListWidget);
+        if(controller.sceneHasActiveCamera()){
+          out.push(cameraPropertiesWidget);
+        }        
+        out.push(scenePropertiesWidget);
+        if(controller.sceneHasActiveObject()){
+          out.push(editVoxelObjectWidget);
+          out.push(editSelectedVoxelsWidget);
+        }
+    }else if(controller.getEditorView()==='scene'){
+        out.push(sceneListWidget);
+        if(controller.sceneHasActiveCamera()){
+          out.push(cameraPropertiesWidget);
+        }
+        if(controller.sceneHasActiveObject()){
+          out.push(objectTransformWidget);
+        }
+        out.push(scenePropertiesWidget);
+    }else if(controller.getEditorView()==='render'){
+
+    }
+    return out;
+  }
 
   return (
     <div className="EditorPage">
@@ -360,7 +405,6 @@ export default function MainPage() {
             <div className="EditorBodyVertical" ref={bodyVerticalRef}>
               <div className="EditorBodyTop">
                 <ResizableContainer
-                  children={<p></p>}
                   width={null}
                   height={topPanelHeight}
                   onWidthChange={null}
@@ -369,7 +413,9 @@ export default function MainPage() {
                   hasLeftHandle={false}
                   hasBottomHandle={true}
                   hasTopHandle={false}
-                />
+                >
+                {editorViewSelectBarWidget}
+                </ResizableContainer>
               </div>
 
               <div className="EditorBodyCenter">
@@ -390,6 +436,7 @@ export default function MainPage() {
                   hasBottomHandle={false}
                   hasTopHandle={true}
                 />
+                
               </div>
             </div>
 
@@ -405,12 +452,7 @@ export default function MainPage() {
                 hasTopHandle={false}
               >
                 <div className="ResizableContainerChildWrapper">
-                {sceneListWidget}
-                {/*{objectPropertiesWidget}*/}
-                {cameraPropertiesWidget}
-                {scenePropertiesWidget}                
-                {editVoxelObjectWidget}
-                {editSelectedVoxelsWidget}
+                {getEditorBodyRightWidgets()}
                 </div>
               </ResizableContainer>
             </div>

@@ -73,7 +73,12 @@ function getIconOfObjectByActiveStatus(s: boolean): React.ReactNode{
     return s? <SolarCheckCircleLinear/> : <EmptyIcon/>
 }
 
-export function SceneListWidget(){
+export type SceneListWidgetProps = {
+    version: number,
+    onValueChange: ()=>void
+}
+
+export function SceneListWidget(props: SceneListWidgetProps){
     const controller = useContext(ControllerContext)!;
     const [sceneListFilter, setSceneListFilter] = useState<SceneListFilter>({
         showLightSources: true,
@@ -95,18 +100,27 @@ export function SceneListWidget(){
         }
     }
 
-    const onSceneInternalObjectListChanged : () => void = () => {
+    function onSceneInternalObjectListChanged(){
         const newObjects = fetchSceneObjectsFromScene();
         setSceneObjectList(generateSceneObjectsList(newObjects, sceneListFilter))
+
+        props.onValueChange()
     }
     const [IsfilterOptionsOpen, setIsFilterOptionsOpen] = useState<boolean>(false); 
 
     //subscribe on scene object list changed
-    useEffect(()=>{
+    function subscribeSceneEvents(){
         controller.subscribeObjectListChangedSceneEvent(onSceneInternalObjectListChanged);
         controller.subscribeActiveCameraChangedSceneEvent(onSceneInternalObjectListChanged);
         controller.subscribeActiveVoChangedSceneEvent(onSceneInternalObjectListChanged);
         controller.subscribeObjectEnabledChangeSceneEvent(onSceneInternalObjectListChanged);
+    }
+    useEffect(()=>{
+        if(controller.initialized){
+            subscribeSceneEvents();
+        }else{
+            controller.subscribeControllerInitializedEvent(subscribeSceneEvents);
+        }
     },[])
 
     useEffect(()=>{
@@ -126,7 +140,7 @@ export function SceneListWidget(){
             const name = so.name;
             const sceneId = so.sceneId;
             if(sceneId == null){
-                console.log(`[SceneListWidget] Scene object ${name}'s sceneId is null`);
+                console.error(`[SceneListWidget] Scene object ${name}'s sceneId is null`);
             }else{
                 out.push({
                     objectType,
@@ -146,6 +160,7 @@ export function SceneListWidget(){
             setSceneObjectList(generateSceneObjectsList(objects, newFilter));
             setSceneListFilter(newFilter);
         }
+        props.onValueChange()
     }
 
     function onFilterRegChanged(s: string) {
@@ -172,22 +187,27 @@ export function SceneListWidget(){
 
     function onObjectEnabledToggled(sceneId: number){
         controller.toggleSceneObjectEnabled(sceneId);
+        props.onValueChange()
     }
 
     function onDeleteObjectClicked(sceneId: number){
         controller.deleteSceneObject(sceneId);
+        props.onValueChange()
     }
 
     function onInactiveObjectClicked(sceneId: number){
         controller.setSceneActiveObject(sceneId);   
+        props.onValueChange()
     }
 
     function onNewVoxelObjectClicked(){
         controller.addNewVoxelObject("NewVo");
+        props.onValueChange()
     }
 
     function onNewCameraClicked(){
         controller.addNewCamera("NewCamera")
+        props.onValueChange()
     }
 
     //to be implemented when light sources exist

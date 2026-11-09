@@ -1,0 +1,108 @@
+.EditorWidget .WidgetButtonsPanelWrapper{
+    margin: 10px 0px 10px 0px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.EditorWidget .WidgetButtonsPanelTitle{
+    margin: 0px 0px 5px 0px;
+}
+
+.EditorWidget .WidgetButtonsPanel{
+    display: grid;    
+    grid-template-columns: repeat(3,1fr);
+    grid-template-rows: repeat(1,1fr);
+    gap: 5px;
+    max-width: 180px;
+    justify-content: center;
+}
+
+.EditorWidget .WidgetButtonsPanel button{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    max-width: 60px;
+    min-width: 30px;
+    min-height: 30px;
+    width: 100%;
+    height: 100%;
+    font-size: var(--font-xs);
+
+    border: solid 1px white;
+    border-radius: 0;
+    background-color: transparent;
+}
+
+.EditorWidget .WidgetButtonsPanel button:hover{
+    background-color: rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+}
+
+.EditorWidget .WidgetButtonsPanel.ModifySizeButtonsPanel{
+    grid-template-columns: repeat(2,1fr);
+}
+
+.EditorWidget button{
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.EditorWidget .MutableFieldWrapper{
+    display: grid;
+    grid-template-columns: 1fr 5fr 1fr;
+    gap: 5px;
+}
+
+.EditorWidget .MutableFieldTitle{
+    display: flex;
+    justify-content: center;
+    align-items: center;    
+    margin: 0px;
+    font-size: var(--font-s);
+    overflow: hidden;
+}
+
+.EditorWidget .CameraTargetProperties .MutableFieldWrapper{
+    display: grid;
+    grid-template-columns: 1fr 5fr 1fr;    
+    
+}
+
+.EditorWidget .ProjectionFieldWrapper{
+    margin-bottom: 10px;
+}
+
+.EditorWidget .targetLockButton{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+}
+
+.EditorWidget svg{
+    width: 16px;
+    height: 16px;
+}
+
+.EditorWidget .WidgetButtonsPanel.defaultSizesButtonsPanel{
+    grid-template-columns: repeat(4,1fr);
+    justify-content: center;
+}
+
+.EditorWidget .WidgetButtonsPanel{
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    margin: 10px 0px 10px 0px;
+    
+}
+
+.EditorWidget .WidgetButtonsPanel button{
+max-width: 100px;
+}

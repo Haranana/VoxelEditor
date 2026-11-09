@@ -5,6 +5,10 @@ export function degreeToRadians(d: number){
     return d*Math.PI/180;
 }
 
+export function radiansToDegrees(r: number){
+    return r*180/Math.PI;
+}
+
 export type clampInput = {
     value: number;
     min?: number;

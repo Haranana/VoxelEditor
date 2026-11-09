@@ -231,9 +231,9 @@ export class GizmoCameraShaderResources extends ShaderResources{
         const target = new Vector3(0,0,0);
         const gizmoCameraContext = context.renderContext.gizmoCameraContext;
         const eye = new Vector3(
-            target.x + this.distance * Math.cos(degreeToRadians(gizmoCameraContext.pitch)) * Math.sin(degreeToRadians(gizmoCameraContext.yaw)),
-            target.y + this.distance * Math.sin(degreeToRadians(gizmoCameraContext.pitch)),
-            target.z + this.distance * Math.cos(degreeToRadians(gizmoCameraContext.pitch)) * Math.cos(degreeToRadians(gizmoCameraContext.yaw)),
+            target.x + this.distance * Math.cos(gizmoCameraContext.pitch) * Math.sin(gizmoCameraContext.yaw),
+            target.y + this.distance * Math.sin(gizmoCameraContext.pitch),
+            target.z + this.distance * Math.cos(gizmoCameraContext.pitch) * Math.cos(gizmoCameraContext.yaw),
         );
         const viewMatrx : Matrix4 = PerspectiveMatrices.lightView(
             eye,
@@ -311,7 +311,7 @@ export class WorldObjectShaderResources extends ShaderResources{
         if(!this.initialized || !context.renderContext.queue || !transform) return false;
         this.uniformBufferView!.set({
             translation: Matrices4.translation(transform.translation).toArrays(),
-            rotation: Matrices4.rotation(degreeToRadians(transform.rotation.x), degreeToRadians(transform.rotation.y), degreeToRadians(transform.rotation.z)).toArrays(),
+            rotation: Matrices4.rotation(transform.rotation.x, transform.rotation.y, transform.rotation.z).toArrays(),
             scale: Matrices4.scaling(transform.scale).toArrays(),                
         });
         context.renderContext.queue.writeBuffer(this.uniformBuffer!, 0, this.uniformBufferView!.arrayBuffer);
@@ -433,7 +433,7 @@ export class ScreenObjectShaderResources extends ShaderResources{
         if(!this.initialized || !context.renderContext.queue || !transform) return false;
         this.uniformBufferView!.set({
             anchor: new Vector2(transform.anchor.x,transform.anchor.y).toArray2(),
-            rotation: Matrices4.rotation(degreeToRadians(transform.rotation.x), degreeToRadians(transform.rotation.y), degreeToRadians(transform.rotation.z)).toArrays(),
+            rotation: Matrices4.rotation(transform.rotation.x, transform.rotation.y, transform.rotation.z).toArrays(),
             scale: Matrices4.scaling(transform.scale).toArrays(),                
         });
         context.renderContext.queue.writeBuffer(this.uniformBuffer!, 0, this.uniformBufferView!.arrayBuffer);

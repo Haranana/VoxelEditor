@@ -38,7 +38,7 @@ export class VoxelObject extends SceneObject{
     #objectGridColor = VoxelObject.#defaultObjectGridColor;
 
     #ghostVoxels: VoxelObjectGhostVoxels = new VoxelObjectGhostVoxels(this.#gridSize); 
-    transform: WorldObjectTransform = {
+    #transform: WorldObjectTransform = {
         translation: new Vector3(0,0,0),
         scale: new Vector3(1,1,1),
         rotation: new Vector3(0,0,0),
@@ -85,7 +85,48 @@ export class VoxelObject extends SceneObject{
         this.transformChangeEvent.emit();
     }
     #onTransformChange(){
+        const chunksAmount = this.getChunksAmount().x * this.getChunksAmount().y * this.getChunksAmount().z
+        for(let i=0 ; i< chunksAmount; i++){
+            this.renderablesManager.setChunksRenderableObjectDirty(i);
+        }
+        this.renderablesManager.setBorderGridRenderableObjectDirty();
+        this.renderablesManager.setBorderOutlineRenderableObjectDirty();
+        this.renderablesManager.setObjectGridRenderableObjectDirty();
+    }
+
+    setTransformRotation(r: Vector3){
+        this.#transform.rotation = r.copy();
+                this.#onTransformChange();
         this.#notifyOfTransformChange();
+    }
+
+    getTransformRotation(): Vector3{
+        return this.#transform.rotation.copy();
+    }
+    
+    setTransformTranslation(t: Vector3){
+        this.#transform.translation = t.copy();
+                this.#onTransformChange();
+        this.#notifyOfTransformChange();
+    }
+
+    getTransformTranslation(){
+        return this.#transform.translation.copy();
+
+    }
+
+    setTransformScale(s: Vector3){
+        this.#transform.scale = s.copy();
+        this.#onTransformChange();
+        this.#notifyOfTransformChange();
+    }
+
+    getTransformScale(){
+        return this.#transform.scale.copy();
+    }
+
+    getTransform(): WorldObjectTransform{
+        return {...this.#transform};
     }
     
     //resizing not currently supported!
