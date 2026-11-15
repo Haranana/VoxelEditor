@@ -14,12 +14,12 @@ import { getSampleCamera } from "../scene-objects/camera/sample-cameras.ts";
 import { pickingInteractions, type PickingInteraction } from "../picking/picking-interactions.ts";
 import type { ColorRGB } from "../colors/color-types.ts";
 import { rgbToVector4, vector4ToRgb } from "../colors/color-utils.ts";
-import { VoxelObject } from "../scene-objects/voxel-object.ts";
+import { VoxelObject } from "../scene-objects/voxel/voxel-object.ts";
 import type { SceneObject } from "../scene-objects/sceneObject.ts";
 import { getBasicSampleVoxelObject, getFlipRotationTestSampleVoxelObject } from "../scene-objects/voxel/sample-voxel-objects.ts";
 import { ColorPalette } from "../colors/color-palette.ts";
 import type { Vector4 } from "../../math/vector/vector4.ts";
-import { generateCylinderVoxelArray, generatePyramidVoxelArray, generateSphereVoxelArray } from "../scene-objects/voxel/voxel-grids-generator.ts";
+import { generateCylinderVoxelArray, generatePyramidVoxelArray, generateSphereVoxelArray } from "../scene-objects/voxel/voxel-grid-formats-generator.ts";
 import { AppCoreEvent } from "../events/event.ts";
 import { Renderer } from "../../render-engine/renderer.ts";
 import { SceneContextCreator } from "../scene/scene-context-creator.ts";
@@ -339,7 +339,7 @@ export class CoreController{
     readonly cameraNearMaxValue = 1000;
 
     readonly cameraFarMinValue = 0.002;
-    readonly cameraFarMaxValue = 20000;
+    readonly cameraFarMaxValue = 100000;
 
     readonly cameraDistanceMinValue = 0;
     readonly cameraDistanceMaxValue = 10000;
@@ -1447,46 +1447,75 @@ export class CoreController{
         else return this.scene!.getSceneOptionsActiveVoBorderOutline();
     }
 
-    isSceneFloorGridOn(): boolean|undefined{
+    isSceneAxisBorderXOn(): boolean|undefined{
         if(!this.initialized || !this.scene) return undefined;
-        else return this.scene!.getSceneOptionsFloorGrid();
+        else return this.scene!.getSceneOptionsAxisBorderX();
     }
+
+    isSceneAxisBorderYOn(): boolean|undefined{
+        if(!this.initialized || !this.scene) return undefined;
+        else return this.scene!.getSceneOptionsAxisBorderY();
+    }
+    
+    isSceneAxisBorderZOn(): boolean|undefined{
+        if(!this.initialized || !this.scene) return undefined;
+        else return this.scene!.getSceneOptionsAxisBorderZ();
+    }    
 
     toggleSceneVoGridOn(): boolean{
         if(!this.initialized || !this.scene) return false;
         this.scene!.toggleSceneOptionVoGrid();        
+        this.renderScene();
         return true;
     }
 
     toggleSceneActiveVoBorderOutlineOn(): boolean{
         if(!this.initialized || !this.scene) return false;
         this.scene!.toggleSceneOptionsActiveVoBorderOutline();
+        this.renderScene();
         return true;
     }
 
-    toggleSceneFloorGridOn(): boolean{
+    toggleAxisBorderXOn(): boolean{
         if(!this.initialized || !this.scene) return false;
-        this.scene!.toggleSceneOptionsFloorGrid();
+        this.scene!.toggleSceneOptionsAxisBorderX();
+        this.renderScene();
         return true;
     }
 
+    toggleAxisBorderYOn(): boolean{
+        if(!this.initialized || !this.scene) return false;
+        this.scene!.toggleSceneOptionsAxisBorderY();
+        this.renderScene();
+        return true;
+    }
+    
+    toggleAxisBorderZOn(): boolean{
+        if(!this.initialized || !this.scene) return false;
+        this.scene!.toggleSceneOptionsAxisBorderZ();
+        this.renderScene();
+        return true;
+    }    
 
     toggleActiveVoGrid(){
-        if(!this.initialized || !this.scene) return;
+        if(!this.initialized || !this.scene) return false;
         this.scene.toggleSelectedObjectWireframe();
-        this.renderScene!();
+        this.renderScene();
+        return true;
     }
 
     toggleActiveVoBorderGrid(){
-        if(!this.initialized || !this.scene) return;
+        if(!this.initialized || !this.scene) return false;
         this.scene.toggleSelectedObjectBorderGrid();
-        this.renderScene!();
+        this.renderScene();
+        return true;
     }
 
     toggleActiveVoBorderOutline(){
-        if(!this.initialized || !this.scene) return;
+        if(!this.initialized || !this.scene) return false;
         this.scene.toggleSelectedObjectBorderOutline();
-        this.renderScene!();
+        this.renderScene();
+        return true
     }
 
     isActiveVoGridOn():boolean{
@@ -1508,33 +1537,38 @@ export class CoreController{
     }
 
     toggleCameraControllGizmo(){
-        if(!this.initialized || !this.scene) return;
+        if(!this.initialized || !this.scene) return false;
         this.scene.toggleCameraControllGizmo();
-        this.renderScene!();
+        this.renderScene();
+        return true;
     }
 
     toggleObjectMoveGizmo(){
-        if(!this.initialized || !this.scene) return;
+        if(!this.initialized || !this.scene) return false;
         this.scene.toggleObjectMoveGizmo();
-        this.renderScene!();
+        this.renderScene();
+        return true;
     }
 
     setObjectMoveGizmo(on: boolean){
-        if(!this.initialized || !this.scene) return;
+        if(!this.initialized || !this.scene) return false;
         this.scene.setObjectMoveGizmo(on);
-        this.renderScene!();
+        this.renderScene();
+        return true;
     }
 
     toggleObjectResizeGizmo(){
-        if(!this.initialized || !this.scene) return;
+        if(!this.initialized || !this.scene) return false;
         this.scene.toggleObjectResizeGizmo();
-        this.renderScene!();
+        this.renderScene();
+        return true;
     }
 
     toggleObjectRotateGizmo(){
-        if(!this.initialized || !this.scene) return;
+        if(!this.initialized || !this.scene) return false;
         this.scene.toggleObjectRotateGizmo();
-        this.renderScene!();
+        this.renderScene();
+        return true;
     }
 
     isCameraControllGizmoOn(): boolean{

@@ -1,11 +1,11 @@
-import { Vector2 } from "../../math/vector/vector2";
-import { Vector3 } from "../../math/vector/vector3";
-import type { Vector4 } from "../../math/vector/vector4";
-import type { Mesh } from "../../render-engine/meshes/Mesh";
-import { MeshBuilder, type MeshBuilderVertex } from "../../render-engine/meshes/MeshBuilder";
-import { Voxel } from "../../voxel-engine/voxel-types/voxel";
+import { Vector2 } from "../../../math/vector/vector2";
+import { Vector3 } from "../../../math/vector/vector3";
+import type { Vector4 } from "../../../math/vector/vector4";
+import type { Mesh } from "../../../render-engine/meshes/Mesh";
+import { MeshBuilder, type MeshBuilderVertex } from "../../../render-engine/meshes/MeshBuilder";
+import { Voxel } from "../../../voxel-engine/voxel-types/voxel";
 import  { VoxelObject } from "./voxel-object";
-import type { VoxelObjectSelectedArea } from "./voxel/voxel-object-selected-area";
+import type { VoxelObjectSelectedArea } from "./voxel-object-selected-area";
 
 export function generateVoChunkMesh(vo: VoxelObject, chunkPos: Vector3): Mesh{    
     const meshBuilder: MeshBuilder = new MeshBuilder({

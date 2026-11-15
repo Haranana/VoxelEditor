@@ -5,11 +5,10 @@ import { Vector3 } from "../../math/vector/vector3.ts";
 import { Vectors } from "../../math/vector/vector-utils.ts";
 import { DistantLight } from "../../render-engine/renderableObjects/distantLight.ts";
 import type { RenderableObject } from "../../render-engine/renderableObjects/renderableObject.ts";
-import type { SceneObject } from "../scene-objects/sceneObject.ts";
+import { getDefaultWorldTransform, type SceneObject } from "../scene-objects/sceneObject.ts";
 import type { Scene } from "./scene.ts";
-import { SceneGizmos } from "./scene-gizmos.ts";
 import type { RenderContext } from "../../render-engine/renderer.ts";
-import { VoxelObject } from "../scene-objects/voxel-object.ts";
+import { VoxelObject } from "../scene-objects/voxel/voxel-object.ts";
 import type { EditorView } from "../core-controller/core-controller.ts";
 import type { Camera } from "../scene-objects/camera/camera.ts";
 
@@ -86,7 +85,7 @@ export class SceneContextCreator{
 
 
             if(scene.sceneGizmosRenderOptions.cameraControllGizmo){
-                const newRenderableObject = SceneGizmos.getCameraControllGizmoRo(camera);
+                const newRenderableObject = scene.sceneObjectsManager.getCameraControllGizmoRo(camera);
                 out.push(newRenderableObject);
             }else{
             }
@@ -101,17 +100,17 @@ export class SceneContextCreator{
                         camera.getCameraView(), camera.getProjectionMatrix(canvasSize) );
                     
                     //getRoGizmoRo only needs ro for its transform, so here any chunk ro can be sent
-                    const newRenderableObject = SceneGizmos.getMoveRoGizmoRo(selectedVoChunksRo[0]);                     
+                    const newRenderableObject = scene.sceneObjectsManager.getMoveObjectGizmoRo(selectedVoChunksRo[0].worldTransform!);                     
                     newRenderableObject.screenTransform!.anchor = Vectors.vector3To2(gizmoPositionNdc);
                     out.push(newRenderableObject);
                 }
             }
             if(scene.sceneGizmosRenderOptions.objectResizeGizmo && selectedVoChunksRo && selectedVoChunksRo.length>0){
-                const newRenderableObject = SceneGizmos.getResizeRoGizmoRo(selectedVoChunksRo[0]);
+                const newRenderableObject = scene.sceneObjectsManager.getScaleObjectGizmoRo(selectedVoChunksRo[0].worldTransform!);
                 out.push(newRenderableObject);
             }
             if(scene.sceneGizmosRenderOptions.objectRotateGizmo && selectedVoChunksRo && selectedVoChunksRo.length>0){
-                const newRenderableObject = SceneGizmos.getRotateRoGizmoRo(selectedVoChunksRo[0]);
+                const newRenderableObject = scene.sceneObjectsManager.getRotateObjectGizmoRo(selectedVoChunksRo[0].worldTransform!);
                 out.push(newRenderableObject);
             }
 
@@ -150,16 +149,13 @@ export class SceneContextCreator{
         const selectedVo: VoxelObject | null = scene.getActiveVoxelObject(); ;        
         if(selectedVo){
             const selectedRo = selectedVo.renderablesManager.getChunksRenderableObjects(selectedVo);
-            if(scene.objectViewEditorOptions.borderOutline){
-                const newRenderableObject = selectedVo.renderablesManager.getBorderOutlineRenderableObject(selectedVo);
-                
+            if(scene.sceneViewEditorOptions.activeVoxelObjectBorderOutline){
+                const newRenderableObject = selectedVo.renderablesManager.getBorderOutlineRenderableObject(selectedVo);                
                 out.push(newRenderableObject);
             }
 
-
-
             if(scene.sceneGizmosRenderOptions.cameraControllGizmo){
-                const newRenderableObject = SceneGizmos.getCameraControllGizmoRo(camera);
+                const newRenderableObject = scene.sceneObjectsManager.getCameraControllGizmoRo(camera);
                 out.push(newRenderableObject);
             }
 
@@ -173,22 +169,32 @@ export class SceneContextCreator{
                         camera.getCameraView(), camera.getProjectionMatrix(canvasSize) );
                     
                     //getRoGizmoRo only needs ro for its transform, so here any chunk ro can be sent
-                    const newRenderableObject = SceneGizmos.getMoveRoGizmoRo(selectedRo[0]);                     
+                    const newRenderableObject = scene.sceneObjectsManager.getMoveObjectGizmoRo(selectedRo[0].worldTransform!);                     
                     newRenderableObject.screenTransform!.anchor = Vectors.vector3To2(gizmoPositionNdc);
                     out.push(newRenderableObject);
                 }
             }
             if(scene.sceneGizmosRenderOptions.objectResizeGizmo  && selectedRo.length>0){
-                const newRenderableObject = SceneGizmos.getResizeRoGizmoRo(selectedRo[0]);
+                const newRenderableObject = scene.sceneObjectsManager.getScaleObjectGizmoRo(selectedRo[0].worldTransform!);
                 out.push(newRenderableObject);
             }
             if(scene.sceneGizmosRenderOptions.objectRotateGizmo && selectedRo.length>0){
-                const newRenderableObject = SceneGizmos.getRotateRoGizmoRo(selectedRo[0]);
+                const newRenderableObject = scene.sceneObjectsManager.getRotateObjectGizmoRo(selectedRo[0].worldTransform!);
                 out.push(newRenderableObject);
-            }
-            
-        }             
-
+            }        
+        }    
+        if(scene.sceneViewEditorOptions.axisBorderX){
+            const newRenderableObject = scene.sceneObjectsManager.getAxisBorderXRo(getDefaultWorldTransform());  
+            out.push(newRenderableObject);      
+        }         
+        if(scene.sceneViewEditorOptions.axisBorderY){
+            const newRenderableObject = scene.sceneObjectsManager.getAxisBorderYRo(getDefaultWorldTransform());  
+            out.push(newRenderableObject);      
+        }       
+        if(scene.sceneViewEditorOptions.axisBorderZ){
+            const newRenderableObject = scene.sceneObjectsManager.getAxisBorderZRo(getDefaultWorldTransform());  
+            out.push(newRenderableObject);      
+        }               
         return out;
     }
 

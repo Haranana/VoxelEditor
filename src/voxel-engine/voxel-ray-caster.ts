@@ -7,7 +7,7 @@ import { Ray } from "../math/geometry/ray";
 import { Plane } from "../math/geometry/plane";
 import { planeAABBIntersection } from "../math/geometry/intersection-tests";
 import type { Camera } from "../app-core/scene-objects/camera/camera";
-import { type VoxelObject } from "../app-core/scene-objects/voxel-object";
+import { type VoxelObject } from "../app-core/scene-objects/voxel/voxel-object";
 
 /*
 casts ray from given coordinates (in Model space) onto given voxel object and returns id of first-non empty voxel

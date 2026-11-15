@@ -34,9 +34,11 @@ export default function ScenePropertiesWidget(props: ScenePropertiesWidgetProps)
             </div>     
             : controller.getEditorView()==='scene'?
             <div className="WidgetButtonsPanel">
-                <button className={`${controller.isSceneVoGridOn()? "ActiveButton" : ""}`} onClick={()=>{controller.toggleSceneVoGridOn();props.onValueChange()}}>Objects Grid</button>
-                <button className={`${controller.isSceneFloorGridOn()? "ActiveButton" : ""}`} onClick={()=>{controller.toggleSceneFloorGridOn();props.onValueChange()}}>Floor Grid</button>
+                <button className={`${controller.isSceneVoGridOn()? "ActiveButton" : ""}`} onClick={()=>{controller.toggleSceneVoGridOn();props.onValueChange()}}>Objects Grid</button>                
                 <button className={`${controller.isSceneActiveVoBorderOutlineOn()? "ActiveButton" : ""}`} onClick={()=>{controller.toggleSceneActiveVoBorderOutlineOn();props.onValueChange()}}>Sel. Object Outline</button>
+                <button className={`${controller.isSceneAxisBorderXOn()? "ActiveButton" : ""}`} onClick={()=>{controller.toggleAxisBorderXOn();props.onValueChange()}}>X axis</button>
+                <button className={`${controller.isSceneAxisBorderYOn()? "ActiveButton" : ""}`} onClick={()=>{controller.toggleAxisBorderYOn();props.onValueChange()}}>Y axis</button>
+                <button className={`${controller.isSceneAxisBorderZOn()? "ActiveButton" : ""}`} onClick={()=>{controller.toggleAxisBorderZOn();props.onValueChange()}}>Z axis</button>
             </div>              
             :
             <div className="WidgetButtonsPanel">

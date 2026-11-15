@@ -3,19 +3,8 @@ import { Vector3 } from "../../../math/vector/vector3";
 import type { Vector4 } from "../../../math/vector/vector4";
 import { VoxelGridFormat } from "../../../voxel-engine/voxel-formats/voxel-grid-format";
 import { Voxel } from "../../../voxel-engine/voxel-types/voxel";
-import type { VoxelArray } from "./voxel";
 
-// collection of functions returning VoxelGridFormat of common shapes
-
-export function getEmptyVoxelArray(size: Vector3) : VoxelArray{
-    const out = Array.from({ length: size.x }, () =>
-        Array.from({ length: size.y }, () =>
-            Array.from({ length: size.z }, () => null)
-        )
-    );
-    return out;
-}
-
+// collection of functions returning VoxelGridFormat of common shape
 export function generatePyramidVoxelArray(size: Vector3, color: Vector4): VoxelGridFormat{
     const voxelFormat = new VoxelGridFormat();
     let baseShortage = 0;

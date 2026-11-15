@@ -25,17 +25,17 @@ type Axis = "x"|"y"|"z";
 export default function ObjectTransformWidget(props: ObjectTransformProps) {
     const controller = useContext(ControllerContext)!;
 
-    const [isTranslateXLocked, setTranslateXLocked] = useState<boolean>(true);
-    const [isTranslateYLocked, setTranslateYLocked] = useState<boolean>(true);
-    const [isTranslateZLocked, setTranslateZLocked] = useState<boolean>(true);
+    const [isTranslateXLocked, setTranslateXLocked] = useState<boolean>(false);
+    const [isTranslateYLocked, setTranslateYLocked] = useState<boolean>(false);
+    const [isTranslateZLocked, setTranslateZLocked] = useState<boolean>(false);
 
-    const [isRotationXLocked, setRotationXLocked] = useState<boolean>(true);
-    const [isRotationYLocked, setRotationYLocked] = useState<boolean>(true);
-    const [isRotationZLocked, setRotationZLocked] = useState<boolean>(true);
+    const [isRotationXLocked, setRotationXLocked] = useState<boolean>(false);
+    const [isRotationYLocked, setRotationYLocked] = useState<boolean>(false);
+    const [isRotationZLocked, setRotationZLocked] = useState<boolean>(false);
 
-    const [isScaleXLocked, setScaleXLocked] = useState<boolean>(true);
-    const [isScaleYLocked, setScaleYLocked] = useState<boolean>(true);
-    const [isScaleZLocked, setScaleZLocked] = useState<boolean>(true);
+    const [isScaleXLocked, setScaleXLocked] = useState<boolean>(false);
+    const [isScaleYLocked, setScaleYLocked] = useState<boolean>(false);
+    const [isScaleZLocked, setScaleZLocked] = useState<boolean>(false);
 
     const TriggerIcon = props.isOpen ? ChevronDownIcon : ChevronRightIcon;
 

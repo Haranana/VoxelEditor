@@ -6,7 +6,7 @@ export function getSampleCamera(name: string): Camera{
     const camera: Camera = new Camera(name, new Vector3(0,0,0), 1000);
     camera.fovY = degreeToRadians(90);
     camera.near = 0.1;
-    camera.far = 5000,
+    camera.far = 20000,
     camera.transform = {
         translation: new Vector3(0, 0, -1000),
         scale: new Vector3(1, 1, 1),

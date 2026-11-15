@@ -1,6 +1,6 @@
-import { gridOffsetToPos } from "../../math/utils";
-import type { Vector3 } from "../../math/vector/vector3";
-import type { RenderableObject } from "../../render-engine/renderableObjects/renderableObject";
+import { gridOffsetToPos } from "../../../math/utils";
+import type { Vector3 } from "../../../math/vector/vector3";
+import type { RenderableObject } from "../../../render-engine/renderableObjects/renderableObject";
 import type { VoxelObject } from "./voxel-object";
 
 export class VoxelObjectRenderable{

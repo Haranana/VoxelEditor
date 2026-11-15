@@ -1,7 +1,7 @@
 import { Vector3 } from "../../../math/vector/vector3";
 import { Vector4 } from "../../../math/vector/vector4";
 import { Voxel } from "../../../voxel-engine/voxel-types/voxel";
-import { VoxelObject } from "../voxel-object";
+import { VoxelObject } from "./voxel-object";
 
 // collection of functions returning sample voxel objects, mainly as a starting object or for debugging 
 

@@ -1,8 +1,8 @@
-import type { Vector3 } from "../../math/vector/vector3";
-import { RenderableObject } from "../../render-engine/renderableObjects/renderableObject";
-import { shadedWorldObjectShader, worldObjectGridShader, worldObjectShader } from "../../render-engine/shaders/base-shaders";
-import { Shader } from "../../render-engine/shaders/shader";
-import { CameraShaderResources, LightSourcesResources, ViewportShaderResources, WorldObjectShaderResources } from "../../render-engine/shaders/shader-resource";
+import type { Vector3 } from "../../../math/vector/vector3";
+import { RenderableObject } from "../../../render-engine/renderableObjects/renderableObject";
+import { shadedWorldObjectShader, worldObjectGridShader, worldObjectShader } from "../../../render-engine/shaders/base-shaders";
+import { Shader } from "../../../render-engine/shaders/shader";
+import { CameraShaderResources, LightSourcesResources, ViewportShaderResources, WorldObjectShaderResources } from "../../../render-engine/shaders/shader-resource";
 import type { VoxelObject } from "./voxel-object";
 import { VoxelObjectChunkRenderables, VoxelObjectRenderable } from "./voxel-object-renderable";
 import { generateVoChunkMesh,generateVoGridMesh, generateVoBorderGridMesh, generateVoBorderOutlineMesh, generateVoSelectedAreaMesh } from "./voxel-object-meshes";

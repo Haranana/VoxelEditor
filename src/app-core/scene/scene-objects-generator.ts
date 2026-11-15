@@ -1,11 +1,11 @@
-import { Vector2 } from "../../../math/vector/vector2";
-import { Vector3 } from "../../../math/vector/vector3";
-import { Vector4 } from "../../../math/vector/vector4";
-import type { Mesh } from "../../../render-engine/meshes/Mesh";
-import { MeshBuilder, type MeshBuilderBox, type MeshBuilderFaceAttributes, type MeshBuilderQuad, type MeshBuilderTriangle, type MeshBuilderVertex } from "../../../render-engine/meshes/MeshBuilder";
-import { getPickingInteractionId } from "../../picking/picking-interactions";
+import { Vector2 } from "../../math/vector/vector2";
+import { Vector3 } from "../../math/vector/vector3";
+import { Vector4 } from "../../math/vector/vector4";
+import type { Mesh } from "../../render-engine/meshes/Mesh";
+import { MeshBuilder, type MeshBuilderBox, type MeshBuilderFaceAttributes, type MeshBuilderQuad, type MeshBuilderTriangle, type MeshBuilderVertex } from "../../render-engine/meshes/MeshBuilder";
+import { getPickingInteractionId } from "../picking/picking-interactions";
 
-// collection of functions for creating Meshes of Gizmos  
+// collection of functions for creating Meshes of Scene Objects such as gizmos etc
 
 export function generateCameraControllsGizmoMesh(): Mesh{
 const builder = new MeshBuilder({
@@ -102,7 +102,7 @@ const builder = new MeshBuilder({
     return cubeMesh
 }
 
-export function generateResizeGizmoMesh(): Mesh{
+export function generateScaleGizmoMesh(): Mesh{
         const meshBuilder: MeshBuilder = new MeshBuilder({
             topology: "triangle-list",
             attributes:[
@@ -876,3 +876,89 @@ builder.addTriangle(zArrowheadBottomTriangle);
     return cubeMesh        
 
 }
+
+
+
+export function generateAxisBorderMesh(
+    axis: "X" | "Y" | "Z",
+    cellSize: number = 200,
+    gridCellCount: number = 50
+): Mesh {
+    const meshBuilder: MeshBuilder = new MeshBuilder({
+        topology: "triangle-list",
+        frontFace: "cw",
+        cullMode: "none",
+        attributes: [
+            "position",
+            "color",
+            "quadUV",
+        ]
+    });
+
+    const color = new Vector4(128, 128, 128, 255);
+
+    const gridSize = cellSize * gridCellCount;
+    const halfGridSize = gridSize / 2;
+
+    const addCell = (i: number, j: number) => {
+        const u = -halfGridSize + i * cellSize;
+        const v = -halfGridSize + j * cellSize;
+
+        let leftTopPosition: Vector3;
+        let rightTopPosition: Vector3;
+        let rightBottomPosition: Vector3;
+        let leftBottomPosition: Vector3;
+
+        if (axis === "X") {
+            leftTopPosition = new Vector3(u, 0, v);
+            rightTopPosition = new Vector3(u + cellSize, 0, v);
+            rightBottomPosition = new Vector3(u + cellSize, 0, v + cellSize);
+            leftBottomPosition = new Vector3(u, 0, v + cellSize);
+        }
+        else if (axis === "Y") {
+            leftTopPosition = new Vector3(u, v, 0);
+            rightTopPosition = new Vector3(u + cellSize, v, 0);
+            rightBottomPosition = new Vector3(u + cellSize, v + cellSize, 0);
+            leftBottomPosition = new Vector3(u, v + cellSize, 0);
+        }
+        else {
+            // Odwrócony winding: +Y x +Z = +X
+            leftTopPosition = new Vector3(0, v, u);
+            rightTopPosition = new Vector3(0, v + cellSize, u);
+            rightBottomPosition = new Vector3(0, v + cellSize, u + cellSize);
+            leftBottomPosition = new Vector3(0, v, u + cellSize);
+        }
+
+        meshBuilder.addQuad({
+            leftTop: {
+                position: leftTopPosition,
+                quadUV: new Vector2(0, 0),
+                color,
+            },
+            rightTop: {
+                position: rightTopPosition,
+                quadUV: new Vector2(1, 0),
+                color,
+            },
+            rightBottom: {
+                position: rightBottomPosition,
+                quadUV: new Vector2(1, 1),
+                color,
+            },
+            leftBottom: {
+                position: leftBottomPosition,
+                quadUV: new Vector2(0, 1),
+                color,
+            }
+        });
+    };
+
+    for (let i = 0; i < gridCellCount; i++) {
+        for (let j = 0; j < gridCellCount; j++) {
+            addCell(i, j);
+        }
+    }
+
+    return meshBuilder.build();
+}
+

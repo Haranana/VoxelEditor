@@ -1,5 +1,5 @@
 import type { RenderableObject } from "../../render-engine/renderableObjects/renderableObject";
-import type { SceneGizmos } from "../scene/scene-gizmos";
+import type { SceneGizmos } from "../scene/scene-objects-manager";
 import type { Gizmo } from "./gizmo/gizmo-object";
 
 //assumes that gizmo mesh never really changes so no "setMeshToRebuild" function is present

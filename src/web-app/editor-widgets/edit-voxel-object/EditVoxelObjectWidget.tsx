@@ -7,7 +7,7 @@ import MdiLockOpenVariantOutline from "../../icons/MdiLockOpenVariantOutline";
 import { Vector3 } from "../../../math/vector/vector3";
 import { ControllerContext } from "../../../app-core/core-controller/core-controller-context";
 import { MutableNumberField } from "../mutable-number-field/MutableNumberField";
-import { VoxelObject } from "../../../app-core/scene-objects/voxel-object";
+import { VoxelObject } from "../../../app-core/scene-objects/voxel/voxel-object";
 
 export type EditVoxelObjectWidgetProps = {
     isOpen: boolean;

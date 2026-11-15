@@ -1,8 +1,8 @@
 import { Camera } from "../scene-objects/camera/camera";
 import { SceneObject } from "../scene-objects/sceneObject";
-import { VoxelObject } from "../scene-objects/voxel-object";
+import { VoxelObject } from "../scene-objects/voxel/voxel-object";
 import { AppCoreEvent } from "../events/event"
-import { Gizmo } from "../scene-objects/gizmo/gizmo-object";
+import { SceneObjectsManager } from "./scene-objects-manager";
 
 export type objectViewEditorOptions = {
     borderGrid: boolean,
@@ -14,7 +14,9 @@ export type objectViewEditorOptions = {
 export type sceneViewEditorOptions = {
     voxelObjectsGrid: boolean,
     activeVoxelObjectBorderOutline: boolean,
-    floorGrid: boolean,
+    axisBorderX: boolean,
+    axisBorderY: boolean,
+    axisBorderZ: boolean,
 }
 
 export type SceneGizmosRenderOptions = {
@@ -36,7 +38,9 @@ export class Scene{
     sceneViewEditorOptions: sceneViewEditorOptions = {
         voxelObjectsGrid: false,
         activeVoxelObjectBorderOutline: false,
-        floorGrid: false,
+        axisBorderX: false,
+        axisBorderY: true,
+        axisBorderZ: false,
     }
 
     sceneGizmosRenderOptions: SceneGizmosRenderOptions = {
@@ -45,6 +49,7 @@ export class Scene{
         objectResizeGizmo: false,
         objectRotateGizmo: false,
     }
+    readonly sceneObjectsManager: SceneObjectsManager = new SceneObjectsManager();
     
     //#selectedSceneObjectId: number | null = null;
     #activeVoxelObjectId: number | null = null;
@@ -365,15 +370,39 @@ export class Scene{
         return this.sceneViewEditorOptions.activeVoxelObjectBorderOutline
     }    
     
-    setSceneOptionsFloorGrid(b: boolean){
-        this.sceneViewEditorOptions.floorGrid = b;
+    setSceneOptionsAxisBorderX(b: boolean){
+        this.sceneViewEditorOptions.axisBorderX = b;
     }
 
-    toggleSceneOptionsFloorGrid(){
-        this.sceneViewEditorOptions.floorGrid = !this.sceneViewEditorOptions.floorGrid;
+    toggleSceneOptionsAxisBorderX(){
+        this.sceneViewEditorOptions.axisBorderX = !this.sceneViewEditorOptions.axisBorderX;
     }    
 
-    getSceneOptionsFloorGrid(){
-        return this.sceneViewEditorOptions.floorGrid;
+    getSceneOptionsAxisBorderX(){
+        return this.sceneViewEditorOptions.axisBorderX;
     }    
+
+    setSceneOptionsAxisBorderY(b: boolean){
+        this.sceneViewEditorOptions.axisBorderY = b;
+    }
+
+    toggleSceneOptionsAxisBorderY(){
+        this.sceneViewEditorOptions.axisBorderY = !this.sceneViewEditorOptions.axisBorderY;
+    }    
+
+    getSceneOptionsAxisBorderY(){
+        return this.sceneViewEditorOptions.axisBorderY;
+    }        
+
+    setSceneOptionsAxisBorderZ(b: boolean){
+        this.sceneViewEditorOptions.axisBorderZ = b;
+    }
+
+    toggleSceneOptionsAxisBorderZ(){
+        this.sceneViewEditorOptions.axisBorderZ = !this.sceneViewEditorOptions.axisBorderZ;
+    }    
+
+    getSceneOptionsAxisBorderZ(){
+        return this.sceneViewEditorOptions.axisBorderZ;
+    }            
 }

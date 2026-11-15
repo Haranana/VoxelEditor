@@ -15,11 +15,10 @@ import EmptyIcon from "../../icons/EmptyIcon"
 import { ControllerContext } from "../../../app-core/core-controller/core-controller-context"
 import Popup from "../../other-components/popup/Popup"
 import { Tooltip } from "../../other-components/tooltip/Tooltip"
-import { SceneObject } from "../../../app-core/scene-objects/sceneObject"
-import { LightSource } from "../../../app-core/scene-objects/light_source/light-source"
+import { RenderableSceneObject, SceneObject } from "../../../app-core/scene-objects/sceneObject"
+import { LightSource } from "../../../app-core/scene-objects/light-source/light-source"
 import { Camera } from "../../../app-core/scene-objects/camera/camera"
-import { Gizmo } from "../../../app-core/scene-objects/gizmo/gizmo-object"
-import { VoxelObject } from "../../../app-core/scene-objects/voxel-object"
+import { VoxelObject } from "../../../app-core/scene-objects/voxel/voxel-object"
 
 type SceneListObjectType = "gizmo" | "camera" | "voxel" | "object"
 
@@ -134,7 +133,7 @@ export function SceneListWidget(props: SceneListWidgetProps){
         const out : SceneListObject[] = []
         soList.forEach((so)=>{
             if(!soPassesFilter(so, filter)) return;
-            const objectType = so instanceof Gizmo? "gizmo" : so instanceof Camera? "camera" : so instanceof VoxelObject? "voxel" : "object";
+            const objectType = so instanceof Camera? "camera" : so instanceof VoxelObject? "voxel" :  so instanceof RenderableSceneObject? "gizmo" : "object";
             const active = so.sceneId!=null && (controller.isCameraActiveById(so.sceneId) || controller.isVoActiveById(so.sceneId) )
             const enabled = so.enabled
             const name = so.name;

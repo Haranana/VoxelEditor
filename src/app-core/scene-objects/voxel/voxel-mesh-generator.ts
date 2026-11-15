@@ -3,7 +3,7 @@ import { Vector3 } from "../../../math/vector/vector3";
 import { Vector4 } from "../../../math/vector/vector4";
 import type { Mesh } from "../../../render-engine/meshes/Mesh";
 import { MeshBuilder, type MeshBuilderVertex } from "../../../render-engine/meshes/MeshBuilder";
-import type { VoxelObject } from "../voxel-object";
+import type { VoxelObject } from "./voxel-object";
 import type { VoxelObjectSelectedArea } from "./voxel-object-selected-area";
 // collection of functions for creating Meshes of VoxelObject and its associated elements 
 
