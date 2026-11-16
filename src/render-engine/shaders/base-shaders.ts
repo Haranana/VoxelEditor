@@ -398,7 +398,7 @@ export function screenObjectShader(){
         var out: VertexShaderOutput;
 
         let anchorNdc = objectBuffer.anchor;
-        let transform = objectBuffer.rotation * objectBuffer.scale;      
+        let transform = 1.0;      
         
         let modelPosition = vec4f(v.position, 1.0);
         let worldPosition = transform * modelPosition; 

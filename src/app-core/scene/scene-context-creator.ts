@@ -100,18 +100,18 @@ export class SceneContextCreator{
                         camera.getCameraView(), camera.getProjectionMatrix(canvasSize) );
                     
                     //getRoGizmoRo only needs ro for its transform, so here any chunk ro can be sent
-                    const newRenderableObject = scene.sceneObjectsManager.getMoveObjectGizmoRo(selectedVoChunksRo[0].worldTransform!);                     
-                    newRenderableObject.screenTransform!.anchor = Vectors.vector3To2(gizmoPositionNdc);
+                    const anchor = Vectors.vector3To2(gizmoPositionNdc);
+                    const rotation = selectedVo.getTransform().rotation;
+                    const scale = selectedVo.getTransform().scale;
+                    const gizmoTransform ={
+                        anchor,
+                        scale,
+                        rotation
+                    };                    
+                    const newRenderableObject = scene.sceneObjectsManager.getMoveObjectGizmoRo(gizmoTransform);                     
+                    //newRenderableObject.screenTransform!.anchor = Vectors.vector3To2(gizmoPositionNdc);
                     out.push(newRenderableObject);
                 }
-            }
-            if(scene.sceneGizmosRenderOptions.objectResizeGizmo && selectedVoChunksRo && selectedVoChunksRo.length>0){
-                const newRenderableObject = scene.sceneObjectsManager.getScaleObjectGizmoRo(selectedVoChunksRo[0].worldTransform!);
-                out.push(newRenderableObject);
-            }
-            if(scene.sceneGizmosRenderOptions.objectRotateGizmo && selectedVoChunksRo && selectedVoChunksRo.length>0){
-                const newRenderableObject = scene.sceneObjectsManager.getRotateObjectGizmoRo(selectedVoChunksRo[0].worldTransform!);
-                out.push(newRenderableObject);
             }
 
             loadedObjs = ""; out.forEach(obj => {
@@ -154,32 +154,30 @@ export class SceneContextCreator{
                 out.push(newRenderableObject);
             }
 
-            if(scene.sceneGizmosRenderOptions.cameraControllGizmo){
-                const newRenderableObject = scene.sceneObjectsManager.getCameraControllGizmoRo(camera);
-                out.push(newRenderableObject);
-            }
+            const gizmoPositionGrid = selectedVo.getBoundingBoxCenter();
+            const gizmoPositionModel = selectedVo.GridPosToModel(gizmoPositionGrid);                
+            const gizmoPositionNdc = Spaces.modelToNdc(gizmoPositionModel,Matrices4.transform(selectedVo.getTransform()),
+                                    camera.getCameraView(), camera.getProjectionMatrix(canvasSize) );
+            const anchor = Vectors.vector3To2(gizmoPositionNdc);
+            const rotation = selectedVo.getTransform().rotation;
+            const scale = selectedVo.getTransform().scale;
+            const gizmoTransform ={
+                anchor,
+                scale,
+                rotation
+            };
 
-
-            // Move gizmo position is based on static selected area bounding box center
             if(scene.sceneGizmosRenderOptions.objectMoveGizmo){
-                const gizmoPositionGrid = selectedVo.getSelectedAreaBoundingBoxCenter('static');
-                if(gizmoPositionGrid &&  selectedRo.length>0 /*&& selectedRo.mesh && selectedRo.mesh.vertices.length>0*/){
-                    const gizmoPositionModel = selectedVo.GridPosToModel(gizmoPositionGrid);                
-                    const gizmoPositionNdc = Spaces.modelToNdc(gizmoPositionModel,Matrices4.transform(selectedVo.getTransform()),
-                        camera.getCameraView(), camera.getProjectionMatrix(canvasSize) );
-                    
-                    //getRoGizmoRo only needs ro for its transform, so here any chunk ro can be sent
-                    const newRenderableObject = scene.sceneObjectsManager.getMoveObjectGizmoRo(selectedRo[0].worldTransform!);                     
-                    newRenderableObject.screenTransform!.anchor = Vectors.vector3To2(gizmoPositionNdc);
-                    out.push(newRenderableObject);
-                }
+                const newRenderableObject = scene.sceneObjectsManager.getMoveObjectGizmoRo(gizmoTransform);                     
+                out.push(newRenderableObject);
+                
             }
             if(scene.sceneGizmosRenderOptions.objectResizeGizmo  && selectedRo.length>0){
-                const newRenderableObject = scene.sceneObjectsManager.getScaleObjectGizmoRo(selectedRo[0].worldTransform!);
+                const newRenderableObject = scene.sceneObjectsManager.getScaleObjectGizmoRo(gizmoTransform);
                 out.push(newRenderableObject);
             }
             if(scene.sceneGizmosRenderOptions.objectRotateGizmo && selectedRo.length>0){
-                const newRenderableObject = scene.sceneObjectsManager.getRotateObjectGizmoRo(selectedRo[0].worldTransform!);
+                const newRenderableObject = scene.sceneObjectsManager.getRotateObjectGizmoRo(gizmoTransform);
                 out.push(newRenderableObject);
             }        
         }    
@@ -194,7 +192,13 @@ export class SceneContextCreator{
         if(scene.sceneViewEditorOptions.axisBorderZ){
             const newRenderableObject = scene.sceneObjectsManager.getAxisBorderZRo(getDefaultWorldTransform());  
             out.push(newRenderableObject);      
-        }               
+        }    
+
+        if(scene.sceneGizmosRenderOptions.cameraControllGizmo){
+            const newRenderableObject = scene.sceneObjectsManager.getCameraControllGizmoRo(camera);
+            out.push(newRenderableObject);
+        }        
+        
         return out;
     }
 

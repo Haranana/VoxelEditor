@@ -410,6 +410,18 @@ export class VoxelObject extends SceneObject{
         return true;
     }
 
+    //returns voxel object bbox center in grid position
+    getBoundingBoxCenter(): Vector3{
+        const min = new Vector3(0,0,0);
+        const max = new Vector3(this.#gridSize.x-1,this.#gridSize.y-1,this.#gridSize.z-1);
+
+        return new Vector3(
+            Math.floor((min.x + max.x) / 2),
+            Math.floor((min.y + max.y) / 2),
+            Math.floor((min.z + max.z) / 2)
+        );
+    }
+
     //returns in gridPos or null if no voxels are selected
     getSelectedAreaBoundingBoxCenter(areaType: SelectedAreaType): Vector3|null{
         const area = this.selectedAreas.get(areaType)!;

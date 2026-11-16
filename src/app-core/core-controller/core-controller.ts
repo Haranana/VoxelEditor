@@ -413,14 +413,15 @@ export class CoreController{
                 const dy = this.cameraMoveSession.deltaY;
 
                 if (dx !== 0 || dy !== 0) {
-                    camera.yaw -= dx * mouseSensitivity;
-                    camera.pitch -= dy * mouseSensitivity;
+                    this.addCameraYaw( -1.0 * dx * mouseSensitivity);
+                    this.addCameraPitch( -1.0 * dy * mouseSensitivity);
 
+                    /*
                     camera.pitch = clamp({
                         value: camera.pitch,
                         min: -pitchLimit,
                         max: pitchLimit
-                    });
+                    });*/
 
                     this.cameraMoveSession.deltaX = 0;
                     this.cameraMoveSession.deltaY = 0;
@@ -486,8 +487,8 @@ export class CoreController{
         const camera = scene.getActiveCamera();
         if(!camera) return false;
 
-        const pitch = 0.0;
-        const yaw = 270.0;
+        const pitch = degreeToRadians(0.0);
+        const yaw = degreeToRadians(270.0);
         this.setCameraPitch(pitch);      
         this.setCameraYaw(yaw);
         this.renderScene!();
@@ -501,8 +502,8 @@ export class CoreController{
         const camera = scene.getActiveCamera();
         if(!camera) return false;
 
-        const pitch = -89.9;
-        const yaw = 0.0;
+        const pitch = degreeToRadians(-89.9);
+        const yaw = degreeToRadians(0.0);
         this.setCameraPitch(pitch);      
         this.setCameraYaw(yaw);
         this.renderScene!();
@@ -516,8 +517,8 @@ export class CoreController{
         const camera = scene.getActiveCamera();
         if(!camera) return false;
 
-        const pitch = 0.0;
-        const yaw = 180.0;
+        const pitch = degreeToRadians(0.0);
+        const yaw = degreeToRadians(180.0);
         this.setCameraPitch(pitch);      
         this.setCameraYaw(yaw);
         this.renderScene!();
@@ -531,8 +532,8 @@ export class CoreController{
         const camera = scene.getActiveCamera();
         if(!camera) return false;
 
-        const pitch = 0.0;
-        const yaw = 90.0;
+        const pitch = degreeToRadians(0.0);
+        const yaw = degreeToRadians(90.0);
         this.setCameraPitch(pitch);      
         this.setCameraYaw(yaw);
         this.renderScene!();
@@ -546,8 +547,8 @@ export class CoreController{
         const camera = scene.getActiveCamera();
         if(!camera) return false;
 
-        const pitch = 89.9;
-        const yaw = 0.0;
+        const pitch = degreeToRadians(89.9);
+        const yaw = degreeToRadians(0.0);
         this.setCameraPitch(pitch);      
         this.setCameraYaw(yaw);
         this.renderScene!();
@@ -561,8 +562,8 @@ export class CoreController{
         const camera = scene.getActiveCamera();
         if(!camera) return false;
 
-        const pitch = 0.0;
-        const yaw = 0.0;
+        const pitch = degreeToRadians(0.0);
+        const yaw = degreeToRadians(0.0);
         this.setCameraPitch(pitch);      
         this.setCameraYaw(yaw);
         this.renderScene!();
@@ -715,8 +716,7 @@ export class CoreController{
         const camera = scene.getActiveCamera();
         if(!camera) return;
 
-        //const v = clamp({ value, min: this.cameraPitchMinValue, max: this.cameraPitchMaxValue });
-        const v = mod(value, 2*Math.PI);
+        const v = clamp({ value, min: this.cameraPitchMinValue, max: this.cameraPitchMaxValue });
         
         if (v !== camera.pitch) {
             camera.pitch = v;
@@ -735,6 +735,7 @@ export class CoreController{
     }
 
     setCameraYaw(value: number) {
+        
         if(!this.initialized) return;
         const scene = this.scene!;
         const camera = scene.getActiveCamera();
@@ -999,8 +1000,7 @@ export class CoreController{
             Math.abs(rayDirection.dotProduct(candidates[1])) ? candidates[0] : candidates[1];
     }
 
-    getMoveSessionDelta(canvasSize: Vector2, begSs: Vector2, endSs: Vector2, axis: "X" | "Y" | "Z"): Vector3{
-        
+    getMoveSessionDelta(canvasSize: Vector2, begSs: Vector2, endSs: Vector2, axis: "X" | "Y" | "Z"): Vector3{        
         let out: Vector3 = new Vector3(0,0,0);
                 
         if(!this.initialized || !this.scene || !this.scene.getActiveVoxelObject() || !this.scene.getActiveCamera() || !this.hasVoxelsMoveSessionStarted()){
@@ -1134,13 +1134,34 @@ export class CoreController{
         }
     }
 
-    async handleCanvasPointerDown(pointerPos: Vector2, canvasSize: Vector2){
-        if(!this.initialized || !this.scene) return;
+    async #onPointerDownObjectView(){
 
+    }
+
+    async #onPointerDownSceneView(){
+
+    }
+
+    async #onPointerDownRenderView(){
+
+    }
+
+    async handleCanvasPointerDown(pointerPos: Vector2, canvasSize: Vector2){
+        const initialized = this.initialized;
         const scene = this.scene;
+        const camera = scene?.getActiveCamera();
+        if(!initialized || !scene || !camera) return;
+        
         const voxelObject = scene.getActiveVoxelObject();
-        const camera = scene.getActiveCamera();
-        if(!voxelObject || !camera) return;        
+        if(this.editorView==='object'){
+            this.#onPointerDownObjectView();
+        }else if(this.editorView==='scene'){
+            this.#onPointerDownSceneView();
+        }else if(this.editorView==='render'){
+            this.#onPointerDownRenderView();
+        }
+        
+        if(!voxelObject) return;        
         
         this.finalizeVoxelsMove();
         const pickingInteractionId = await this.readIdTexture!(pointerPos);
@@ -1149,10 +1170,9 @@ export class CoreController{
         const hitOnExit = true;
         
         const mvp = camera.getProjectionMatrix(canvasSize).multMatrix(Matrices4.transform(voxelObject.getTransform())).multMatrix(camera.getCameraView());
-        
-        const rayCastResults = getFirstVoxelOnRay(camera, pointerPos, voxelObject, canvasSize, Matrices4.transform(voxelObject.getTransform()), camera.getProjectionMatrix(canvasSize), camera.getCameraView(), lastEmpty , hitOnExit);
-        
+        const rayCastResults = getFirstVoxelOnRay(camera, pointerPos, voxelObject, canvasSize, Matrices4.transform(voxelObject.getTransform()), camera.getProjectionMatrix(canvasSize), camera.getCameraView(), lastEmpty , hitOnExit);        
         if(!rayCastResults) return;
+
         const hitVoxel : Vector3 = rayCastResults.voxelCoords;
 
         if(pickingInteractionId){
@@ -1167,7 +1187,6 @@ export class CoreController{
         let voxelObjectChanged = false;
         let selectedAreaChanged = false;        
         const selectType : "dynamic" | "static" = (this.editMode === "Select" || this.editMode === "Move")? "static" : "dynamic";
-        const allowEmptyVoxelsSelection = this.editMode === "Move"? false: true;
         
         if(selectType === "static"){
             selectedAreaChanged = voxelObject.resetSelectedArea("static")!=0;
@@ -1232,18 +1251,15 @@ export class CoreController{
 
     async handleCanvasPointerMove(pointerPos: Vector2, canvasSize: Vector2){
         if(!this.initialized || !this.scene) return;
-        
-
         const scene = this.scene;
         const voxelObject = scene.getActiveVoxelObject();
-        const camera = scene.getActiveCamera();
-        
+        const camera = scene.getActiveCamera();        
         if(!voxelObject || !camera) return;
+
         voxelObject.resetSelectedArea('dynamic');
 
-        //const pickingInteractionId = await this.readIdTexture!(pointerPos);
-        if(this.hasVoxelsMoveSessionStarted()){    
-          
+        
+        if(this.hasVoxelsMoveSessionStarted()){              
             this.updateVoxelsMoveSession(pointerPos, canvasSize);     
             this.renderScene!();
             return;
@@ -1286,16 +1302,17 @@ export class CoreController{
             
             const rectStart = this.selectSession.startCoords!;
             const rectEnd = pointerPos
-            if( Math.abs(rectEnd.x - rectStart.x)  < marqueeMinimalRect.x && Math.abs(rectEnd.y - rectStart.y)  < marqueeMinimalRect.y ){
+            const rectSize = new Vector2(Math.abs(rectEnd.x - rectStart.x) , Math.abs(rectEnd.y - rectStart.y) )
+            if(rectSize.x < marqueeMinimalRect.x && rectSize.y < marqueeMinimalRect.y){
                 selectedAreaChanged = voxelObject.selectVoxelsByArray("dynamic", getVoxelsOnRay(
                     Vectors.vector3To2(rectStart),voxelObject,canvasSize,mvp,true
                 )) > 0;
-            }else if(Math.abs(rectEnd.x - rectStart.x)  < marqueeMinimalRect.x){
+            }else if(rectSize.x  < marqueeMinimalRect.x){
                 const rectAndPlusEpsilon = new Vector2(rectEnd.x+marqueeEpsilon, rectEnd.y);
                 selectedAreaChanged = voxelObject.selectVoxelsByArray("dynamic", marqueeSelectRectangle(
                     Vectors.vector3To2(rectStart),rectAndPlusEpsilon,voxelObject,canvasSize,mvp,true
                 )) > 0;
-            }else if(Math.abs(rectEnd.y - rectStart.y)  < marqueeMinimalRect.y){
+            }else if(rectSize.y  < marqueeMinimalRect.y){
                 const rectAndPlusEpsilon = new Vector2(rectEnd.x, rectEnd.y + marqueeEpsilon);
                 selectedAreaChanged = voxelObject.selectVoxelsByArray("dynamic", marqueeSelectRectangle(
                     Vectors.vector3To2(rectStart),rectAndPlusEpsilon,voxelObject,canvasSize,mvp,true
@@ -1321,35 +1338,7 @@ export class CoreController{
             else if(this.editMode=="Move"){               
                 selectedAreaChanged = voxelObject.selectCube(this.selectSession.startCoords!, hitVoxel, "dynamic");  
             }
-        }else{ //no select session
-            /*
-            if(this.editMode == "Add"){
-                if(this.selectMode=="Voxel" || this.selectMode=="Cube"){
-                    selectedAreaChanged = voxelObject.selectVoxel(selectType, hitVoxel);
-                }else if(this.selectMode=="Face"){
-                    selectedAreaChanged = voxelObject.selectFace(hitVoxel , vectorToFaceDirection(hitDirection), selectType,true);
-                }
-            }else if(this.editMode=="Remove" || this.editMode=="Paint"){
-                if(this.selectMode=="Voxel" || this.selectMode=="Cube"){
-                    selectedAreaChanged = voxelObject.selectVoxel(selectType, hitVoxel);
-                }else if(this.selectMode=="Face"){
-                    selectedAreaChanged = voxelObject.selectFace(hitVoxel , vectorToFaceDirection(hitDirection),selectType);
-                }else if(this.selectMode=="Color"){
-                    selectedAreaChanged = voxelObject.selectByColor(hitVoxel,selectType);
-                }else if(this.selectMode=="Connected"){
-                    selectedAreaChanged = voxelObject.selectConnected(hitVoxel,selectType);   
-                }
-            }else{
-                if(this.selectMode=="Voxel" || this.selectMode=="Cube"){
-                    selectedAreaChanged = voxelObject.selectVoxel('dynamic', hitVoxel);
-                }else if(this.selectMode=="Face"){
-                    selectedAreaChanged = voxelObject.selectFace(hitVoxel , vectorToFaceDirection(hitDirection),'dynamic');
-                }else if(this.selectMode=="Color"){
-                    selectedAreaChanged = voxelObject.selectByColor(hitVoxel,'dynamic');
-                }else if(this.selectMode=="Connected"){
-                    selectedAreaChanged = voxelObject.selectConnected(hitVoxel,'dynamic');   
-                }
-            }*/
+        }else{            
             if(this.editMode == "Add"){
                 if(this.selectMode=="Voxel" || this.selectMode=="Cube"){
                     selectedAreaChanged = voxelObject.selectVoxel(selectType, hitVoxel);

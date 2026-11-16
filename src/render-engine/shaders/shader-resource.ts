@@ -432,7 +432,7 @@ export class ScreenObjectShaderResources extends ShaderResources{
         const transform = context.object.screenTransform    
         if(!this.initialized || !context.renderContext.queue || !transform) return false;
         this.uniformBufferView!.set({
-            anchor: new Vector2(transform.anchor.x,transform.anchor.y).toArray2(),
+            anchor: transform.anchor.toArray2(),
             rotation: Matrices4.rotation(transform.rotation.x, transform.rotation.y, transform.rotation.z).toArrays(),
             scale: Matrices4.scaling(transform.scale).toArrays(),                
         });

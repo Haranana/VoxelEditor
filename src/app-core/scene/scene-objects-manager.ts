@@ -6,8 +6,9 @@ import { screenObjectShader, worldObjectGridShader, worldObjectShader } from "..
 import { Shader } from "../../render-engine/shaders/shader";
 import { CameraShaderResources, GizmoCameraShaderResources, ScreenObjectShaderResources, ViewportShaderResources, WorldObjectShaderResources } from "../../render-engine/shaders/shader-resource";
 import type { Camera } from "../scene-objects/camera/camera";
-import { generateAxisBorderMesh, generateCameraControllsGizmoMesh, generateMoveGizmoMesh, generateRotateGizmoMesh, generateScaleGizmoMesh } from "./scene-objects-generator";
-import { RenderableSceneObject, type WorldObjectTransform } from "../scene-objects/sceneObject";
+import { generateAxisBorderMesh, generateCameraControllsGizmoMesh, generateMoveGizmoMesh, generateRotateGizmoMesh, generateScaleGizmoMesh } from "./scene-objects-mesh-generator";
+import { getDefaultScreenTransform, RenderableSceneObject, type ScreenOverlayTransform, type WorldObjectTransform } from "../scene-objects/sceneObject";
+import { radiansToDegrees } from "../../math/utils";
 
 /*
     Static class responsible for storing and creating
@@ -41,6 +42,7 @@ export class SceneObjectsManager{
     }
 
     getCameraControllGizmoRo(c: Camera): RenderableObject{
+        //console.log(`[getCameraControllGizmoRo] pitch|yaw: ${radiansToDegrees(c.pitch)}|${radiansToDegrees(c.yaw)}`)
         let out = this.#cameraControllGizmo.renderableObject;
         if(!out){
             out = this.#createCameraControllGizmoRo();            
@@ -70,7 +72,7 @@ export class SceneObjectsManager{
         const shader = new Shader(screenObjectShader(), "vertexShader", "fragmentShader", 
         [new ViewportShaderResources(0) ,new CameraShaderResources(1),new ScreenObjectShaderResources(2), new GizmoCameraShaderResources(3)]);
         out.material = {shader};
-           
+        out.useSecondaryDepthTexture = true;
         out.mesh = generateCameraControllsGizmoMesh();
         out.collider = null; 
         out.name = "camera controll gizmo";
@@ -81,50 +83,33 @@ export class SceneObjectsManager{
     // Move object gizmo
     #moveObjectGizmo: RenderableSceneObject;
     #createMoveObjectGizmo(): RenderableSceneObject{
-        const out = new RenderableSceneObject("move object gizmo", "World");
+        const out = new RenderableSceneObject("move object gizmo", "Screen");
         out.renderableObject = this.#createMoveObjectGizmoRo();        
-        out.screenTransform = null;
-        out.worldTransform = {
-            translation: new Vector3(0,0,0),
-            scale: new Vector3(1,1,1),
-            rotation: new Vector3(0,0,0),
-        };        
+        out.worldTransform = null;
+        out.screenTransform = getDefaultScreenTransform();      
         return out;
     }
 
-    getMoveObjectGizmoRo(t: WorldObjectTransform): RenderableObject{
+    getMoveObjectGizmoRo(t: ScreenOverlayTransform): RenderableObject{
         let out = this.#moveObjectGizmo.renderableObject;
         if(!out){
             out = this.#createMoveObjectGizmoRo();            
         }            
-        out.worldTransform = out.worldTransform? 
-        {
-            ...out.worldTransform,
-            translation: t.translation,
-        } :
-        {
-            translation: new Vector3(0,0,0),
-            scale: new Vector3(1,1,1),
-            rotation: new Vector3(0,0,0),
-        }; 
-
+        out.screenTransform = t;
         return out;
     }
 
     #createMoveObjectGizmoRo(): RenderableObject{
         const out: RenderableObject = new RenderableObject();
-        const shader = new Shader(worldObjectShader(), "vertexShader", "fragmentShader", 
-        [new ViewportShaderResources(0) ,new CameraShaderResources(1),new WorldObjectShaderResources(2), new GizmoCameraShaderResources(3)]);
+        const shader = new Shader(screenObjectShader(), "vertexShader", "fragmentShader", 
+        [new ViewportShaderResources(0) ,new CameraShaderResources(1),new ScreenObjectShaderResources(2), new GizmoCameraShaderResources(3)]);
         out.material = {shader};
+        out.useSecondaryDepthTexture = true;
          
         out.mesh = generateMoveGizmoMesh();
         out.collider = null; 
         
-        out.worldTransform = {
-            translation: new Vector3(0,0,0),
-            scale: new Vector3(1,1,1),
-            rotation: new Vector3(0,0,0),
-        }; 
+        out.screenTransform = getDefaultScreenTransform(); 
         out.name = "move object gizmo";
 
         return out;
@@ -133,50 +118,33 @@ export class SceneObjectsManager{
     // Scale object gizmo
     #scaleObjectGizmo: RenderableSceneObject;
     #createScaleObjectGizmo(): RenderableSceneObject{
-        const out = new RenderableSceneObject("scale object gizmo", "World");
+        const out = new RenderableSceneObject("scale object gizmo", "Screen");
         out.renderableObject = this.#createScaleObjectGizmoRo();        
-        out.screenTransform = null;
-        out.worldTransform = {
-            translation: new Vector3(0,0,0),
-            scale: new Vector3(1,1,1),
-            rotation: new Vector3(0,0,0),
-        };        
+        out.worldTransform = null;
+        out.screenTransform = getDefaultScreenTransform();        
         return out;
     }
 
-    getScaleObjectGizmoRo(t: WorldObjectTransform): RenderableObject{
+    getScaleObjectGizmoRo(t: ScreenOverlayTransform): RenderableObject{
         let out = this.#scaleObjectGizmo.renderableObject;
         if(!out){
             out = this.#createScaleObjectGizmoRo();            
         }            
-        out.worldTransform = out.worldTransform? 
-        {
-            ...out.worldTransform,
-            translation: t.translation,
-        } :
-        {
-            translation: new Vector3(0,0,0),
-            scale: new Vector3(1,1,1),
-            rotation: new Vector3(0,0,0),
-        }; 
+        out.screenTransform = t
 
         return out;
     }
 
     #createScaleObjectGizmoRo(): RenderableObject{
         const out: RenderableObject = new RenderableObject();
-        const shader = new Shader(worldObjectShader(), "vertexShader", "fragmentShader", 
-        [new ViewportShaderResources(0) ,new CameraShaderResources(1),new WorldObjectShaderResources(2), new GizmoCameraShaderResources(3)]);
+        const shader = new Shader(screenObjectShader(), "vertexShader", "fragmentShader", 
+        [new ViewportShaderResources(0) ,new CameraShaderResources(1),new ScreenObjectShaderResources(2), new GizmoCameraShaderResources(3)]);
         out.material = {shader};
          
         out.mesh = generateScaleGizmoMesh();
         out.collider = null; 
         
-        out.worldTransform = {
-            translation: new Vector3(0,0,0),
-            scale: new Vector3(1,1,1),
-            rotation: new Vector3(0,0,0),
-        }; 
+        out.screenTransform = getDefaultScreenTransform();
         out.name = "scale object gizmo";
 
         return out;
@@ -185,50 +153,33 @@ export class SceneObjectsManager{
     // Rotate object gizmo
     #rotateObjectGizmo: RenderableSceneObject;
     #createRotateObjectGizmo(): RenderableSceneObject{
-        const out = new RenderableSceneObject("rotate object gizmo", "World");
+        const out = new RenderableSceneObject("rotate object gizmo", "Screen");
         out.renderableObject = this.#createRotateObjectGizmoRo();        
-        out.screenTransform = null;
-        out.worldTransform = {
-            translation: new Vector3(0,0,0),
-            scale: new Vector3(1,1,1),
-            rotation: new Vector3(0,0,0),
-        };        
+        out.worldTransform = null;
+        out.screenTransform = getDefaultScreenTransform();        
         return out;
     }
 
-    getRotateObjectGizmoRo(t: WorldObjectTransform): RenderableObject{
+    getRotateObjectGizmoRo(t: ScreenOverlayTransform): RenderableObject{
         let out = this.#rotateObjectGizmo.renderableObject;
         if(!out){
             out = this.#createRotateObjectGizmoRo();            
         }            
-        out.worldTransform = out.worldTransform? 
-        {
-            ...out.worldTransform,
-            translation: t.translation,
-        } :
-        {
-            translation: new Vector3(0,0,0),
-            scale: new Vector3(1,1,1),
-            rotation: new Vector3(0,0,0),
-        }; 
+        out.screenTransform = t
 
         return out;
     }
 
     #createRotateObjectGizmoRo(): RenderableObject{
         const out: RenderableObject = new RenderableObject();
-        const shader = new Shader(worldObjectShader(), "vertexShader", "fragmentShader", 
-        [new ViewportShaderResources(0) ,new CameraShaderResources(1),new WorldObjectShaderResources(2), new GizmoCameraShaderResources(3)]);
+        const shader = new Shader(screenObjectShader(), "vertexShader", "fragmentShader", 
+        [new ViewportShaderResources(0) ,new CameraShaderResources(1),new ScreenObjectShaderResources(2), new GizmoCameraShaderResources(3)]);
         out.material = {shader};
          
         out.mesh = generateRotateGizmoMesh();
         out.collider = null; 
         
-        out.worldTransform = {
-            translation: new Vector3(0,0,0),
-            scale: new Vector3(1,1,1),
-            rotation: new Vector3(0,0,0),
-        }; 
+        out.screenTransform = getDefaultScreenTransform();
         out.name = "move object gizmo";
 
         return out;

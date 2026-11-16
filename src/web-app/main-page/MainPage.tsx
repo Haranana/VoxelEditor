@@ -348,6 +348,20 @@ export default function MainPage() {
   const editorViewSelectBarWidget: ReactNode = <EditorViewSelectBar 
   version={editorViewSelectBarWidgetVersion} onValueChange={()=>setEditorViewSelectBarWidgetVersion(prev=>prev+1)}/>
 
+  function getEditorBodyLeftWidgets(): React.ReactNode[] {
+    const out: React.ReactNode[] = []
+    if(controller.getEditorView()==='object'){
+      out.push(colorPaletteWidget)
+      out.push(selectToolsWidget)
+      out.push(editToolsWidget)
+    }else if(controller.getEditorView()==='scene'){
+      
+    }else if(controller.getEditorView()==='render'){
+
+    }
+    return out;
+  }
+
   function getEditorBodyRightWidgets(): React.ReactNode[] {
     const out: React.ReactNode[] = []
     if(controller.getEditorView()==='object'){
@@ -395,9 +409,7 @@ export default function MainPage() {
                 hasTopHandle={false}
               >
                 <div className="ResizableContainerChildWrapper">
-                {colorPaletteWidget}
-                {selectToolsWidget}
-                {editToolsWidget}
+                  {getEditorBodyLeftWidgets()}
                 </div>
               </ResizableContainer>
             </div>

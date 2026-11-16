@@ -38,15 +38,15 @@ export class Scene{
     sceneViewEditorOptions: sceneViewEditorOptions = {
         voxelObjectsGrid: false,
         activeVoxelObjectBorderOutline: false,
-        axisBorderX: false,
-        axisBorderY: true,
+        axisBorderX: true,
+        axisBorderY: false,
         axisBorderZ: false,
     }
 
     sceneGizmosRenderOptions: SceneGizmosRenderOptions = {
         cameraControllGizmo: true, //misspelled, should be 'Control', todo fix
         objectMoveGizmo: false,
-        objectResizeGizmo: false,
+        objectResizeGizmo: true,
         objectRotateGizmo: false,
     }
     readonly sceneObjectsManager: SceneObjectsManager = new SceneObjectsManager();

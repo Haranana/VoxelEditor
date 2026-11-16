@@ -102,31 +102,322 @@ const builder = new MeshBuilder({
     return cubeMesh
 }
 
-export function generateScaleGizmoMesh(): Mesh{
-        const meshBuilder: MeshBuilder = new MeshBuilder({
-            topology: "triangle-list",
-            attributes:[
-                "position",
-                "color",
-                "quadUV",
-            ]
-        });
-        const out = meshBuilder.build();
-        return out;
+export function generateScaleGizmoMesh(): Mesh {
+    const builder: MeshBuilder = new MeshBuilder({
+        topology: "triangle-list",
+        attributes: ["position", "color", "quadUV", "pickingInteractionId"],
+    });
+
+    const red = new Vector4(192, 32, 32, 255);
+    const green = new Vector4(32, 192, 32, 255);
+    const blue = new Vector4(32, 32, 192, 255);
+
+    const axisLength = 200;
+    const axisWidth = 8;
+    const handleSize = 24;
+
+    const axisWidthHalf = axisWidth / 2;
+    const handleSizeHalf = handleSize / 2;
+
+    const xPosPickId = getPickingInteractionId("ResizeGizmoPosX");
+    const xNegPickId = getPickingInteractionId("ResizeGizmoNegX");
+
+    const yPosPickId = getPickingInteractionId("ResizeGizmoPosY");
+    const yNegPickId = getPickingInteractionId("ResizeGizmoNegY");
+
+    const zPosPickId = getPickingInteractionId("ResizeGizmoPosZ");
+    const zNegPickId = getPickingInteractionId("ResizeGizmoNegZ");
+
+    const addBox = (
+        minX: number,
+        minY: number,
+        minZ: number,
+        maxX: number,
+        maxY: number,
+        maxZ: number,
+        color: Vector4,
+        pickingInteractionId: number | undefined
+    ) => {
+        const box: MeshBuilderBox = {
+            positions: {
+                leftTopFront: new Vector3(minX, minY, maxZ),
+                rightTopFront: new Vector3(maxX, minY, maxZ),
+                rightBottomFront: new Vector3(maxX, maxY, maxZ),
+                leftBottomFront: new Vector3(minX, maxY, maxZ),
+
+                leftTopBack: new Vector3(minX, minY, minZ),
+                rightTopBack: new Vector3(maxX, minY, minZ),
+                rightBottomBack: new Vector3(maxX, maxY, minZ),
+                leftBottomBack: new Vector3(minX, maxY, minZ),
+            },
+
+            faces: {
+                left: {
+                    color,
+                    pickingInteractionId,
+                },
+                right: {
+                    color,
+                    pickingInteractionId,
+                },
+                top: {
+                    color,
+                    pickingInteractionId,
+                },
+                bottom: {
+                    color,
+                    pickingInteractionId,
+                },
+                front: {
+                    color,
+                    pickingInteractionId,
+                },
+                back: {
+                    color,
+                    pickingInteractionId,
+                }
+            }
+        };
+
+        builder.addBox(box);
+    };
+
+    const addAxisHandle = (
+        axis: "X" | "Y" | "Z",
+        positive: boolean,
+        color: Vector4,
+        pickingInteractionId: number | undefined
+    ) => {
+        const direction = positive ? 1 : -1;
+
+        const handleCenter = direction * axisLength;
+
+        const shaftStart = positive ? 0 : -axisLength + handleSizeHalf;
+        const shaftEnd = positive ? axisLength - handleSizeHalf : 0;
+
+        if (axis === "X") {
+            addBox(
+                shaftStart,
+                -axisWidthHalf,
+                -axisWidthHalf,
+                shaftEnd,
+                axisWidthHalf,
+                axisWidthHalf,
+                color,
+                pickingInteractionId
+            );
+            addBox(
+                handleCenter - handleSizeHalf,
+                -handleSizeHalf,
+                -handleSizeHalf,
+                handleCenter + handleSizeHalf,
+                handleSizeHalf,
+                handleSizeHalf,
+                color,
+                pickingInteractionId
+            );
+        }
+        else if (axis === "Y") {
+            addBox(
+                -axisWidthHalf,
+                shaftStart,
+                -axisWidthHalf,
+                axisWidthHalf,
+                shaftEnd,
+                axisWidthHalf,
+                color,
+                pickingInteractionId
+            );
+
+            addBox(
+                -handleSizeHalf,
+                handleCenter - handleSizeHalf,
+                -handleSizeHalf,
+                handleSizeHalf,
+                handleCenter + handleSizeHalf,
+                handleSizeHalf,
+                color,
+                pickingInteractionId
+            );
+        }
+        else {
+            addBox(
+                -axisWidthHalf,
+                -axisWidthHalf,
+                shaftStart,
+                axisWidthHalf,
+                axisWidthHalf,
+                shaftEnd,
+                color,
+                pickingInteractionId
+            );
+
+            addBox(
+                -handleSizeHalf,
+                -handleSizeHalf,
+                handleCenter - handleSizeHalf,
+                handleSizeHalf,
+                handleSizeHalf,
+                handleCenter + handleSizeHalf,
+                color,
+                pickingInteractionId
+            );
+        }
+    };
+    addAxisHandle("X", true, red, xPosPickId);
+    addAxisHandle("X", false, red, xNegPickId);
+    addAxisHandle("Y", true, green, yPosPickId);
+    addAxisHandle("Y", false, green, yNegPickId);
+    addAxisHandle("Z", true, blue, zPosPickId);
+    addAxisHandle("Z", false, blue, zNegPickId);
+
+    return builder.build();
 }
 
-export function generateRotateGizmoMesh(): Mesh{
-        const meshBuilder: MeshBuilder = new MeshBuilder({
-            topology: "triangle-list",
-            attributes:[
-                "position",
-                "color",
-                "quadUV",
-            ]
+
+export function generateRotateGizmoMesh(): Mesh {
+    const builder: MeshBuilder = new MeshBuilder({
+        topology: "triangle-list",
+        attributes: ["position", "color", "quadUV", "pickingInteractionId"],
+    });
+
+    const red = new Vector4(192, 32, 32, 255);
+    const green = new Vector4(32, 192, 32, 255);
+    const blue = new Vector4(32, 32, 192, 255);
+
+    const ringRadius = 180;
+    const tubeRadius = 6;
+
+    const ringSegments = 64;
+    const tubeSegments = 8;
+
+    const xPosPickId = getPickingInteractionId("RotateGizmoPosX");
+    const xNegPickId = getPickingInteractionId("RotateGizmoNegX");
+
+    const yPosPickId = getPickingInteractionId("RotateGizmoPosY");
+    const yNegPickId = getPickingInteractionId("RotateGizmoNegY");
+
+    const zPosPickId = getPickingInteractionId("RotateGizmoPosZ");
+    const zNegPickId = getPickingInteractionId("RotateGizmoNegZ");
+
+    const addTriangle = (
+        a: Vector3,
+        b: Vector3,
+        c: Vector3,
+        color: Vector4,
+        pickingInteractionId: number | undefined
+    ) => {
+        const makeVertex = (position: Vector3): MeshBuilderVertex => ({
+            position,
+            color,
+            quadUV: new Vector2(0, 0),
+            pickingInteractionId,
         });
-        const out = meshBuilder.build();
-        return out;
+
+        const triangle: MeshBuilderTriangle = {
+            firstVertex: makeVertex(a),
+            secondVertex: makeVertex(b),
+            thirdVertex: makeVertex(c),
+        };
+
+        builder.addTriangle(triangle);
+        const reverseTriangle: MeshBuilderTriangle = {
+            firstVertex: makeVertex(c),
+            secondVertex: makeVertex(b),
+            thirdVertex: makeVertex(a),
+        };
+
+        builder.addTriangle(reverseTriangle);
+    };
+
+    const getTorusPosition = (
+        axis: "X" | "Y" | "Z",
+        theta: number,
+        phi: number
+    ): Vector3 => {
+        const radialDistance = ringRadius + tubeRadius * Math.cos(phi);
+        const axialDistance = tubeRadius * Math.sin(phi);
+
+        const radialU = Math.cos(theta);
+        const radialV = Math.sin(theta);
+
+        if (axis === "X") {
+            return new Vector3(
+                axialDistance,
+                radialDistance * radialU,
+                radialDistance * radialV
+            );
+        }
+
+        if (axis === "Y") {
+            return new Vector3(
+                radialDistance * radialV,
+                axialDistance,
+                radialDistance * radialU
+            );
+        }
+
+        return new Vector3(
+            radialDistance * radialU,
+            radialDistance * radialV,
+            axialDistance
+        );
+    };
+
+    const addRingHalf = (
+        axis: "X" | "Y" | "Z",
+        startAngle: number,
+        endAngle: number,
+        color: Vector4,
+        pickingInteractionId: number | undefined
+    ) => {
+        let i: number;
+        let j: number;
+
+        for (i = 0; i < ringSegments / 2; i++) {
+            const theta0 = startAngle +
+                (endAngle - startAngle) * i / (ringSegments / 2);
+
+            const theta1 = startAngle +
+                (endAngle - startAngle) * (i + 1) / (ringSegments / 2);
+
+            for (j = 0; j < tubeSegments; j++) {
+                const phi0 = 2 * Math.PI * j / tubeSegments;
+                const phi1 = 2 * Math.PI * (j + 1) / tubeSegments;
+
+                const p00 = getTorusPosition(axis, theta0, phi0);
+                const p10 = getTorusPosition(axis, theta1, phi0);
+                const p11 = getTorusPosition(axis, theta1, phi1);
+                const p01 = getTorusPosition(axis, theta0, phi1);
+
+                addTriangle(
+                    p00,
+                    p10,
+                    p11,
+                    color,
+                    pickingInteractionId
+                );
+                addTriangle(
+                    p00,
+                    p11,
+                    p01,
+                    color,
+                    pickingInteractionId
+                );
+            }
+        }
+    };
+
+    addRingHalf("X", 0, Math.PI, red, xPosPickId);
+    addRingHalf("X", Math.PI, 2 * Math.PI, red, xNegPickId);
+    addRingHalf("Y", 0, Math.PI, green, yPosPickId);
+    addRingHalf("Y", Math.PI, 2 * Math.PI, green, yNegPickId);
+    addRingHalf("Z", 0, Math.PI, blue, zPosPickId);
+    addRingHalf("Z", Math.PI, 2 * Math.PI, blue, zNegPickId);
+
+    return builder.build();
 }
+
 
 export function generateMoveGizmoMesh(): Mesh{
     const builder: MeshBuilder = new MeshBuilder({
@@ -876,8 +1167,6 @@ builder.addTriangle(zArrowheadBottomTriangle);
     return cubeMesh        
 
 }
-
-
 
 export function generateAxisBorderMesh(
     axis: "X" | "Y" | "Z",
