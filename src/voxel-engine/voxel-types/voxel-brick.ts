@@ -115,6 +115,8 @@ export class VoxelBrick{
         return copy;
     }
 
+    
+
     //uses 64-bit FNV-1a
     hash(): bigint{
         const FNV64_OFFSET_BASIS = 14695981039346656037n;
@@ -143,43 +145,39 @@ export class VoxelBrick{
         return hash;
     }
 
-    /*
-    equals(voxelBrick: VoxelBrick): boolean{
-        if( !this.size.equals(voxelBrick.size) || this.voxelByteStride!=voxelBrick.voxelByteStride){
-            return false;
-        }
-        for (let i = 0; i < this.#occupancyData.length; i++) {
-            if(this.#occupancyData[i]!==voxelBrick.#occupancyData[i]) return false;            
-        }        
-        for (let i = 0; i < this.data.length; i++) {
-            if(this.data[i]!==voxelBrick.data[i]) return false; 
-        }
-        return true;
-    }*/
+equals(other: VoxelBrick): boolean {
+    if (!this.size.equals(other.size)) return false;
+    if (this.voxelByteStride !== other.voxelByteStride) return false;
+    if (this.data.length !== other.data.length) return false;
 
-    equals(other: VoxelBrick): boolean {
-        if (this.data.length !== other.data.length) {
-            return false;
-        }
+    const thisBytes = new Uint8Array(
+        this.data.buffer,
+        this.data.byteOffset,
+        this.data.byteLength
+    );
 
-        const thisBytes = new Uint8Array(
-            this.data.buffer,
-            this.data.byteOffset,
-            this.data.byteLength
-        );
+    const otherBytes = new Uint8Array(
+        other.data.buffer,
+        other.data.byteOffset,
+        other.data.byteLength
+    );
 
-        const otherBytes = new Uint8Array(
-            other.data.buffer,
-            other.data.byteOffset,
-            other.data.byteLength
-        );
+    if (thisBytes.length !== otherBytes.length) return false;
 
-        for (let i = 0; i < thisBytes.length; i++) {
-            if (thisBytes[i] !== otherBytes[i]) {
-                return false;
-            }
-        }
-
-        return true;
+    for (let i = 0; i < thisBytes.length; i++) {
+        if (thisBytes[i] !== otherBytes[i]) return false;
     }
+
+    const thisOccupancy = this.#occupancyData;
+    const otherOccupancy = other.#occupancyData;
+
+    if (thisOccupancy.length !== otherOccupancy.length) return false;
+
+    for (let i = 0; i < thisOccupancy.length; i++) {
+        if (thisOccupancy[i] !== otherOccupancy[i]) return false;
+    }
+
+    return true;
+}
+    
 }

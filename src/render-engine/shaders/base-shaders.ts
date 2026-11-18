@@ -1,3 +1,4 @@
+import { getPickingInteractionId } from "../../app-core/picking/picking-interactions"
 
 
 
@@ -279,6 +280,7 @@ export function shadedWorldObjectShader(){
             @location(0) position: vec3f,
             @location(1) color: vec4f,
             @location(2) normal: vec3f,
+            @location(3) pickingInteractionId: f32,
         };
 
         struct VertexShaderOutput{
@@ -286,7 +288,13 @@ export function shadedWorldObjectShader(){
             @location(0) @interpolate(flat) color: vec4f,
             @location(1) @interpolate(flat) normal: vec3f,
             @location(2) viewVector: vec3f,
+            @location(3) @interpolate(flat) pickingInteractionId: f32,
         };
+
+        struct FragmentShaderOutput{
+            @location(0) color: vec4f,
+            @location(1) id: f32,
+        };        
 
         ${fequalFunctionCode}
 
@@ -304,13 +312,19 @@ export function shadedWorldObjectShader(){
             out.normal = normalize(v.normal);
             out.viewVector = cameraBuffer.position - worldPosition.xyz;
             out.color = v.color;
+            out.pickingInteractionId = v.pickingInteractionId;
 
             return out;
         }
 
-            @fragment fn fragmentShader(v: VertexShaderOutput) -> @location(0) vec4f {
+            @fragment fn fragmentShader(v: VertexShaderOutput) -> FragmentShaderOutput {
                 var viewVector = normalize(v.viewVector); 
-                return vec4f(clamp(cShaded(0,viewVector, v.normal, v.color.xyz),vec3f(v.color.xyz)*0.6, vec3f(1.0) ), v.color.w);
+                let color = vec4f(clamp(cShaded(0,viewVector, v.normal, v.color.xyz),vec3f(v.color.xyz)*0.6, vec3f(1.0) ), v.color.w);
+                let pickingInteractionId = v.pickingInteractionId;
+                return FragmentShaderOutput(
+                    color,
+                    pickingInteractionId,
+                );
             }
         `
 }
@@ -323,18 +337,25 @@ export function worldObjectShader(){
     @group(1) @binding(0) var<uniform> cameraBuffer: ShaderCameraResource;
     ${shaderWorldObjectResourceCode}
     @group(2) @binding(0) var<uniform> objectBuffer: ShaderWorldObjectResource;
-
+    
     struct Vertex{
         @location(0) position: vec3f,
         @location(1) color: vec4f,
         @location(2) quadUV: vec2f,
+        @location(3) pickingInteractionId: f32,
     };
 
     struct VertexShaderOutput{
         @builtin(position) position: vec4f,
         @location(0) color: vec4f,
         @location(1) quadUV: vec2f,
+        @location(2) @interpolate(flat) pickingInteractionId: f32,
     };
+
+    struct FragmentShaderOutput{
+        @location(0) color: vec4f,
+        @location(1) id: f32,
+    };        
 
     ${fequalFunctionCode}
 
@@ -350,12 +371,16 @@ export function worldObjectShader(){
         out.position = vec4f(vertNdcPosition);
         out.quadUV = v.quadUV;
         out.color = v.color;
+        out.pickingInteractionId = v.pickingInteractionId;
 
         return out;
     }
 
-    @fragment fn fragmentShader(v: VertexShaderOutput) -> @location(0) vec4f {
-        return v.color;
+    @fragment fn fragmentShader(v: VertexShaderOutput) -> FragmentShaderOutput{
+        return FragmentShaderOutput(
+            v.color,
+            v.pickingInteractionId,
+        );
     }
     `
 }

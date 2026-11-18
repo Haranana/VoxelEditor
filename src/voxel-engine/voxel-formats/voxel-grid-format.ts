@@ -4,15 +4,6 @@ import { baseVoxelCodec } from "../voxel-types/voxel-codec";
 import { VoxelBrickGrid } from "../voxel-types/voxel-grid";
 import { ChunkableVoxelFormat, SetChunkableVoxelResult, SetVoxelResult } from "./voxel-format";
 
-/*
-export class GridSetVoxelResult extends SetVoxelResult{
-    readonly dirtyChunks: Vector3[] = [];
-    constructor(success: boolean, dirtyChunks: Vector3[]){
-        super(success)
-        this.dirtyChunks = dirtyChunks;        
-    }
-}*/
-
 export class VoxelGridFormat extends ChunkableVoxelFormat<Voxel>{
     static readonly defaultGridSize: Vector3 = new Vector3(32,32,32);
     static readonly defaultChunkSize: Vector3 = new Vector3(16,16,16);

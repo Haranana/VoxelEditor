@@ -4,16 +4,21 @@ import type { Vector4 } from "../../../math/vector/vector4";
 import type { Mesh } from "../../../render-engine/meshes/Mesh";
 import { MeshBuilder, type MeshBuilderVertex } from "../../../render-engine/meshes/MeshBuilder";
 import { Voxel } from "../../../voxel-engine/voxel-types/voxel";
+import { sceneObjectIdToPickingIntereactionId } from "../../picking/picking-interactions";
 import  { VoxelObject } from "./voxel-object";
 import type { VoxelObjectSelectedArea } from "./voxel-object-selected-area";
 
 export function generateVoChunkMesh(vo: VoxelObject, chunkPos: Vector3): Mesh{    
+    if(vo.sceneId){
+        console.error("voxel object chunk mesh couldn't be generated - object sceneId is null");
+    }
     const meshBuilder: MeshBuilder = new MeshBuilder({
         topology: "triangle-list",
         attributes:[
             "position",
             "color",
             "normal",
+            "pickingInteractionId"
         ]
     });
 
@@ -21,22 +26,27 @@ export function generateVoChunkMesh(vo: VoxelObject, chunkPos: Vector3): Mesh{
         const leftTop : MeshBuilderVertex = {
             position: leftTopPosition,             
             color,
+            pickingInteractionId: sceneObjectIdToPickingIntereactionId(vo.sceneId!),
         }
         const rightTop: MeshBuilderVertex = {
             position: rightTopPosition,            
             color,
+            pickingInteractionId: sceneObjectIdToPickingIntereactionId(vo.sceneId!),
         }
         const rightBottom: MeshBuilderVertex = {
             position: rightBottomPosition, 
             color,
+            pickingInteractionId: sceneObjectIdToPickingIntereactionId(vo.sceneId!),
         }
         const leftBottom: MeshBuilderVertex = {
             position: leftBottomPosition,             
             color,
+            pickingInteractionId: sceneObjectIdToPickingIntereactionId(vo.sceneId!),
         }
         meshBuilder.addQuad({leftTop,rightTop,rightBottom,leftBottom})
     }
 
+    //console.log(`[generateVoChunkMesh] generating chunk mesh with interaction id of: ${sceneObjectIdToPickingIntereactionId(vo.sceneId!)}`)
     const gridSize: Vector3 = vo.getGridSize()
     const voxelSize = vo.getVoxelSize();
     const objectStart : Vector3 = new Vector3(-gridSize.x/2 , -gridSize.y/2, -gridSize.z/2).hadamard(voxelSize); 
@@ -135,6 +145,7 @@ export function generateVoGridMesh(vo: VoxelObject): Mesh{
             "position",
             "color",
             "quadUV",
+            "pickingInteractionId"
         ]
     },
     {
@@ -146,18 +157,22 @@ export function generateVoGridMesh(vo: VoxelObject): Mesh{
         const leftTop : MeshBuilderVertex = {
             position: leftTopPosition,             
             color,
+            pickingInteractionId: 0,
         }
         const rightTop: MeshBuilderVertex = {
             position: rightTopPosition,            
             color,
+            pickingInteractionId: 0,
         }
         const rightBottom: MeshBuilderVertex = {
             position: rightBottomPosition, 
             color,
+            pickingInteractionId: 0,
         }
         const leftBottom: MeshBuilderVertex = {
             position: leftBottomPosition,             
             color,
+            pickingInteractionId: 0,
         }
         meshBuilder.addQuad({leftTop,rightTop,rightBottom,leftBottom})
     }
@@ -251,6 +266,7 @@ export function generateVoBorderGridMesh(vo: VoxelObject): Mesh{
             "position",
             "color",
             "quadUV",
+            "pickingInteractionId"
         ],
         cullMode: "front"
     },
@@ -269,21 +285,25 @@ export function generateVoBorderGridMesh(vo: VoxelObject): Mesh{
                     position: A,
                     quadUV: new Vector2(0,0),
                     color,
+                    pickingInteractionId: 0,
                 },
             rightTop: {
                     position: B,
                     quadUV: new Vector2(1,0),
                     color,
+                    pickingInteractionId: 0,
                 },
             rightBottom: {
                     position: C,
                     quadUV: new Vector2(1,1),
                     color,
+                    pickingInteractionId: 0,
                 },
             leftBottom: {
                     position: D,
                     quadUV: new Vector2(0,1),
                     color,
+                    pickingInteractionId: 0,
                 }
             }
             )};
@@ -393,6 +413,7 @@ export function generateVoBorderOutlineMesh(vo: VoxelObject): Mesh{
             "position",
             "color",
             "quadUV",
+            "pickingInteractionId"
         ],
         cullMode: "front"
     },
@@ -416,21 +437,25 @@ export function generateVoBorderOutlineMesh(vo: VoxelObject): Mesh{
                 position: topLeft,
                 quadUV: new Vector2(0,0),
                 color: borderColor,
+                pickingInteractionId: 0,
             },
             rightTop: {
                 position: topRight,
                 quadUV: new Vector2(1,0),
                 color: borderColor,
+                pickingInteractionId: 0,
             },
             rightBottom: {
                 position: bottomRight,
                 quadUV: new Vector2(1,1),
                 color: borderColor,
+                pickingInteractionId: 0,
             },
             leftBottom:{
                 position: bottomLeft,
                 quadUV: new Vector2(0,1),
                 color: borderColor,
+                pickingInteractionId: 0,
             }}
         );
     };
@@ -505,6 +530,7 @@ export function generateVoSelectedAreaMesh(vo: VoxelObject, areaType: 'dynamic'|
             "position",
             "color",
             "quadUV",
+            "pickingInteractionId"
         ]
     },{
         depthWriteEnabled: false,
@@ -526,21 +552,25 @@ export function generateVoSelectedAreaMesh(vo: VoxelObject, areaType: 'dynamic'|
                 position: leftTopPosition,
                 quadUV: new Vector2(0,0),
                 color,
+                pickingInteractionId: 0,
             },
             rightTop:{
                 position: rightTopPosition,
                 quadUV: new Vector2(1,0),
                 color,
+                pickingInteractionId: 0,
             },
             rightBottom: {
                 position: rightBottomPosition,
                 quadUV: new Vector2(1,1),
                 color,
+                pickingInteractionId: 0,
             },
             leftBottom: {
                 position: leftBottomPosition,
                 quadUV: new Vector2(0,1),
                 color,
+                pickingInteractionId: 0,
             }}
         );
     };

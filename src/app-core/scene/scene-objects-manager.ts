@@ -75,6 +75,7 @@ export class SceneObjectsManager{
         out.useSecondaryDepthTexture = true;
         out.mesh = generateCameraControllsGizmoMesh();
         out.collider = null; 
+        out.saveToIdBuffer = true;
         out.name = "camera controll gizmo";
 
         return out;
@@ -108,6 +109,7 @@ export class SceneObjectsManager{
          
         out.mesh = generateMoveGizmoMesh();
         out.collider = null; 
+        out.saveToIdBuffer = true;
         
         out.screenTransform = getDefaultScreenTransform(); 
         out.name = "move object gizmo";
@@ -140,6 +142,7 @@ export class SceneObjectsManager{
         const shader = new Shader(screenObjectShader(), "vertexShader", "fragmentShader", 
         [new ViewportShaderResources(0) ,new CameraShaderResources(1),new ScreenObjectShaderResources(2), new GizmoCameraShaderResources(3)]);
         out.material = {shader};
+        out.saveToIdBuffer = true;
          
         out.mesh = generateScaleGizmoMesh();
         out.collider = null; 
@@ -175,6 +178,7 @@ export class SceneObjectsManager{
         const shader = new Shader(screenObjectShader(), "vertexShader", "fragmentShader", 
         [new ViewportShaderResources(0) ,new CameraShaderResources(1),new ScreenObjectShaderResources(2), new GizmoCameraShaderResources(3)]);
         out.material = {shader};
+        out.saveToIdBuffer = true;
          
         out.mesh = generateRotateGizmoMesh();
         out.collider = null; 
@@ -224,6 +228,7 @@ export class SceneObjectsManager{
         const shader = new Shader(worldObjectGridShader(), "vertexShader", "fragmentShader", 
         [new ViewportShaderResources(0) ,new CameraShaderResources(1),new WorldObjectShaderResources(2)]);
         out.material = {shader};
+        
          
         out.mesh = generateAxisBorderMesh('X');
         out.collider = null; 

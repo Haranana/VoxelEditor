@@ -206,6 +206,11 @@ export class Renderer{
                     loadOp: 'clear',
                     storeOp: 'store',                    
                 },
+                {
+                    view: this.#idTexture!.createView(),
+                    loadOp: 'clear',
+                    storeOp: 'store',
+                }     
             ],
                 depthStencilAttachment: {
                 view: this.#depthTexture!.createView(),
@@ -214,154 +219,9 @@ export class Renderer{
                 depthStoreOp: 'store',
                 },
         });
-        objects.forEach((obj, id)=>{            
+        objects.forEach((obj, _)=>{            
             if(!obj.mesh || !obj.material ||obj.useSecondaryDepthTexture) return;
-            
-            const meshResources = this.#meshCache.get(obj.mesh); 
-            let vertexBuffer;
-            let indexBuffer;
 
-            //filling index and vertex buffer and updating mesh cache
-            if(meshResources){
-                vertexBuffer = meshResources.vertexBuffer;
-                indexBuffer = meshResources.indexBuffer;
-            }else{    
-                vertexBuffer = device.createBuffer({
-                    label: 'vertex data buffer',
-                    size: obj.mesh.vertices.byteLength,
-                    usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-                });
-                device.queue.writeBuffer(vertexBuffer , 0 , obj.mesh.vertices);
-
-                indexBuffer = device.createBuffer({
-                    label: 'index data buffer',
-                    size: obj.mesh.indices.byteLength,
-                    usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
-                });
-                device.queue.writeBuffer(indexBuffer, 0 , obj.mesh.indices);     
-                this.#meshCache.set(obj.mesh, {
-                    vertexBuffer,
-                    indexBuffer,
-                });                 
-            }
-
-            //initializing and updating shader resources, fetching bind groups and their layouts
-            const bindGroups : Map<number, GPUBindGroup> = new Map<number, GPUBindGroup>();
-            const bindGroupLayouts: GPUBindGroupLayout[] = []
-            let objectRenderError: boolean = false;
-            obj.material.shader.resources.forEach((res)=>{
-                const shaderResourceContext: ShaderResourceContext = {
-                    object: obj,
-                    renderContext: renderContext,
-                };
-                const bindGroupLayout = device.createBindGroupLayout(res.getBindGroupLayoutDescriptor(shaderResourceContext)) ;
-                bindGroupLayouts.push(bindGroupLayout);
-
-                let initSuccess;
-                let updateSuccess; 
-                if(!res.initialized){
-                    initSuccess = res.init(shaderResourceContext, bindGroupLayout)
-                    if(!initSuccess){
-                        console.error("[renderScene] couldn't init shaderResource");
-                        objectRenderError = true;
-                        return;                        
-                    }
-                }
-                
-                updateSuccess = res.update(shaderResourceContext);
-                if(!updateSuccess){
-                    console.error("[renderScene] couldn't update shaderResource");
-                    objectRenderError = true;
-                    return;  
-                }
-                const bindGroup = res.getBindGroup()!;
-                const groupId = res.bindGroupNumber;
-                bindGroups.set(groupId, bindGroup);
-            })
-            if(objectRenderError){
-                console.log("[renderScene] objectRenderError")
-                return;
-            }
-
-            //creating render pipeline
-            const shader = obj.material.shader;
-            const shaderModule = device.createShaderModule({code: shader.code})
-            debugShader(shaderModule);
-            const pipelineLayout = device.createPipelineLayout({
-                bindGroupLayouts: bindGroupLayouts,
-            });
-
-            const renderPipeline = device.createRenderPipeline({
-                label: 'Selected object mesh pipeline',
-                layout: pipelineLayout,
-                vertex: {
-                    entryPoint: shader.vertexEntryPoint,
-                    module: shaderModule,
-                    buffers:[
-                        {
-                            arrayStride: obj.mesh.layout.stride,
-                            attributes: obj.mesh.layout.attributes,
-                        }
-                    ]
-                },
-                fragment: {
-                    entryPoint: shader.fragmentEntryPoint,
-                    module: shaderModule,
-                    targets: [{format: this.#presentationFormat!,
-                        blend: {
-                            color: {
-                                srcFactor: "src-alpha",
-                                dstFactor: "one-minus-src-alpha",
-                                operation: "add",
-                            },
-                            alpha: {
-                                srcFactor: "one",
-                                dstFactor: "one-minus-src-alpha",
-                                operation: "add",
-                            },
-                },
-                    }],
-
-                },
-                primitive: obj.mesh.primitiveState,
-                depthStencil: obj.mesh.depthStencilState
-            });
-
-            pass.setPipeline(renderPipeline);
-            pass.setVertexBuffer(0 , vertexBuffer);
-            pass.setIndexBuffer(indexBuffer, "uint32");
-            bindGroups.forEach((group,id)=>{
-                pass.setBindGroup(id, group);
-            })            
-            pass.drawIndexed(obj.mesh.indices.length);
-            //console.log("[renderScene]Drawed: " + obj.name);
-        });
-        pass.end();
-
-        const gizmoPass: GPURenderPassEncoder = encoder.beginRenderPass({
-            label: `secondary (gizmos) canvas renderPassDescriptor`,
-            colorAttachments: [
-                {
-                    view: canvasTexture.createView(),
-                    loadOp: 'load',
-                    storeOp: 'store',                    
-                },
-                {
-                    view: this.#idTexture!.createView(),
-                    loadOp: 'clear',
-                    storeOp: 'store',
-                }                
-            ],
-                depthStencilAttachment: {
-                view: this.#gizmosDepthTexture!.createView(),
-                depthClearValue: 1.0,
-                depthLoadOp: 'clear',
-                depthStoreOp: 'store',
-                },
-        });
-        objects.forEach((obj, id)=>{            
-            if(!obj.mesh || !obj.material || !obj.useSecondaryDepthTexture) return;
-            
             const meshResources = this.#meshCache.get(obj.mesh); 
             let vertexBuffer;
             let indexBuffer;
@@ -470,6 +330,9 @@ export class Renderer{
                         },
                         {
                             format: 'r32float',
+                            writeMask: obj.saveToIdBuffer
+                                ? GPUColorWrite.ALL
+                                : 0,
                         }
                     ],
 
@@ -478,7 +341,165 @@ export class Renderer{
                 depthStencil: obj.mesh.depthStencilState
             });
 
-            gizmoPass.setPipeline(renderPipeline);
+            
+
+            const pipeline = renderPipeline;
+            pass.setPipeline(pipeline);
+            pass.setVertexBuffer(0 , vertexBuffer);
+            pass.setIndexBuffer(indexBuffer, "uint32");
+            bindGroups.forEach((group,id)=>{
+                pass.setBindGroup(id, group);
+            })            
+            pass.drawIndexed(obj.mesh.indices.length);
+            //console.log("[renderScene]Drawed: " + obj.name);
+        });
+        pass.end();
+
+        const gizmoPass: GPURenderPassEncoder = encoder.beginRenderPass({
+            label: `secondary (gizmos) canvas renderPassDescriptor`,
+            colorAttachments: [
+                {
+                    view: canvasTexture.createView(),
+                    loadOp: 'load',
+                    storeOp: 'store',                    
+                },
+                {
+                    view: this.#idTexture!.createView(),
+                    loadOp: 'load',
+                    storeOp: 'store',
+                }                
+            ],
+                depthStencilAttachment: {
+                view: this.#gizmosDepthTexture!.createView(),
+                depthClearValue: 1.0,
+                depthLoadOp: 'clear',
+                depthStoreOp: 'store',
+                },
+        });
+        objects.forEach((obj, _)=>{            
+            if(!obj.mesh || !obj.material || !obj.useSecondaryDepthTexture) return;
+            
+            const meshResources = this.#meshCache.get(obj.mesh); 
+            let vertexBuffer;
+            let indexBuffer;
+
+            //filling index and vertex buffer and updating mesh cache
+            if(meshResources){
+                vertexBuffer = meshResources.vertexBuffer;
+                indexBuffer = meshResources.indexBuffer;
+            }else{    
+                vertexBuffer = device.createBuffer({
+                    label: 'vertex data buffer',
+                    size: obj.mesh.vertices.byteLength,
+                    usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+                });
+                device.queue.writeBuffer(vertexBuffer , 0 , obj.mesh.vertices);
+
+                indexBuffer = device.createBuffer({
+                    label: 'index data buffer',
+                    size: obj.mesh.indices.byteLength,
+                    usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+                });
+                device.queue.writeBuffer(indexBuffer, 0 , obj.mesh.indices);     
+                this.#meshCache.set(obj.mesh, {
+                    vertexBuffer,
+                    indexBuffer,
+                });                 
+            }
+
+            //initializing and updating shader resources, fetching bind groups and their layouts
+            const bindGroups : Map<number, GPUBindGroup> = new Map<number, GPUBindGroup>();
+            const bindGroupLayouts: GPUBindGroupLayout[] = []
+            let objectRenderError: boolean = false;
+            obj.material.shader.resources.forEach((res)=>{
+                const shaderResourceContext: ShaderResourceContext = {
+                    object: obj,
+                    renderContext: renderContext,
+                };
+                const bindGroupLayout = device.createBindGroupLayout(res.getBindGroupLayoutDescriptor(shaderResourceContext)) ;
+                bindGroupLayouts.push(bindGroupLayout);
+
+                let initSuccess;
+                let updateSuccess; 
+                if(!res.initialized){
+                    initSuccess = res.init(shaderResourceContext, bindGroupLayout)
+                    if(!initSuccess){
+                        console.error("[renderScene] couldn't init shaderResource");
+                        objectRenderError = true;
+                        return;                        
+                    }
+                }
+                
+                updateSuccess = res.update(shaderResourceContext);
+                if(!updateSuccess){
+                    console.error("[renderScene] couldn't update shaderResource");
+                    objectRenderError = true;
+                    return;  
+                }
+                const bindGroup = res.getBindGroup()!;
+                const groupId = res.bindGroupNumber;
+                bindGroups.set(groupId, bindGroup);
+            })
+            if(objectRenderError){
+                console.log("[renderScene] objectRenderError")
+                return;
+            }
+
+            //creating render pipeline
+            const shader = obj.material.shader;
+            const shaderModule = device.createShaderModule({code: shader.code})
+            debugShader(shaderModule);
+            const pipelineLayout = device.createPipelineLayout({
+                bindGroupLayouts: bindGroupLayouts,
+            });
+
+                        const renderPipeline = device.createRenderPipeline({
+                label: 'Selected object mesh pipeline',
+                layout: pipelineLayout,
+                vertex: {
+                    entryPoint: shader.vertexEntryPoint,
+                    module: shaderModule,
+                    buffers:[
+                        {
+                            arrayStride: obj.mesh.layout.stride,
+                            attributes: obj.mesh.layout.attributes,
+                        }
+                    ]
+                },
+                fragment: {
+                    entryPoint: shader.fragmentEntryPoint,
+                    module: shaderModule,
+                    targets: [
+                        {
+                            format: this.#presentationFormat!,
+                            blend: {
+                                color: {
+                                    srcFactor: "src-alpha",
+                                    dstFactor: "one-minus-src-alpha",
+                                    operation: "add",
+                                },
+                                alpha: {
+                                    srcFactor: "one",
+                                    dstFactor: "one-minus-src-alpha",
+                                    operation: "add",
+                                },
+                            },
+                        },
+                        {
+                            format: 'r32float',
+                            writeMask: obj.saveToIdBuffer
+                                ? GPUColorWrite.ALL
+                                : 0,
+                        }
+                    ],
+
+                },
+                primitive: obj.mesh.primitiveState,
+                depthStencil: obj.mesh.depthStencilState
+            });
+
+            const pipeline = renderPipeline;
+            gizmoPass.setPipeline(pipeline);
             gizmoPass.setVertexBuffer(0 , vertexBuffer);
             gizmoPass.setIndexBuffer(indexBuffer, "uint32");
             bindGroups.forEach((group,id)=>{
@@ -492,50 +513,7 @@ export class Renderer{
         
         const commandBuffer = encoder.finish();
         device.queue.submit([commandBuffer]);
-        //console.log("[renderScene] commandBuffer submitted");
     }
-
-    /*
-    getObjectRenderResources(device: GPUDevice, obj: RenderableObject, renderTechniqueType: RenderTechniqueType, renderTechniqueRes: RenderTechniqueResources): ObjectRenderResources {
-
-
-        if(renderTechniqueType == RenderTechniqueType.FILLED){
-
-        }else if(renderTechniqueType == RenderTechniqueType.GIZMO){
-            const uniformBufferView = makeStructuredView(makeShaderDataDefinitions(renderTechniqueRes.shaderCode).uniforms.uniformData);
-            const uniformBuffer = device.createBuffer({
-                label: 'uniform buffer',
-                size: uniformBufferView.arrayBuffer.byteLength,
-                usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-            });
-            const bindGroup = device.createBindGroup({
-                label: 'bind group for uniform data',
-                layout: renderTechniqueRes.bindGroupLayout,
-                entries:[{
-                    binding: 0,
-                    resource: {buffer: uniformBuffer},
-                }]
-            })
-            uniformBufferView.set({
-                anchor: ,
-                scale: ,
-                objectRotation: ,
-            });
-            device.queue.writeBuffer(uniformBuffer, 0, uniformBufferView.arrayBuffer);
-            return {
-                uniformBuffer,
-                uniformBufferView,
-                bindGroup,
-            }
-            
-        }else if(renderTechniqueType == RenderTechniqueType.GRID){
-
-        }else if(renderTechniqueType == RenderTechniqueType.OUTLINE){
-
-        }else if(renderTechniqueType == RenderTechniqueType.WIREFRAME){
-
-        }
-    }*/
 
     resizeCanvas() {
         if(!this.initialized) return;

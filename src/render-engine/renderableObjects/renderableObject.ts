@@ -7,6 +7,10 @@ export class RenderableObject {
     //refers to secondary depth texture that also uses idTexture
     //in this case used for gizmos, in future this should probably be remade somehow
     useSecondaryDepthTexture: boolean = false; 
+    
+    //decides whether renderer should save pickingId in the id texture
+    //does not check in any way whether vertex actually has the id
+    saveToIdBuffer: boolean = false;
 
     /*
 

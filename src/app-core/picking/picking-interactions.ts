@@ -1,3 +1,9 @@
+/*
+    Picking interactions with ids in [0-999] are reserved for editor built-in interactions with gizmos
+    interactions ids above 999 are for voxel objects and their interaction id depends on their scene id
+    eg: picking interaction id 1012 -> scene object of id: 12     
+*/
+
 export type PickingInteraction =
 | 'miss'
 | 'CameraGizmoPosX'
@@ -21,8 +27,10 @@ export type PickingInteraction =
 | 'RotateGizmoNegY'
 | 'RotateGizmoPosZ'
 | 'RotateGizmoNegZ'
+| 'SceneObject'
 
-export const pickingInteractions: ReadonlyMap<number, PickingInteraction> = new Map([
+
+const pickingInteractions: ReadonlyMap<number, PickingInteraction> = new Map([
     [0,  "miss"],
 
     [1,  "CameraGizmoPosX"],
@@ -52,6 +60,14 @@ export const pickingInteractions: ReadonlyMap<number, PickingInteraction> = new 
     [24, "RotateGizmoNegZ"],
 ]);
 
+//for simplicity returns undefined on miss
+export function getPickingInteractionFromId(id: number): (PickingInteraction | undefined){
+    if(id>=1000) return 'SceneObject';
+    const out = pickingInteractions.get(id);
+    if(out=='miss') return undefined;
+    return out;
+}
+
 export function getPickingInteractionId(interaction: PickingInteraction): (undefined | number){
     let out: number | undefined = undefined
     pickingInteractions.forEach((v,k)=>{
@@ -60,4 +76,14 @@ export function getPickingInteractionId(interaction: PickingInteraction): (undef
         }
     })
     return out;
+}
+
+export function sceneObjectIdToPickingIntereactionId(sceneObjectId: number): (undefined|number){
+    if(sceneObjectId<0) return undefined;
+    return sceneObjectId+1000;
+}
+
+export function pickingInteractionIdToSceneId(pickingInteractionId: number) : number|undefined{
+    if(pickingInteractionId<0) return undefined;
+    return pickingInteractionId-1000;
 }

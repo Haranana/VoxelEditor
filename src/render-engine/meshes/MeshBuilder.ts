@@ -166,7 +166,7 @@ export class MeshBuilder{
     #doesVertexFitLayout(v: MeshBuilderVertex, excludedAttributes: MeshAttributeName[] = []): boolean{
         let out: boolean = true; 
         this.meshBuilderLayout.attributes.forEach(attrName=>{
-            if(!excludedAttributes.find(exAttrName=>exAttrName===attrName) && !ATTRIBUTE_GETTERS[attrName](v)){
+            if(!excludedAttributes.find(exAttrName=>exAttrName===attrName) && ATTRIBUTE_GETTERS[attrName](v)==undefined){
                 out = false;
             }
         })
@@ -299,6 +299,7 @@ export class MeshBuilder{
         !this.#doesVertexFitLayout(bottomRight, ['quadUV' , 'normal']) || 
         !this.#doesVertexFitLayout(bottomLeft, ['quadUV', 'normal'])){
             throw Error(`Vertices fields are not consistent with declared layout`)
+            
         }
 
         //adding quadUV if this attribute is required by layout

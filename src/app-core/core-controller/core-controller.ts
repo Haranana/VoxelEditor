@@ -11,7 +11,7 @@ import { planeRayIntersection } from "../../math/geometry/intersection-tests.ts"
 import { Scene } from "../scene/scene.ts";
 import { Camera, type ProjectionType } from "../scene-objects/camera/camera.ts";
 import { getSampleCamera } from "../scene-objects/camera/sample-cameras.ts";
-import { pickingInteractions, type PickingInteraction } from "../picking/picking-interactions.ts";
+import { getPickingInteractionFromId, pickingInteractionIdToSceneId, type PickingInteraction } from "../picking/picking-interactions.ts";
 import type { ColorRGB } from "../colors/color-types.ts";
 import { rgbToVector4, vector4ToRgb } from "../colors/color-utils.ts";
 import { VoxelObject } from "../scene-objects/voxel/voxel-object.ts";
@@ -1134,33 +1134,8 @@ export class CoreController{
         }
     }
 
-    async #onPointerDownObjectView(){
-
-    }
-
-    async #onPointerDownSceneView(){
-
-    }
-
-    async #onPointerDownRenderView(){
-
-    }
-
-    async handleCanvasPointerDown(pointerPos: Vector2, canvasSize: Vector2){
-        const initialized = this.initialized;
-        const scene = this.scene;
-        const camera = scene?.getActiveCamera();
-        if(!initialized || !scene || !camera) return;
-        
+    async #onPointerDownObjectView(pointerPos: Vector2, canvasSize: Vector2, scene: Scene, camera: Camera){
         const voxelObject = scene.getActiveVoxelObject();
-        if(this.editorView==='object'){
-            this.#onPointerDownObjectView();
-        }else if(this.editorView==='scene'){
-            this.#onPointerDownSceneView();
-        }else if(this.editorView==='render'){
-            this.#onPointerDownRenderView();
-        }
-        
         if(!voxelObject) return;        
         
         this.finalizeVoxelsMove();
@@ -1176,7 +1151,7 @@ export class CoreController{
         const hitVoxel : Vector3 = rayCastResults.voxelCoords;
 
         if(pickingInteractionId){
-            const pickingInteraction = pickingInteractions.get(pickingInteractionId);
+            const pickingInteraction = getPickingInteractionFromId(pickingInteractionId);
             if(pickingInteraction){
                 this.handleCanvasPickingInteraction(pickingInteraction, pointerPos, hitVoxel, canvasSize);
                 this.resetSelectSession();
@@ -1249,12 +1224,56 @@ export class CoreController{
         }
     }
 
-    async handleCanvasPointerMove(pointerPos: Vector2, canvasSize: Vector2){
-        if(!this.initialized || !this.scene) return;
+    async #onPointerDownSceneView(pointerPos: Vector2, canvasSize: Vector2, scene: Scene, camera: Camera){
+        const pickingInteractionId = await this.readIdTexture!(pointerPos);
+
+        if(pickingInteractionId){
+            const pickingInteraction = getPickingInteractionFromId(pickingInteractionId);
+            if(pickingInteraction){
+                //console.log(`[onPointerDownSceneView] hit : ${pickingInteraction}`)
+                if(pickingInteraction==='SceneObject'){
+                    const clickedSceneObjectSceneId = pickingInteractionIdToSceneId(pickingInteractionId)
+                    if(clickedSceneObjectSceneId!=undefined){
+                        this.setSceneActiveVo(clickedSceneObjectSceneId);
+                    }else{
+                        throw Error("clicked scene object has illegal scene id");
+                    }
+                }
+
+            }else{
+                //console.log(`[onPointerDownSceneView] miss`)
+            }
+            return;
+        }else{
+            //console.log(`[onPointerDownSceneView] pickingInteractionId undefined`)
+        }
+    }
+
+    async #onPointerDownRenderView(pointerPos: Vector2, canvasSize: Vector2, scene: Scene, camera: Camera){
+
+    }
+
+    async handleCanvasPointerDown(pointerPos: Vector2, canvasSize: Vector2){
+        const initialized = this.initialized;
         const scene = this.scene;
+        const camera = scene?.getActiveCamera();
+        if(!initialized || !scene || !camera) return;
+        
+        if(this.editorView==='object'){
+            this.#onPointerDownObjectView(pointerPos, canvasSize, scene, camera);
+        }else if(this.editorView==='scene'){
+            this.#onPointerDownSceneView(pointerPos, canvasSize, scene, camera);
+        }else if(this.editorView==='render'){
+            this.#onPointerDownRenderView(pointerPos, canvasSize, scene, camera);
+        }
+        
+        
+    }
+
+    async #onPointerMoveObject(pointerPos: Vector2, canvasSize: Vector2, scene: Scene, camera: Camera){
         const voxelObject = scene.getActiveVoxelObject();
-        const camera = scene.getActiveCamera();        
-        if(!voxelObject || !camera) return;
+        
+        if(!voxelObject) return;
 
         voxelObject.resetSelectedArea('dynamic');
 
@@ -1365,13 +1384,32 @@ export class CoreController{
         }
     }
 
-    async handleCanvasPointerUp(pointerPos: Vector2, canvasSize: Vector2){
+    async #onPointerMoveScene(pointerPos: Vector2, canvasSize: Vector2, scene: Scene, camera: Camera){
 
-        if(!this.initialized) return;
-        const scene = this.scene!;
+    }
+
+    async #onPointerMoveRender(pointerPos: Vector2, canvasSize: Vector2, scene: Scene, camera: Camera){
+
+    }
+
+    async handleCanvasPointerMove(pointerPos: Vector2, canvasSize: Vector2){
+        const initialized = this.initialized
+        const scene = this.scene;
+        const camera = this.scene?.getActiveCamera(); 
+        if(!initialized || !scene || !camera) return;
+        
+        if(this.editorView==='object'){
+            this.#onPointerMoveObject(pointerPos, canvasSize, scene, camera);
+        }else if(this.editorView==='scene'){
+            this.#onPointerMoveScene(pointerPos, canvasSize, scene, camera);
+        }else if(this.editorView==='render'){
+            this.#onPointerMoveRender(pointerPos, canvasSize, scene, camera)
+        }   
+    }
+
+    async #onPointerUpObject(pointerPos: Vector2, canvasSize: Vector2, scene: Scene, camera: Camera){
         const voxelObject = scene.getActiveVoxelObject();
-        const camera = scene.getActiveCamera();
-        if(!voxelObject || !camera) return;
+        if(!voxelObject) return;
         
         if(this.hasVoxelsMoveSessionStarted()){
             this.endVoxelsMoveSession()
@@ -1420,8 +1458,30 @@ export class CoreController{
 
         this.resetSelectSession();
         this.handleCanvasPointerMove(pointerPos, canvasSize);
-        this.renderScene!();        
+        this.renderScene!();      
+    }
 
+    async #onPointerUpScene(pointerPos: Vector2, canvasSize: Vector2, scene: Scene, camera: Camera){
+
+    }
+
+    async #onPointerUpRender(pointerPos: Vector2, canvasSize: Vector2, scene: Scene, camera: Camera){
+
+    }
+
+    async handleCanvasPointerUp(pointerPos: Vector2, canvasSize: Vector2){
+        const initialized = this.initialized
+        const scene = this.scene;
+        const camera = this.scene?.getActiveCamera(); 
+        if(!initialized || !scene || !camera) return;
+        
+        if(this.editorView==='object'){
+            this.#onPointerUpObject(pointerPos, canvasSize, scene, camera);
+        }else if(this.editorView==='scene'){
+            this.#onPointerUpScene(pointerPos, canvasSize, scene, camera);
+        }else if(this.editorView==='render'){
+            this.#onPointerUpRender(pointerPos, canvasSize, scene, camera)
+        }        
     }
 
     //scene

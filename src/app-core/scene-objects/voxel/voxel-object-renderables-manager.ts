@@ -69,7 +69,8 @@ export class VoxelObjectRenderablesManager{
         out.mesh = generateVoChunkMesh(vo, chunkPos);
         out.material = {
             shader
-        };
+        };        
+        out.saveToIdBuffer = true;
         out.collider = null; 
         out.worldTransform = vo.getTransform();
         out.screenTransform = null;
@@ -89,6 +90,7 @@ export class VoxelObjectRenderablesManager{
         if(!ro.mesh){
             ro.mesh = generateVoChunkMesh(vo, chunkPos);
         }
+        ro.saveToIdBuffer = true;
         ro.name = vo.name;
         ro.collider = null; 
         ro.screenTransform = null;
