@@ -1833,159 +1833,119 @@ export class CoreController{
     }
 
 
-    // Resizing not supported for now!
-    setVoxelObjectSizeX(x: number){
-        /*
-        if(!this.initialized) return;
+    setVoxelObjectSizeX(x: number): boolean{
+        if(!this.initialized) return false;
         const scene = this.scene!;
         const voxelObject = scene.getActiveVoxelObject();
-        if(!voxelObject) return;     
-        const newSize = voxelObject.size().copy();
-        newSize.x=x;
-        const sizeChanged = newSize.x!==voxelObject.size.x;    
-        voxelObject.resize(newSize);           
-        if(sizeChanged){
+        if(!voxelObject) return false;     
+        const oldSize = voxelObject.getGridSize().copy();
+        const newSize = new Vector3(x,oldSize.y,oldSize.z);
+        const resizeSuccess = voxelObject.resize(newSize);           
+        if(resizeSuccess){
             this.renderScene!();
         }
-        */
+        return resizeSuccess;
     }
 
-    setVoxelObjectSizeY(y: number){
-        /*
-        if(!this.initialized) return;
+    setVoxelObjectSizeY(y: number): boolean{
+        if(!this.initialized) return false;
         const scene = this.scene!;
         const voxelObject = scene.getActiveVoxelObject();
-        if(!voxelObject) return;     
-        const newSize = voxelObject.size.copy();
-        newSize.y=y;
-        const sizeChanged = newSize.y!==voxelObject.size.y;   
-        voxelObject.resize(newSize);  
-        if(sizeChanged){
+        if(!voxelObject) return false;     
+        const oldSize = voxelObject.getGridSize().copy();
+        const newSize = new Vector3(oldSize.x,y,oldSize.z);
+        const resizeSuccess = voxelObject.resize(newSize);           
+        if(resizeSuccess){
             this.renderScene!();
         }
-        */
+        return resizeSuccess;
     }
-    
-    setVoxelObjectSizeZ(z: number){
-        /*
-        if(!this.initialized) return;
+
+    setVoxelObjectSizeZ(z: number): boolean{
+        if(!this.initialized) return false;
         const scene = this.scene!;
         const voxelObject = scene.getActiveVoxelObject();
-        if(!voxelObject) return;     
-        const newSize = voxelObject.size.copy();
-        newSize.z=z;
-        const sizeChanged = newSize.z!==voxelObject.size.z; 
-        voxelObject.resize(newSize);    
-        if(sizeChanged){
+        if(!voxelObject) return false;     
+        const oldSize = voxelObject.getGridSize().copy();
+        const newSize = new Vector3(oldSize.x,oldSize.y,z);
+        const resizeSuccess = voxelObject.resize(newSize);           
+        if(resizeSuccess){
             this.renderScene!();
-        } 
-        */       
-    }    
+        }
+        return resizeSuccess;
+    }  
 
     addVoxelObjectSizeX(delta: number){
-        /*
-        if(!this.initialized) return null;
+        if(!this.initialized) return false;
         const scene = this.scene!;
         const voxelObject = scene.getActiveVoxelObject();
-        if(!voxelObject) return null;         
-        const newX = delta+voxelObject.size.x 
-        const newSize = voxelObject.size.copy();
-        newSize.x = newX;
-        const sizeChanged = newSize.x!==voxelObject.size.x;         
-        voxelObject.resize(newSize);
-        if(sizeChanged){
+        if(!voxelObject) return false;     
+        const oldSize = voxelObject.getGridSize().copy();
+        const newSize = new Vector3(oldSize.x + delta,oldSize.y,oldSize.z);
+        const resizeSuccess = voxelObject.resize(newSize);           
+        if(resizeSuccess){
             this.renderScene!();
-        } 
-        */             
+        }
+        return resizeSuccess;
     }
 
     addVoxelObjectSizeY(delta: number){
-        /*
-        if(!this.initialized) return null;
+        if(!this.initialized) return false;
         const scene = this.scene!;
         const voxelObject = scene.getActiveVoxelObject();
-        if(!voxelObject) return null;         
-        const newY = delta+voxelObject.size.y 
-        const newSize = voxelObject.size.copy();
-        newSize.y = newY;
-        const sizeChanged = newSize.y!==voxelObject.size.y; 
-        voxelObject.resize(newSize);
-        if(sizeChanged){
+        if(!voxelObject) return false;     
+        const oldSize = voxelObject.getGridSize().copy();
+        const newSize = new Vector3(oldSize.x,oldSize.y+delta,oldSize.z);
+        const resizeSuccess = voxelObject.resize(newSize);           
+        if(resizeSuccess){
             this.renderScene!();
-        } 
-        */             
+        }
+        return resizeSuccess;        
     }
     
     addVoxelObjectSizeZ(delta: number){
-        /*
-        if(!this.initialized) return null;
+        if(!this.initialized) return false;
         const scene = this.scene!;
         const voxelObject = scene.getActiveVoxelObject();
-        if(!voxelObject) return null;         
-        const newZ = delta+voxelObject.size.z 
-        const newSize = voxelObject.size.copy();
-        newSize.z = newZ;
-        const sizeChanged = newSize.z!==voxelObject.size.z; 
-        voxelObject.resize(newSize);
-        if(sizeChanged){
+        if(!voxelObject) return false;     
+        const oldSize = voxelObject.getGridSize().copy();
+        const newSize = new Vector3(oldSize.x,oldSize.y,oldSize.z+delta);
+        const resizeSuccess = voxelObject.resize(newSize);           
+        if(resizeSuccess){
             this.renderScene!();
-        } 
-        */            
+        }
+        return resizeSuccess;     
     }    
 
     setVoxelObjectSize(newSize: Vector3){
-        /*
-        if(!this.initialized) return;
+        if(!this.initialized) return false;
         const scene = this.scene!;
         const voxelObject = scene.getActiveVoxelObject();
-        if(!voxelObject) return;
-
-        const currentSize: Vector3 = voxelObject.size;
-        voxelObject.resize(newSize);
-        if(currentSize != voxelObject.size){
+        if(!voxelObject) return false;     
+        const resizeSuccess = voxelObject.resize(newSize);           
+        if(resizeSuccess){
             this.renderScene!();
         }
-        */
+        return resizeSuccess;   
     }
 
-    changeVoxelObjectSizeByScalar(mult: number){
-        /*
-        if(!this.initialized) return;
+    resizeVoxelObjectByScalar(mult: number){
+        if(!this.initialized) return false;
         const scene = this.scene!;
         const voxelObject = scene.getActiveVoxelObject();
-        if(!voxelObject) return;
-        const currentSize: Vector3 = voxelObject.size;
-
-        const newSize = currentSize.copy();
-        newSize.x = Math.floor(newSize.x * mult);
-        newSize.y = Math.floor(newSize.y * mult);
-        newSize.z = Math.floor(newSize.z * mult)
-            
-        voxelObject.resize(newSize);
-        if(currentSize != voxelObject.size){
+        if(!voxelObject) return false;     
+        const oldSize = voxelObject.getGridSize().copy();
+        const newSize = new Vector3(oldSize.x*mult,oldSize.y*mult,oldSize.z*mult);
+        const resizeSuccess = voxelObject.resize(newSize);           
+        if(resizeSuccess){
             this.renderScene!();
         }
-        */
-    }
-
-    doubleVoxelObjectSize(){
-        /*
-        if(!this.initialized) return;
-        this.changeVoxelObjectSizeByScalar(2);
-        */
-    }
-
-    halfVoxelObjectSize(){
-        /*
-        if(!this.initialized) return;
-        this.changeVoxelObjectSizeByScalar(1/2);
-        */
+        return resizeSuccess;    
     }
 
     getVoxelObjectMaxGridSize(): Vector3{
         return VoxelObject.maxGridSize;
     }
-
 
     fillVoxelObjectSelectedArea(){
         if(!this.initialized) return;

@@ -1,4 +1,5 @@
 import { Vector3 } from "../../math/vector/vector3";
+import { VoxelEngineConfig } from "../engine-config/voxel-engine-config";
 import { Voxel } from "../voxel-types/voxel";
 import { baseVoxelCodec } from "../voxel-types/voxel-codec";
 import { VoxelBrickGrid } from "../voxel-types/voxel-grid";
@@ -11,15 +12,15 @@ export class VoxelGridFormat extends ChunkableVoxelFormat<Voxel>{
     
     #grid: VoxelBrickGrid<Voxel>;
     
-    //for now sizes are immutable on any level of hierarchy
-    readonly gridSize: Vector3 = VoxelGridFormat.defaultGridSize.copy();
-    readonly chunkSize: Vector3 = VoxelGridFormat.defaultChunkSize.copy();
-    readonly brickSize: Vector3 = VoxelGridFormat.defaultBrickSize.copy();
-    readonly #voxelCodec = baseVoxelCodec;
+    #chunkSize: Vector3;
+    #brickSize: Vector3;
+    #voxelCodec = baseVoxelCodec;
 
     constructor(){
         super();
-        this.#grid = new VoxelBrickGrid(this.gridSize, this.brickSize, this.#voxelCodec);
+        this.#chunkSize = VoxelGridFormat.defaultChunkSize.copy();
+        this.#brickSize = VoxelGridFormat.defaultBrickSize.copy();
+        this.#grid = new VoxelBrickGrid(VoxelGridFormat.defaultGridSize, this.#brickSize, this.#voxelCodec);
     }
 
     getVoxel(gridPosition: Vector3): (Voxel|null)|undefined{
@@ -35,13 +36,14 @@ export class VoxelGridFormat extends ChunkableVoxelFormat<Voxel>{
     }
 
     getChunksAmount(): Vector3{
-        return new Vector3(Math.ceil(this.gridSize.x/this.chunkSize.x),
-        Math.ceil(this.gridSize.y/this.chunkSize.y),
-        Math.ceil(this.gridSize.z/this.chunkSize.z));
+        const gridSize = this.getGridSize();
+        return new Vector3(Math.ceil(gridSize.x/this.#chunkSize.x),
+        Math.ceil(gridSize.y/this.#chunkSize.y),
+        Math.ceil(gridSize.z/this.#chunkSize.z));
     }
 
     getChunkSize(): Vector3 {
-        return this.chunkSize.copy();
+        return this.#chunkSize.copy();
     }
 
     #getChunksAffectedByVoxel(gridPosition: Vector3): Vector3[]{
@@ -81,13 +83,58 @@ export class VoxelGridFormat extends ChunkableVoxelFormat<Voxel>{
 
     }
 
+    getGridSize(): Vector3 {
+        return this.#grid.getGridSize();
+    }
+
+    resize(newSize: Vector3): SetChunkableVoxelResult {
+        const minSize = VoxelEngineConfig.minObjectGridSize;
+        const maxSize = VoxelEngineConfig.maxObjectGridSize;
+
+        const isValidSize = (
+            Number.isInteger(newSize.x) &&
+            Number.isInteger(newSize.y) &&
+            Number.isInteger(newSize.z) &&
+            newSize.x >= minSize && newSize.x <= maxSize &&
+            newSize.y >= minSize && newSize.y <= maxSize &&
+            newSize.z >= minSize && newSize.z <= maxSize
+        );
+
+        if (!isValidSize) {
+            return new SetChunkableVoxelResult(false, []);
+        }
+
+        if (this.#grid.getGridSize().equals(newSize)) {
+            return new SetChunkableVoxelResult(true, []);
+        }
+
+        const resizeSuccess = this.#grid.resize(newSize);
+
+        if (!resizeSuccess) {
+            return new SetChunkableVoxelResult(false, []);
+        }
+
+        const chunksAmount = this.getChunksAmount();
+        const dirtyChunks: Vector3[] = [];
+
+        for (let x = 0; x < chunksAmount.x; x++) {
+            for (let y = 0; y < chunksAmount.y; y++) {
+                for (let z = 0; z < chunksAmount.z; z++) {
+                    dirtyChunks.push(new Vector3(x, y, z));
+                }
+            }
+        }
+
+        return new SetChunkableVoxelResult(true, dirtyChunks);
+    }    
+
     #getChunkForVoxel(gridPosition: Vector3): Vector3 | undefined{
         if(!this.#grid.voxelInRange(gridPosition)){
             return undefined;
         }
-        const chunkId = new Vector3(Math.floor(gridPosition.x / this.chunkSize.x),
-            Math.floor(gridPosition.y / this.chunkSize.y),
-            Math.floor(gridPosition.z / this.chunkSize.z));
+        const chunkId = new Vector3(Math.floor(gridPosition.x / this.#chunkSize.x),
+            Math.floor(gridPosition.y / this.#chunkSize.y),
+            Math.floor(gridPosition.z / this.#chunkSize.z));
         
         return chunkId;
     }

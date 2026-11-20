@@ -12,6 +12,23 @@ export class BitSet {
         this.#data = new Uint32Array(Math.ceil(size / 32));
     }
 
+    resize(newSize: number){
+        if (!Number.isInteger(newSize) || newSize < 0) {
+            throw new Error("Invalid BitSet size");
+        }
+        const newUint32Size = Math.ceil(newSize/32);
+        const newData: Uint32Array = new Uint32Array(newUint32Size)
+        newData.set(this.#data.subarray(0, newUint32Size));
+        this.#data = newData;
+        this.#size = newSize;
+
+        //bits outside of the size in the last Uint32
+        if (newSize % 32 !== 0 && newUint32Size > 0) {
+            const mask = (1 << (newSize % 32)) - 1;
+            newData[newUint32Size - 1] &= mask;
+        }
+    }
+
     get size(): number {
         return this.#size;
     }

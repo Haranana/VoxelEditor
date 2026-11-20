@@ -89,35 +89,7 @@ export class VoxelObjectSelectedArea{
 
     hasOffset(offset: number): boolean{
         return this.#selectedVoxelsBitset.has(offset);
-        //const out = this.#selectedVoxelsOffsets.array().find((curOffset)=>curOffset===offset)!==undefined;
-        //return out;
     }
-
-    
-    //  returns list id of given voxel position (either by its gridPosition or gridOffset)
-    //  or undefined if none is found
-    /*
-    findGridPosition(v: Vector3): number|undefined{
-        const offset = v.x * this.#gridSize.y * this.#gridSize.z + v.y * this.#gridSize.z + v.z;
-        
-        //const out = this.#selectedVoxelsOffsets.array().find((curOffset)=>curOffset===offset)
-        //return out;
-    }
-
-    findOffset(offset: number): number|undefined{
-        const out = this.#selectedVoxelsOffsets.array().find((curOffset)=>curOffset===offset)
-        return out;
-    }
-
-
-
-    getGridPositionStrings(): string[]{
-        const out: string[] = []; 
-        this.#selectedVoxelsOffsets.array().forEach((vOffset)=>{
-            out.push(this.#GridOffsetToGridPosition(vOffset).toString());
-        })
-        return out;
-    }*/
 
     getBoundingBoxCenter(): Vector3 | null {
         if (this.#selectedVoxelsOffsets.size === 0) return null;
@@ -166,6 +138,11 @@ export class VoxelObjectSelectedArea{
         return new Vector3(x,y,z);
     }
 
+    onGridSizeChanged(newSize: Vector3){
+        this.#selectedVoxelsBitset.resize(newSize.x * newSize.y * newSize.z);
+        this.#gridSize = newSize;
+    }
+
     equals(area: VoxelObjectSelectedArea): boolean{
         if(this.#selectedVoxelsOffsets.size !== area.#selectedVoxelsOffsets.size) return false;
         for(let i=0; i<this.#selectedVoxelsOffsets.size; i++){
@@ -193,47 +170,3 @@ export class VoxelObjectSelectedArea{
         return out;
     }
 }
-
-/*
-export class VoxelObjectSelectedArea{
-    voxels: Set<string> = new Set();
-    color: Vector4 = new Vector4(255,255,255,128);
-
-    
-    //What to do if selected voxel is not empty
-    //ignore - selected area in this voxel is rendered alongside the voxel   
-    //hide - selected area in this voxel is not rendered
-    //replace - selected area is rendererd and the voxel is not
-    voxelCollisionBehavior: "ignore" | "hide" | "replace" = "ignore";
-
-
-    hasVoxel(v: Vector3): boolean{
-        return this.voxels.has(v.toString());
-    }
-
-    //returns size of voxels set before clear operation
-    clearVoxelsSet(): number{
-        const out = this.voxels.size;
-        this.voxels.clear();
-        return out;
-    }
-
-    //returns true if voxel didn't exist in set, false otherwise
-    addVoxel(voxel: Vector3){
-        const vStr = voxel.toString();
-        const out = !this.voxels.has(vStr); 
-        if(out){
-            this.voxels.add(vStr);
-        }
-        return out;
-    }
-
-    //return number of added new voxels 
-    addVoxels(newVoxels: Vector3[]): number{
-        let out = 0;
-        newVoxels.forEach((v)=>{
-            out+=this.addVoxel(v)? 1 : 0;
-        });
-        return out;
-    }
-}*/

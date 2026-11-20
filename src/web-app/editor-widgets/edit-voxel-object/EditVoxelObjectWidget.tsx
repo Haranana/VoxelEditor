@@ -121,8 +121,8 @@ return <ExpandableRow
                 <div className="WidgetButtonsPanelWrapper">
                     <p className="WidgetButtonsPanelTitle">Size</p>
                     <div className="WidgetButtonsPanel ModifySizeButtonsPanel">
-                    <button onClick={()=>controller.doubleVoxelObjectSize()}>Double</button>
-                    <button onClick={()=>controller.halfVoxelObjectSize()}>Half</button>
+                    <button onClick={()=>controller.resizeVoxelObjectByScalar(2.0)}>Double</button>
+                    <button onClick={()=>controller.resizeVoxelObjectByScalar(0.5)}>Half</button>
                     </div>
                 </div>
                 <div className="MutableFieldWrapper">

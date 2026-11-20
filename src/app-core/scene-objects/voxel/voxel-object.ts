@@ -10,6 +10,7 @@ import { SceneObject, type WorldObjectTransform } from "../sceneObject";
 import { VoxelObjectRenderablesManager } from "./voxel-object-renderables-manager";
 import { VoxelObjectGhostVoxels } from "./voxel-object-ghost-voxels";
 import { VoxelObjectSelectedArea } from "./voxel-object-selected-area";
+import { VoxelEngineConfig } from "../../../voxel-engine/engine-config/voxel-engine-config";
 
 
 export type SelectedAreaType = "static" | "dynamic";
@@ -18,13 +19,14 @@ export type SelectedAreaType = "static" | "dynamic";
 export class VoxelObject extends SceneObject{
 
     #voxelFormat: ChunkableVoxelFormat<Voxel> = new VoxelGridFormat();
-   
 
     //dictates hard borders of voxel object
-    static readonly maxGridSize: Vector3 = new Vector3(256,256,256);
-    static readonly minGridSize: Vector3 = new Vector3(2,2,2);
-    static readonly #defaultGridSize: Vector3 = new Vector3(32,32,32);
-    #gridSize: Vector3 = VoxelObject.#defaultGridSize.copy();
+    static readonly maxGridSize: Vector3 = new Vector3(VoxelEngineConfig.maxObjectGridSize,
+                                                        VoxelEngineConfig.maxObjectGridSize,
+                                                        VoxelEngineConfig.maxObjectGridSize);
+    static readonly minGridSize: Vector3 = new Vector3(VoxelEngineConfig.minObjectGridSize,
+                                                        VoxelEngineConfig.minObjectGridSize,
+                                                        VoxelEngineConfig.minObjectGridSize);
     
     static readonly maxVoxelSize: Vector3 = new Vector3(100,100,100);
     static readonly minVoxelSize: Vector3 = new Vector3(1,1,1);
@@ -37,25 +39,33 @@ export class VoxelObject extends SceneObject{
     static readonly #defaultObjectGridColor = new Vector4(100,100,100,255);
     #objectGridColor = VoxelObject.#defaultObjectGridColor;
 
-    #ghostVoxels: VoxelObjectGhostVoxels = new VoxelObjectGhostVoxels(this.#gridSize); 
+    #ghostVoxels: VoxelObjectGhostVoxels;
     #transform: WorldObjectTransform = {
         translation: new Vector3(0,0,0),
         scale: new Vector3(1,1,1),
         rotation: new Vector3(0,0,0),
     }    
 
-    readonly selectedAreas: Map<SelectedAreaType, VoxelObjectSelectedArea> = new Map([
-        ['static', new VoxelObjectSelectedArea(this.#gridSize)],
-        ['dynamic', new VoxelObjectSelectedArea(this.#gridSize)],
-    ]);
+    readonly selectedAreas: Map<SelectedAreaType, VoxelObjectSelectedArea>;
 
-    renderablesManager = new VoxelObjectRenderablesManager(this);
+    renderablesManager: VoxelObjectRenderablesManager;
     voxelUnitSize = 50;
 
     selectedAreaChangeEvent: AppCoreEvent<void> = new AppCoreEvent();
     voxelsChangeEvent: AppCoreEvent<void> = new AppCoreEvent();
     transformChangeEvent: AppCoreEvent<void> = new AppCoreEvent();
     sizeChangeEvent: AppCoreEvent<void> = new AppCoreEvent();
+
+    constructor(name = "voxel object"){
+        super(name);
+        const gridSize = this.getGridSize();
+        this.#ghostVoxels = new VoxelObjectGhostVoxels(gridSize);
+        this.selectedAreas = new Map([
+            ['static', new VoxelObjectSelectedArea(gridSize)],
+            ['dynamic', new VoxelObjectSelectedArea(gridSize)],
+        ]);
+        this.renderablesManager = new VoxelObjectRenderablesManager(this);
+    }
 
     #notifyOfSelectedAreaChange(){        
         this.selectedAreaChangeEvent.emit();
@@ -133,10 +143,27 @@ export class VoxelObject extends SceneObject{
     #notifyOfSizeChange(){        
         this.sizeChangeEvent.emit();
     }
-    #onSizeChange(){
+    #onSizeChange(dirtyChunks: Vector3[]){
         this.renderablesManager.clearBorderGridMesh();
         this.renderablesManager.clearBorderOutlineMesh();
+        if(dirtyChunks.length>0){
+            dirtyChunks.forEach((chunkPos)=>{
+                this.#onVoxelsChange(chunkPos);            
+            })
+            this.#notifyOfVoxelsChange();
+        }
+        this.selectedAreas.forEach(area=>{
+            area.onGridSizeChanged(this.getGridSize());
+        })
         this.#notifyOfSizeChange();
+    }
+
+    resize(newSize: Vector3): boolean{
+        const resizeResult = this.#voxelFormat.resize(newSize)
+        if(resizeResult.success){
+            this.#onSizeChange(resizeResult.dirtyChunks);
+        }
+        return resizeResult.success;
     }
 
     loadGrid(voxelGridFormat: VoxelGridFormat){
@@ -155,9 +182,10 @@ export class VoxelObject extends SceneObject{
     }
 
     voxelExists(gridPos: Vector3): boolean{
-        return (gridPos.x >= 0 && gridPos.x < this.#gridSize.x &&
-            gridPos.y >= 0 && gridPos.y < this.#gridSize.y &&
-            gridPos.z >= 0 && gridPos.z <this.#gridSize.z);
+        const gridSize = this.getGridSize();
+        return (gridPos.x >= 0 && gridPos.x < gridSize.x &&
+            gridPos.y >= 0 && gridPos.y < gridSize.y &&
+            gridPos.z >= 0 && gridPos.z <gridSize.z);
     }
 
     //returns true if voxel of given coords exists and is non-null
@@ -176,10 +204,11 @@ export class VoxelObject extends SceneObject{
 
     //spaces conversions
     modelToGridPos(modelPos: Vector3): Vector3{
+        const gridSize = this.getGridSize();
         return new Vector3(
-            Math.floor(modelPos.x / this.#voxelSize.x) + Math.floor(this.#gridSize.x / 2),
-            Math.floor(modelPos.y / this.#voxelSize.y) + Math.floor(this.#gridSize.y / 2),
-            Math.floor(modelPos.z / this.#voxelSize.z) + Math.floor(this.#gridSize.z / 2));
+            Math.floor(modelPos.x / this.#voxelSize.x) + Math.floor(gridSize.x / 2),
+            Math.floor(modelPos.y / this.#voxelSize.y) + Math.floor(gridSize.y / 2),
+            Math.floor(modelPos.z / this.#voxelSize.z) + Math.floor(gridSize.z / 2));
     }
 
     gridPosToChunkPos(gridPos: Vector3): Vector3{
@@ -194,7 +223,8 @@ export class VoxelObject extends SceneObject{
     // Returns middle of voxel of given id 
     // Function doesn't check whether voxel of given id actually exists in this voxel object
     GridPosToModel(v: Vector3): Vector3{
-        const objectStart : Vector3 = new Vector3(-this.#gridSize.x/2 , -this.#gridSize.y/2, -this.#gridSize.z/2) 
+        const gridSize = this.getGridSize();
+        const objectStart : Vector3 = new Vector3(-gridSize.x/2 , -gridSize.y/2, -gridSize.z/2) 
         const voxelSize = this.getVoxelSize();
         const voxelStartPosition = new Vector3( (objectStart.x + v.x)*voxelSize.x , (objectStart.y+v.y)*voxelSize.y, (objectStart.z+v.z)*voxelSize.z);
         const voxelMiddlePosition = new Vector3(voxelStartPosition.x + voxelSize.x/2, voxelStartPosition.y + voxelSize.y/2, voxelStartPosition.z + voxelSize.z/2);
@@ -327,11 +357,12 @@ export class VoxelObject extends SceneObject{
         if(areaType==="dynamic"){
             this.resetSelectedArea(areaType);
         }
+        const gridSize = this.getGridSize();
 
         
-        const clampedEnd = new Vector3(clamp({value: vEnd.x, min: 0 ,max: this.#gridSize.x-1 }), 
-                                clamp({value: vEnd.y, min: 0 ,max: this.#gridSize.y-1 }),
-                                clamp({value: vEnd.z, min: 0 ,max: this.#gridSize.z-1}));
+        const clampedEnd = new Vector3(clamp({value: vEnd.x, min: 0 ,max: gridSize.x-1 }), 
+                                clamp({value: vEnd.y, min: 0 ,max: gridSize.y-1 }),
+                                clamp({value: vEnd.z, min: 0 ,max: gridSize.z-1}));
        
         const correctedVStart = new Vector3(Math.min(vStart.x, clampedEnd.x),
                                             Math.min(vStart.y, clampedEnd.y),
@@ -392,10 +423,11 @@ export class VoxelObject extends SceneObject{
         if(this.isVoxelNonEmpty(v)){
             const c = this.getVoxel(v)!.color;   
             this.resetSelectedArea(areaType);
+            const gridSize = this.getGridSize();
             
-            for(let x = 0; x < this.#gridSize.x; x++){
-                for(let y = 0; y < this.#gridSize.y; y++){
-                    for(let z = 0; z < this.#gridSize.z; z++){
+            for(let x = 0; x < gridSize.x; x++){
+                for(let y = 0; y < gridSize.y; y++){
+                    for(let z = 0; z < gridSize.z; z++){
                         const vId = new Vector3(x,y,z);
                         const v = this.getVoxel(vId);                        
                         if(v && v.color.equals(c)){
@@ -412,8 +444,9 @@ export class VoxelObject extends SceneObject{
 
     //returns voxel object bbox center in grid position
     getBoundingBoxCenter(): Vector3{
+        const gridSize = this.getGridSize();
         const min = new Vector3(0,0,0);
-        const max = new Vector3(this.#gridSize.x-1,this.#gridSize.y-1,this.#gridSize.z-1);
+        const max = new Vector3(gridSize.x-1,gridSize.y-1,gridSize.z-1);
 
         return new Vector3(
             Math.floor((min.x + max.x) / 2),
@@ -506,10 +539,10 @@ export class VoxelObject extends SceneObject{
     selectVoxelsByFunction(areaType: SelectedAreaType, shouldSelect: (v: Voxel|null,gridPos: Vector3)=>boolean): number{
         const area = this.selectedAreas.get(areaType)!;
         let selectedVoxelsCount = 0;
-        for(let x: number = 0; x<this.#gridSize.x; x++){
-            
-            for(let y: number = 0; y<this.#gridSize.y; y++){
-                for(let z: number = 0; z<this.#gridSize.z; z++){
+        const gridSize = this.getGridSize();
+        for(let x: number = 0; x<gridSize.x; x++){            
+            for(let y: number = 0; y<gridSize.y; y++){
+                for(let z: number = 0; z<gridSize.z; z++){
                     const gridPos = new Vector3(x,y,z);
                     const v = this.getVoxel(gridPos);
                     if(v!==undefined){
@@ -681,8 +714,7 @@ export class VoxelObject extends SceneObject{
 
     //ghost voxels
     
-    getGhostVoxel(gridPos: Vector3): Voxel|null|undefined{
-         
+    getGhostVoxel(gridPos: Vector3): Voxel|null|undefined{         
         return this.#ghostVoxels.get(gridPos);
     }
 
@@ -820,7 +852,7 @@ export class VoxelObject extends SceneObject{
     }
 
     getGridSize(): Vector3{
-        return this.#gridSize.copy();
+        return this.#voxelFormat.getGridSize();
     }
 
     getChunksAmount(): Vector3{

@@ -24,5 +24,7 @@ export class SetChunkableVoxelResult extends SetVoxelResult{
 export abstract class ChunkableVoxelFormat<T extends Voxel> extends VoxelFormat<T>{
     abstract getChunksAmount(): Vector3;
     abstract getChunkSize(): Vector3;
+    abstract getGridSize(): Vector3
     abstract setVoxel(gridPosition: Vector3, newVoxel: T|null): SetChunkableVoxelResult;  
+    abstract resize(newSize: Vector3): SetChunkableVoxelResult;
 }
